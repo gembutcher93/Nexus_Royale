@@ -155,7 +155,7 @@ class GameScene extends Phaser.Scene {
   }
 
   mkLoot(x, y, type, payload, frame, airdrop) {
-    const l = this.loot.create(x, y, 'sprites', frame).setDepth(2).setScale(0.6);
+    const l = this.loot.create(x, y, 'obj').setDepth(2).setScale(0.5);
     l.dataType = type; l.payload = payload; l.airdrop = !!airdrop;
     this.tweens.add({ targets: l, y: y - 6, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     if (airdrop) {
@@ -210,8 +210,9 @@ class GameScene extends Phaser.Scene {
     const dir = this.angleToDir(angle);
     const pre = u.animPrefix;
 
-    // Flip per sinistra
-    if (dir === 'side' && Math.abs(angle) > Math.PI / 2) s.setFlipX(true);
+    // Flip per sinistra (angoli tra 90° e 270°)
+    const deg = Phaser.Math.RadToDeg(Phaser.Math.Angle.Normalize(angle));
+    if ((deg >= 90 && deg < 270) && dir === 'side') s.setFlipX(true);
     else s.setFlipX(false);
 
     if (u.shooting) {
@@ -333,7 +334,7 @@ class GameScene extends Phaser.Scene {
       const a = Math.random() * 6.28, sp = Phaser.Math.Between(40, 150);
       this.tweens.add({ targets: p, x: u.s.x + Math.cos(a) * sp, y: u.s.y + Math.sin(a) * sp, scale: 0, duration: 420, onComplete: () => p.destroy() });
     }
-    this.mkLoot(u.s.x, u.s.y, 'weapon', u.weapon, SPRITE.LOOT.crate_tech);
+    this.mkLoot(u.s.x, u.s.y, 'weapon', u.weapon, 0);
     if (by && by.isPlayer && !u.isPlayer) { this.kills++; this.flashKill(); }
     if (u.isPlayer) this.endMatch(false);
     else if (this.aliveCount === 1 && this.player.alive) this.endMatch(true);
@@ -384,7 +385,7 @@ class GameScene extends Phaser.Scene {
       let ay = Phaser.Math.Clamp(this.zone.tcy + Math.sin(da) * dr, 120, WORLD_H - 120);
       const sp = this.freeSpotNear(ax, ay); ax = sp.x; ay = sp.y;
       const wpn = Phaser.Utils.Array.GetRandom(AIRDROP_POOL);
-      this.mkLoot(ax, ay, 'weapon', wpn, SPRITE.LOOT.crate_big, true);
+      this.mkLoot(ax, ay, 'weapon', wpn, 0, true);
       const beam = this.add.rectangle(ax, ay - 420, 12, 840, C.gold, 0.22).setDepth(3).setBlendMode(Phaser.BlendModes.ADD);
       this.tweens.add({ targets: beam, alpha: 0, duration: 2600, onComplete: () => beam.destroy() });
     }

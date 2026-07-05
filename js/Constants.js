@@ -1,43 +1,32 @@
 /* ==========================================================================
    NEXUS ROYALE v2.0 — Costanti e configurazione globale
+   Griglia sprite: 77x77 pixel
    ========================================================================== */
 
 const WORLD_W = 4224, WORLD_H = 2304;
 const TOTAL_PLAYERS = 30;
 const BOT_COUNT = TOTAL_PLAYERS - 1;
 
-// Frame della sprite sheet (128×128, 11×6)
 const SPRITE = {
-  FRAME_W: 128, FRAME_H: 128, COLS: 11, ROWS: 6,
-  // Maschio (righe 0-1)
-  MALE: {
+  FRAME_W: 77, FRAME_H: 77,
+
+  VYRE: {
     idle_front: 0,  idle_side: 2,  idle_back: 3,
     walk_front: 4,  walk_side: 5,  walk_back: 6,
     shoot_front: 8, shoot_side: 9, shoot_back: 10,
-    death_start: 11, death_end: 14,
-    prone: 12
+    death_start: 11, death_end: 14
   },
-  // Femmina (righe 2-3) = maschio + 22
-  FEMALE: {
-    idle_front: 22, idle_side: 24, idle_back: 25,
-    walk_front: 26, walk_side: 27, walk_back: 28,
-    shoot_front: 30, shoot_side: 31, shoot_back: 32,
-    death_start: 33, death_end: 36,
-    prone: 34
+  NOVA: {
+    idle_front: 0,  idle_side: 2,  idle_back: 3,
+    walk_front: 4,  walk_side: 5,  walk_back: 6,
+    shoot_front: 8, shoot_side: 9, shoot_back: 10,
+    death_start: 11, death_end: 14
   },
-  // Bot (stessa griglia 128×128, stessa disposizione frame)
   BOT: {
     idle_front: 0,  idle_side: 2,  idle_back: 3,
     walk_front: 4,  walk_side: 5,  walk_back: 6,
     shoot_front: 8, shoot_side: 9, shoot_back: 10,
-    death_start: 11, death_end: 14,
-    prone: 12
-  },
-  // Oggetti (righe 4-5)
-  LOOT: {
-    crate_big: 44, crate_small: 45, crate_tech: 46,
-    barrel_blue: 48, barrel_red: 49,
-    medikit: 50, shield: 51, ammo: 52, syringe: 53
+    death_start: 11, death_end: 14
   }
 };
 

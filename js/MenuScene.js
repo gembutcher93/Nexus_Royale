@@ -22,8 +22,8 @@ class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const chars = [
-      { k: 'm', label: 'VYRE', col: C.player, tex: 'sprites', frame: SPRITE.MALE.idle_front },
-      { k: 'f', label: 'NOVA', col: C.playerF, tex: 'sprites', frame: SPRITE.FEMALE.idle_front }
+      { k: 'm', label: 'VYRE', col: C.player, tex: 'vyre', frame: SPRITE.VYRE.idle_front },
+      { k: 'f', label: 'NOVA', col: C.playerF, tex: 'nova', frame: SPRITE.NOVA.idle_front }
     ];
     this.charBtns = [];
     chars.forEach((c, i) => {
