@@ -7,11 +7,10 @@ const LIVE_ZOOM=0.85;
 const TITLE_FONT='Orbitron, "Segoe UI", system-ui, sans-serif';
 // --- swappable assets (replace the files in /assets, keep the names) ---
 const ART={
-  splash:'assets/splash.mp4',
+  splash:'assets/splash.mp4', 
   ops:{vyre:'assets/op_vyre.png',nova:'assets/op_nova.png',oracle:'assets/op_oracle.png',aegis:'assets/op_aegis.png',wraith:'assets/op_omega.png'},
   bot:'assets/op_bot.png'
 };
-let ART_OK={};
 
 function matchCfg(){ if(GAME.match==='blitz') return {total:30,w:4200,h:3000,loot:95,deploy:5,first:12000,wait:9000,shrink:9000,pr:[0.60,0.40,0.24,0.12,0.05],pd:[2,3,5,8,13]};
   return {total:100,w:6600,h:4800,loot:170,deploy:8,first:22000,wait:14000,shrink:13000,pr:[0.78,0.60,0.45,0.32,0.20,0.11,0.05],pd:[1,1,2,3,5,8,12]}; }
@@ -145,7 +144,7 @@ const SFX={
 class Boot extends Phaser.Scene{
   constructor(){ super('Boot'); }
   preload(){
-    this.load.image('art_splash',ART.splash);
+this.load.video('art_splash', 'assets/splash.mp4');
     Object.keys(ART.ops).forEach(k=>this.load.image('port_'+k,ART.ops[k]));
     this.load.image('port_bot',ART.bot);
     this.load.on('loaderror',(f)=>{ ART_OK[f.key]=false; console.warn('asset mancante:',f.key); });
@@ -368,87 +367,15 @@ class Boot extends Phaser.Scene{
 }
 
 /* ============================ SPLASH (intro) ============================ */
-class Splash extends Phaser.Scene{
-  constructor(){ super('Splash'); }
-  create(){
-    const W=this.scale.width,H=this.scale.height,cx=W/2,cy=H/2;
-    this.add.rectangle(0,0,W,H,0x04030c).setOrigin(0);
-    this.skipped=false;
-    const done=()=>{ if(this.skipped) return; this.skipped=true; SFX.resume(); SFX.ui();
-      this.cameras.main.fadeOut(280,4,3,12);
-      this.time.delayedCall(300,()=>this.scene.start(SEEN_TUTORIAL?'Menu':'Tutorial')); };
-    this.input.once('pointerdown',done);
-
-    // --- key art background, cover-fit + slow zoom (Ken Burns) ---
-    if(!this.textures.exists('art_splash')){ // fallback skyline if the image is missing
-      const sky=this.add.graphics().setDepth(0);
-      for(let i=0;i<26;i++){ const bw=Phaser.Math.Between(24,70), bx=Phaser.Math.Between(-20,W), bh=Phaser.Math.Between(60,H*0.42);
-        sky.fillStyle(0x0a0820,1); sky.fillRect(bx,H-bh,bw,bh);
-        sky.lineStyle(1,Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.purple]),0.35); sky.strokeRect(bx,H-bh,bw,bh); }
-    }
-    const art=this.add.image(cx,cy,this.textures.exists('art_splash')?'art_splash':'glow').setDepth(0);
-    if(!this.textures.exists('art_splash')) art.setAlpha(0);
-    const sc=Math.max(W/art.width,H/art.height)*1.02;
-    art.setScale(sc).setAlpha(0);
-    this.tweens.add({targets:art,alpha:1,duration:900});
-    this.tweens.add({targets:art,scale:sc*1.09,y:cy-H*0.02,duration:11000,ease:'Sine.inOut'});
-    // vignette + bottom fade so text reads
-    this.add.image(cx,cy,'vignette').setDisplaySize(W*1.6,H*1.6).setAlpha(0.85).setDepth(1);
-    const grad=this.add.graphics().setDepth(1);
-    for(let i=0;i<40;i++){ grad.fillStyle(0x04030c, i/40); grad.fillRect(0,H*0.55+i*(H*0.45/40),W,H*0.45/40+1); }
-
-    // --- neon flicker overlay (signs breathing) ---
-    const flick=this.add.rectangle(0,0,W,H,C.magenta,0.05).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
-    this.tweens.add({targets:flick,alpha:{from:0.02,to:0.10},duration:1500,yoyo:true,repeat:-1});
-    const flick2=this.add.rectangle(0,0,W,H,C.cyan,0.04).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
-    this.tweens.add({targets:flick2,alpha:{from:0.01,to:0.07},duration:2300,yoyo:true,repeat:-1,delay:400});
-
-    // --- rain ---
-    this.rain=[];
-    for(let i=0;i<70;i++){
-      const r=this.add.rectangle(Phaser.Math.Between(0,W),Phaser.Math.Between(-H,H),1,Phaser.Math.Between(10,26),0x9fd8ff,0.35).setOrigin(0).setDepth(3);
-      r.sp=Phaser.Math.Between(420,900); this.rain.push(r);
-    }
-    // --- scanlines ---
-    const sl=this.add.graphics().setDepth(4); sl.fillStyle(0x000000,0.16);
-    for(let y=0;y<H;y+=3) sl.fillRect(0,y,W,1);
-
-    // --- passing drone ---
-    this.time.delayedCall(600,()=>{
-      const d=this.add.image(-60,H*0.16,'ship').setDepth(3).setScale(0.42).setAlpha(0.9).setBlendMode(Phaser.BlendModes.ADD);
-      this.tweens.add({targets:d,x:W+80,y:H*0.13,duration:5200,ease:'Sine.inOut'});
-    });
-
-    // --- logo slam ---
-    const glow=this.add.image(cx,H*0.70,'glow').setTint(C.magenta).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(700,260).setAlpha(0).setDepth(5);
-    const t1=this.add.text(cx+4,H*0.70+4,'NEXUS ROYALE',{fontFamily:TITLE_FONT,fontSize:Math.min(46,W*0.088)+'px',fontStyle:'900',color:'#ff2ea6'}).setOrigin(0.5).setAlpha(0).setDepth(5);
-    const t2=this.add.text(cx,H*0.70,'NEXUS ROYALE',{fontFamily:TITLE_FONT,fontSize:Math.min(46,W*0.088)+'px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setAlpha(0).setDepth(6).setShadow(0,0,'#0af',22);
-    if(t2.setLetterSpacing) t2.setLetterSpacing(5);
-    [t1,t2].forEach(t=>t.setScale(2.4));
-    this.time.delayedCall(1500,()=>{
-      SFX.resume(); SFX.tone(90,0.4,'sawtooth',0.18,45); SFX.noise(0.3,0.16,900);
-      this.tweens.add({targets:[t1,t2],alpha:1,scale:1,duration:360,ease:'Back.out'});
-      this.tweens.add({targets:glow,alpha:0.30,duration:420,yoyo:true,repeat:-1});
-      this.cameras.main.shake(240,0.006);
-      const line=this.add.rectangle(cx,H*0.70+30,Math.min(300,W*0.72),2,C.cyan,0.9).setDepth(6).setScale(0.02,1);
-      this.tweens.add({targets:line,scaleX:1,duration:520,ease:'Quad.out'});
-      const sub=this.add.text(cx,H*0.70+48,'INKANIMUS',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#8a86c8',fontStyle:'800'}).setOrigin(0.5).setDepth(6).setAlpha(0);
-      this.tweens.add({targets:sub,alpha:1,duration:600,delay:200});
-    });
-
-    this.time.delayedCall(2500,()=>{
-      const tap=this.add.text(cx,H*0.90,'TOCCA PER INIZIARE',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#c9c6ea',fontStyle:'900'}).setOrigin(0.5).setDepth(7).setAlpha(0);
-      this.tweens.add({targets:tap,alpha:1,duration:400});
-      this.tweens.add({targets:tap,alpha:0.35,duration:800,yoyo:true,repeat:-1,delay:400});
-    });
-    this.time.delayedCall(11000,done);
-  }
-  update(t,dt){
-    const H=this.scale.height,W=this.scale.width;
-    if(!this.rain) return;
-    this.rain.forEach(r=>{ r.y+=r.sp*(dt/1000); if(r.y>H){ r.y=-30; r.x=Phaser.Math.Between(0,W); } });
-  }
-}
+class Splash extends Phaser.Scene {
+    create() {
+        const cx = this.cameras.main.centerX;
+        const cy = this.cameras.main.centerY;
+        
+        // MODIFICA: Visualizzazione video
+        const video = this.add.video(cx, cy, 'art_splash');
+        video.play(true); // Loop
+        video.setVolume(1); // Necessario
 
 /* ============================ TUTORIAL ============================ */
 class Tutorial extends Phaser.Scene{
