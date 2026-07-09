@@ -1,0 +1,11 @@
+{
+  "name": "Nexus Royale",
+  "short_name": "Nexus Royale",
+  "description": "InkAnimus Battle Royale",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#060410",
+  "theme_color": "#060410",
+  "icons": []
+}
