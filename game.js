@@ -7,7 +7,7 @@ const LIVE_ZOOM=0.85;
 const TITLE_FONT='Orbitron, "Segoe UI", system-ui, sans-serif';
 // --- swappable assets (replace the files in /assets, keep the names) ---
 const ART={
-  splash:'assets/splash.jpg',
+  splash:'assets/splash.mp4',
   ops:{vyre:'assets/op_vyre.png',nova:'assets/op_nova.png',oracle:'assets/op_oracle.png',aegis:'assets/op_aegis.png',wraith:'assets/op_omega.png'},
   bot:'assets/op_bot.png'
 };
