@@ -9,13 +9,18 @@ const TITLE_FONT='Orbitron, "Segoe UI", system-ui, sans-serif';
 const ART={
   splash:'assets/splash.jpg',
   ops:{vyre:'assets/op_vyre.png',nova:'assets/op_nova.png',oracle:'assets/op_oracle.png',aegis:'assets/op_aegis.png',wraith:'assets/op_omega.png'},
-  bot:'assets/op_bot.png'
+  bot:'assets/op_bot.png',
+  intro:'assets/intro.mp4'
 };
 let ART_OK={};
 
 function matchCfg(){ if(GAME.match==='blitz') return {total:30,w:4200,h:3000,loot:95,deploy:5,first:12000,wait:9000,shrink:9000,pr:[0.60,0.40,0.24,0.12,0.05],pd:[2,3,5,8,13]};
   return {total:100,w:6600,h:4800,loot:170,deploy:8,first:22000,wait:14000,shrink:13000,pr:[0.78,0.60,0.45,0.32,0.20,0.11,0.05],pd:[1,1,2,3,5,8,12]}; }
-function qualMul(){ return GAME.quality==='low'?0.35:(GAME.quality==='med'?0.62:1); }
+// quality affects EFFECTS ONLY (bot count never changes)
+const FXQ={ low:{particles:0.25,glow:false,shake:false,signs:0,lights:6,trails:false},
+            med:{particles:0.55,glow:true, shake:true, signs:8, lights:16,trails:false},
+            high:{particles:1,   glow:true, shake:true, signs:22,lights:26,trails:true} };
+function fxq(){ return FXQ[GAME.quality]||FXQ.high; }
 const SKINS=[
   {id:'base',  name:'STANDARD',cost:0,    tint:0xffffff, halo:0,      desc:'Equipaggiamento di serie.'},
   {id:'neon',  name:'NEON',    cost:900,  tint:0xffffff, halo:1,      desc:'Contorni al neon pulsanti.'},
@@ -103,6 +108,7 @@ const Profile={
     this.data.credits+=res.credits+bonus; this.save(); return {earned:res.credits,bonus}; }
 };
 Profile.load();
+try{ const q=localStorage.getItem('nexusQuality'); if(q) GAME.quality=q; }catch(e){}
 
 // weapons that "see & hit" far → widen the camera when held
 const SCOPED={rifle:1, railgun:1};
@@ -148,9 +154,26 @@ class Boot extends Phaser.Scene{
     this.load.image('art_splash',ART.splash);
     Object.keys(ART.ops).forEach(k=>this.load.image('port_'+k,ART.ops[k]));
     this.load.image('port_bot',ART.bot);
+    this.load.video('intro_video',ART.intro,'loadeddata',false,false);
     this.load.on('loaderror',(f)=>{ ART_OK[f.key]=false; console.warn('asset mancante:',f.key); });
   }
   create(){
+    // if image files failed (opened as file:// or missing), restore from embedded fallback
+    const missing=Object.keys(ART_OK).filter(k=>ART_OK[k]===false);
+    if(missing.length && window.ART_FALLBACK){
+      const todo=missing.filter(k=>window.ART_FALLBACK[k] && !this.textures.exists(k));
+      if(todo.length){ let added=0;
+        const onAdd=()=>{ if(++added>=todo.length){ this.textures.off('addtexture',onAdd); this.buildAll(); } };
+        this.textures.on('addtexture',onAdd);
+        todo.forEach(k=>this.textures.addBase64(k,window.ART_FALLBACK[k]));
+        this.time.delayedCall(2000,()=>{ this.textures.off('addtexture',onAdd); this.buildAll(); });
+        return;
+      }
+    }
+    this.buildAll();
+  }
+  buildAll(){
+    if(this._built) return; this._built=true;
     // --- canvas gradient textures (soft glow + vignette) ---
     const rad=(key,size,stops)=>{
       const cv=this.textures.createCanvas(key,size,size); const ctx=cv.getContext();
@@ -375,10 +398,20 @@ class Splash extends Phaser.Scene{
     this.add.rectangle(0,0,W,H,0x04030c).setOrigin(0);
     this.skipped=false;
     const done=()=>{ if(this.skipped) return; this.skipped=true; SFX.resume(); SFX.ui();
+      if(this.introVideo){ try{ this.introVideo.stop(); }catch(e){} }
       this.cameras.main.fadeOut(280,4,3,12);
       this.time.delayedCall(300,()=>this.scene.start(SEEN_TUTORIAL?'Menu':'Tutorial')); };
     this.input.once('pointerdown',done);
 
+    // --- intro video (if available) ---
+    if(this.cache.video && this.cache.video.exists('intro_video')){
+      const v=this.add.video(cx,cy,'intro_video').setDepth(0);
+      v.on('play',()=>{ const sc=Math.max(W/v.width,H/v.height); v.setScale(sc); });
+      v.play(false);
+      v.setMute(true);
+      v.on('complete',()=>{ if(!this.skipped) done(); });
+      this.introVideo=v;
+    }
     // --- key art background, cover-fit + slow zoom (Ken Burns) ---
     if(!this.textures.exists('art_splash')){ // fallback skyline if the image is missing
       const sky=this.add.graphics().setDepth(0);
@@ -387,7 +420,7 @@ class Splash extends Phaser.Scene{
         sky.lineStyle(1,Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.purple]),0.35); sky.strokeRect(bx,H-bh,bw,bh); }
     }
     const art=this.add.image(cx,cy,this.textures.exists('art_splash')?'art_splash':'glow').setDepth(0);
-    if(!this.textures.exists('art_splash')) art.setAlpha(0);
+    if(!this.textures.exists('art_splash') || this.introVideo) art.setVisible(false);
     const sc=Math.max(W/art.width,H/art.height)*1.02;
     art.setScale(sc).setAlpha(0);
     this.tweens.add({targets:art,alpha:1,duration:900});
@@ -601,17 +634,20 @@ class Menu extends Phaser.Scene{
       add(this.add.text(cx+W*0.4,yy,''+r[1],{fontSize:'15px',color:'#e8e6ff',fontStyle:'800'}).setOrigin(1,0.5)); });
   }); }
   openSettings(){ overlayPanel(this,'OPZIONI',(cx,y,W,add)=>{
-    add(this.add.text(cx,y,'QUALITÀ  (bot + effetti)',{fontSize:'13px',color:'#8a86c8',fontStyle:'800'}).setOrigin(0.5));
-    const qs=[['low','BASSA','~35 bot'],['med','MEDIA','~60 bot'],['high','ALTA','100 bot']], btns=[];
-    qs.forEach((q,i)=>{ const bw=W*0.27, x=cx+(i-1)*(bw+4), yy=y+46;
-      const box=add(this.add.rectangle(x,yy,bw,56,0x0d0b1c).setStrokeStyle(3,GAME.quality===q[0]?C.cyan:0x2a2550).setInteractive({useHandCursor:true}));
-      add(this.add.text(x,yy-9,q[1],{fontSize:'13px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5));
-      add(this.add.text(x,yy+12,q[2],{fontSize:'10px',color:'#8a86c8'}).setOrigin(0.5));
-      box.on('pointerdown',()=>{ SFX.ui(); GAME.quality=q[0]; btns.forEach((b,j)=>b.setStrokeStyle(3,qs[j][0]===GAME.quality?C.cyan:0x2a2550)); });
+    add(this.add.text(cx,y,'EFFETTI GRAFICI',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5));
+    add(this.add.text(cx,y+18,'i giocatori restano sempre 100',{fontSize:'10px',color:'#5f5b8a'}).setOrigin(0.5));
+    const qs=[['low','BASSI','max fluidità'],['med','MEDI','bilanciato'],['high','ALTI','massima resa']], btns=[];
+    qs.forEach((q,i)=>{ const bw=W*0.27, x=cx+(i-1)*(bw+4), yy=y+62;
+      const box=add(this.add.rectangle(x,yy,bw,58,0x0d0b1c).setStrokeStyle(3,GAME.quality===q[0]?C.cyan:0x2a2550).setInteractive({useHandCursor:true}));
+      add(this.add.text(x,yy-10,q[1],{fontFamily:TITLE_FONT,fontSize:'12px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5));
+      add(this.add.text(x,yy+12,q[2],{fontSize:'9px',color:'#8a86c8'}).setOrigin(0.5));
+      box.on('pointerdown',()=>{ SFX.ui(); GAME.quality=q[0]; try{localStorage.setItem('nexusQuality',q[0]);}catch(e){}
+        btns.forEach((b,j)=>b.setStrokeStyle(3,qs[j][0]===GAME.quality?C.cyan:0x2a2550)); });
       btns.push(box); });
-    add(this.add.text(cx,y+108,'Se il telefono scatta, scegli BASSA o MEDIA.',{fontSize:'11px',color:'#a8a4d0',align:'center',wordWrap:{width:W*0.82}}).setOrigin(0.5));
-    const aBox=add(this.add.rectangle(cx,y+150,W*0.5,40,0x14102b).setStrokeStyle(2,C.player).setInteractive({useHandCursor:true}));
-    const aTxt=add(this.add.text(cx,y+150,SFX.on?'AUDIO: ON':'AUDIO: OFF',{fontSize:'14px',color:'#33e1ff',fontStyle:'800'}).setOrigin(0.5));
+    add(this.add.text(cx,y+118,'Se il ROYALE a 100 giocatori scatta, scegli EFFETTI BASSI:\nvengono ridotte particelle, bagliori e scosse camera.',
+      {fontSize:'10px',color:'#a8a4d0',align:'center',wordWrap:{width:W*0.84},lineSpacing:3}).setOrigin(0.5));
+    const aBox=add(this.add.rectangle(cx,y+168,W*0.5,40,0x14102b).setStrokeStyle(2,C.player).setInteractive({useHandCursor:true}));
+    const aTxt=add(this.add.text(cx,y+168,SFX.on?'AUDIO: ON':'AUDIO: OFF',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5));
     aBox.on('pointerdown',()=>{ const on=SFX.toggle(); aTxt.setText(on?'AUDIO: ON':'AUDIO: OFF'); });
   }); }
 }
@@ -693,14 +729,15 @@ class Game extends Phaser.Scene{
   constructor(){ super('Game'); }
   create(){
     this.cfg=matchCfg(); WORLD_W=this.cfg.w; WORLD_H=this.cfg.h;
-    TOTAL_PLAYERS=Math.max(20,Math.round(this.cfg.total*qualMul())); this.fx=GAME.quality!=='low';
+    TOTAL_PLAYERS=this.cfg.total; this.FX=fxq(); this.fx=this.FX.glow;
     this.over=false; this.startTime=this.time.now; this.kills=0; this.damageDealt=0;
     this.physics.world.setBounds(0,0,WORLD_W,WORLD_H);
 
     // floor + district tints + roads
     this.GC=11; this.GR=8; // city grid (shared by roads + buildings)
     this.add.tileSprite(0,0,WORLD_W,WORLD_H,'asphalt').setOrigin(0).setDepth(-20);
-    DISTRICTS.forEach(d=>{ this.add.image(d.x*WORLD_W,d.y*WORLD_H,'glow').setDisplaySize(1500,1200).setTint(d.c).setAlpha(0.05).setDepth(-19); });
+    if(this.FX.glow){ const dg=this.add.graphics().setDepth(-19);
+      DISTRICTS.forEach(d=>{ dg.fillStyle(d.c,0.035); dg.fillEllipse(d.x*WORLD_W,d.y*WORLD_H,1400,1100); }); }
     this.gDecor=this.add.graphics().setDepth(-16);   // street clutter (static)
     this.gCity =this.add.graphics().setDepth(0);     // buildings + props (static)
     this.animCount=0;                                 // budget for infinite tweens
@@ -937,7 +974,7 @@ class Game extends Phaser.Scene{
       if(Math.random()<0.55) continue;
       const x=i*cw+(Math.random()<0.5?-ROAD/2+12:ROAD/2-12), y=j*ch+ch/2;
       const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.gold]);
-      if(lights<26){ lights++;
+      if(lights<this.FX.lights){ lights++;
         this.add.image(x,y,'glow').setDisplaySize(150,150).setTint(col).setAlpha(0.10).setBlendMode(Phaser.BlendModes.ADD).setDepth(-16); }
       g.fillStyle(col,0.9); g.fillCircle(x,y,3);
     }
@@ -1006,7 +1043,7 @@ class Game extends Phaser.Scene{
           const scol=Phaser.Utils.Array.GetRandom([C.magenta,C.cyan,C.gold,C.purple]);
           G.fillStyle(0x0d0b1c,1); G.fillRect(sx,sy,sw2,sh2); G.lineStyle(2,scol,1); G.strokeRect(sx,sy,sw2,sh2);
           G.fillStyle(scol,0.85); for(let k=0;k<Math.floor(sw2/16);k++) G.fillRect(sx+6+k*16,sy+4,8,8);
-          if(this.animCount<22){ this.animCount++;
+          if(this.FX.glow && this.animCount<this.FX.signs){ this.animCount++;
             const sg=this.add.image(sx+sw2/2,sy+sh2/2,'glow').setDisplaySize(sw2*1.7,sh2*4).setTint(scol).setAlpha(0.16).setBlendMode(Phaser.BlendModes.ADD).setDepth(0);
             this.tweens.add({targets:sg,alpha:{from:0.10,to:0.30},duration:Phaser.Math.Between(1100,2000),yoyo:true,repeat:-1});
           }
@@ -1112,7 +1149,7 @@ class Game extends Phaser.Scene{
       ai:{state:'wander',tx:p.x,ty:p.y,retarget:0,strafe:1,think:0,tgt:null,lt:null} };
     s.unit=u; this.physics.add.collider(s,this.walls);
     if(isPlayer){ const sk=SKIN(GAME.skin); u.skin=sk; s.setTint(sk.tint);
-      if(sk.halo>0){ const hl=this.add.image(p.x,p.y,'glow').setTint(op.col).setBlendMode(Phaser.BlendModes.ADD)
+      if(sk.halo>0 && fxq().glow){ const hl=this.add.image(p.x,p.y,'glow').setTint(op.col).setBlendMode(Phaser.BlendModes.ADD)
           .setDisplaySize(64,64).setAlpha(0.30*sk.halo).setDepth(5);
         this.tweens.add({targets:hl,alpha:0.55*sk.halo,duration:700,yoyo:true,repeat:-1}); u.skinHalo=hl; } }
     this.units.push(u); return u;
@@ -1124,7 +1161,7 @@ class Game extends Phaser.Scene{
     for(let i=0;i<w.pellets;i++){
       const a=angle+Phaser.Math.FloatBetween(-w.spread,w.spread);
       const b=this.bullets.create(u.s.x+Math.cos(angle)*24,u.s.y+Math.sin(angle)*24,'dot').setDepth(8);
-      b.owner=u; b.dmg=w.dmg; b.behavior=w.b; b.setTint(w.col).setBlendMode(Phaser.BlendModes.ADD);
+      b.owner=u; b.dmg=w.dmg; b.behavior=w.b; b.setTint(w.col); if(this.FX.glow) b.setBlendMode(Phaser.BlendModes.ADD);
       b.pierce=w.pierce||0; b.bounces=w.bounces||0; b.splashR=w.splashR||0; b.splashDmg=w.splashDmg||0; b.turn=w.turn||0;
       b.setRotation(a);
       const big=(w.b==='explosive'); b.setScale(big?1.1:0.55, big?1.1:0.4);
@@ -1132,10 +1169,12 @@ class Game extends Phaser.Scene{
       b.maxDist=w.range; b.sx=b.x; b.sy=b.y; b.hitSet=null;
       if(this.toWorld) this.toWorld(b);
     }
-    const f=this.add.image(u.s.x+Math.cos(angle)*30,u.s.y+Math.sin(angle)*30,'glow').setTint(w.col).setBlendMode(Phaser.BlendModes.ADD).setDepth(9).setDisplaySize(46,46);
-    if(this.toWorld) this.toWorld(f);
-    this.tweens.add({targets:f,alpha:0,scale:0.3,duration:110,onComplete:()=>f.destroy()});
-    if(u.isPlayer) this.cameras.main.shake(w.b==='explosive'?90:40,0.0022);
+    if(this.FX.glow && this.inView(u.s.x,u.s.y,60)){
+      const f=this.add.image(u.s.x+Math.cos(angle)*30,u.s.y+Math.sin(angle)*30,'glow').setTint(w.col).setBlendMode(Phaser.BlendModes.ADD).setDepth(9).setDisplaySize(46,46);
+      if(this.toWorld) this.toWorld(f);
+      this.tweens.add({targets:f,alpha:0,scale:0.3,duration:110,onComplete:()=>f.destroy()});
+    }
+    if(u.isPlayer && this.FX.shake) this.cameras.main.shake(w.b==='explosive'?90:40,0.0022);
     if(u.isPlayer) SFX.shoot(w.tier);
   }
   onBulletWall(b,wall){
@@ -1151,12 +1190,16 @@ class Game extends Phaser.Scene{
     b.destroy(); // normal + pierce stop on walls
   }
   explode(x,y,dmg,r,owner){
-    const e=this.add.image(x,y,'glow').setTint(C.orange).setBlendMode(Phaser.BlendModes.ADD).setDepth(10).setDisplaySize(40,40);
-    if(this.toWorld) this.toWorld(e);
-    this.tweens.add({targets:e,displayWidth:r*2.4,displayHeight:r*2.4,alpha:0,duration:340,onComplete:()=>e.destroy()});
-    for(let i=0;i<(this.fx?12:4);i++){ const p=this.add.image(x,y,'spark').setTint(C.gold).setBlendMode(Phaser.BlendModes.ADD).setDepth(11); if(this.toWorld) this.toWorld(p);
-      const a=Math.random()*6.28,sp=Phaser.Math.Between(60,r); this.tweens.add({targets:p,x:x+Math.cos(a)*sp,y:y+Math.sin(a)*sp,scale:0,duration:360,onComplete:()=>p.destroy()}); }
-    this.cameras.main.shake(120,0.004); if(owner&&owner.isPlayer) SFX.explode();
+    if(this.inView(x,y,r)){
+      const e=this.add.image(x,y,'glow').setTint(C.orange).setBlendMode(Phaser.BlendModes.ADD).setDepth(10).setDisplaySize(40,40);
+      if(this.toWorld) this.toWorld(e);
+      this.tweens.add({targets:e,displayWidth:r*2.4,displayHeight:r*2.4,alpha:0,duration:340,onComplete:()=>e.destroy()});
+      const np=Math.round(12*this.FX.particles);
+      for(let i=0;i<np;i++){ const p=this.add.image(x,y,'spark').setTint(C.gold).setBlendMode(Phaser.BlendModes.ADD).setDepth(11); if(this.toWorld) this.toWorld(p);
+        const a=Math.random()*6.28,sp=Phaser.Math.Between(60,r); this.tweens.add({targets:p,x:x+Math.cos(a)*sp,y:y+Math.sin(a)*sp,scale:0,duration:360,onComplete:()=>p.destroy()}); }
+      if(this.FX.shake) this.cameras.main.shake(120,0.004);
+    }
+    if(owner&&owner.isPlayer) SFX.explode();
     this.units.forEach(u=>{ if(!u.alive) return; const d=Phaser.Math.Distance.Between(x,y,u.s.x,u.s.y);
       if(d<r){ const fall=1-d/r; this.applyDamage(u,dmg*fall,owner); } });
   }
@@ -1177,12 +1220,22 @@ class Game extends Phaser.Scene{
       if(b.owner.isPlayer) SFX.hit(); this.hitSpark(u.s.x,u.s.y); this.applyDamage(u,b.dmg,b.owner); b.pierce--; if(b.pierce<0) b.destroy(); return true; }
     if(b.owner.isPlayer) SFX.hit(); this.hitSpark(u.s.x,u.s.y); this.applyDamage(u,b.dmg,b.owner); b.destroy(); return true;
   }
-  hitSpark(x,y){ const s=this.add.image(x,y,'glow').setTint(0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(12).setDisplaySize(30,30); if(this.toWorld) this.toWorld(s);
+  hitSpark(x,y){ if(!this.FX.glow || !this.inView(x,y,40)) return;
+    const s=this.add.image(x,y,'glow').setTint(0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(12).setDisplaySize(30,30); if(this.toWorld) this.toWorld(s);
     this.tweens.add({targets:s,alpha:0,scale:0.2,duration:130,onComplete:()=>s.destroy()}); }
 
   killUnit(u,by){
     if(!u.alive) return; u.alive=false; this.aliveCount--;
-    const nb=this.fx?12:4;
+    const visible = u.isPlayer || this.inView(u.s.x,u.s.y,80);
+    // PERF: off-screen deaths are silent (no particles, no corpse, no tweens)
+    if(!visible){
+      this.mkLoot(u.s.x,u.s.y,'weapon',u.weapon,'lootW');
+      if(u.gun) u.gun.destroy(); if(u.skinHalo) u.skinHalo.destroy(); u.s.destroy();
+      if(by&&by.isPlayer&&!u.isPlayer){ this.kills++; this.flashKill(); SFX.kill(); }
+      if(this.aliveCount===1&&this.player.alive) this.endMatch(true);
+      return;
+    }
+    const nb=Math.round(12*this.FX.particles);
     for(let i=0;i<nb;i++){ const p=this.add.image(u.s.x,u.s.y,'spark').setTint(u.isPlayer?C.player:C.enemy).setBlendMode(Phaser.BlendModes.ADD).setDepth(12); if(this.toWorld) this.toWorld(p);
       const a=Math.random()*6.28,sp=Phaser.Math.Between(40,150); this.tweens.add({targets:p,x:u.s.x+Math.cos(a)*sp,y:u.s.y+Math.sin(a)*sp,scale:0,duration:420,onComplete:()=>p.destroy()}); }
     this.mkLoot(u.s.x,u.s.y,'weapon',u.weapon,'lootW');
@@ -1474,7 +1527,10 @@ class Game extends Phaser.Scene{
           b.body.velocity.x=Math.cos(na)*sp; b.body.velocity.y=Math.sin(na)*sp; b.setRotation(na); } }
       if(Phaser.Math.Distance.Between(b.x,b.y,b.sx,b.sy)>b.maxDist){ b.destroy(); return; }
       for(let k=0;k<this.units.length;k++){ const u=this.units[k];
-        if(u.alive&&b.owner!==u&&Phaser.Math.Distance.Between(b.x,b.y,u.s.x,u.s.y)<18){ if(this.bulletHitUnit(b,u)) break; } }
+        if(!u.alive||b.owner===u) continue;
+        const dx=b.x-u.s.x; if(dx>18||dx<-18) continue;      // cheap broad-phase
+        const dy=b.y-u.s.y; if(dy>18||dy<-18) continue;
+        if(dx*dx+dy*dy<324){ if(this.bulletHitUnit(b,u)) break; } }
     });
 
     this.updateBots(time);
@@ -1542,9 +1598,18 @@ class Game extends Phaser.Scene{
       const l=Math.hypot(vx,vy)||1; s.body.setVelocity(vx/l*spd,vy/l*spd);
     });
   }
+  inView(x,y,pad){ const v=this.cameras.main.worldView, m=pad||120;
+    return x>v.x-m && x<v.right+m && y>v.y-m && y<v.bottom+m; }
+
   botShoot(u,tgt){ const w=WEAPONS[u.weapon]; const d=Phaser.Math.Distance.Between(u.s.x,u.s.y,tgt.s.x,tgt.s.y); if(d>w.range) return;
     // fairness: a non-scoped bot can only fire at the player if it's on the player's screen
-    if(tgt.isPlayer && !SCOPED[u.weapon] && !this.cameras.main.worldView.contains(u.s.x,u.s.y)) return;
+    if(tgt.isPlayer && !SCOPED[u.weapon] && !this.inView(u.s.x,u.s.y,0)) return;
+    // PERF: bot-vs-bot fights off screen are resolved abstractly (no bullets, no particles)
+    if(!tgt.isPlayer && !this.inView(u.s.x,u.s.y) && !this.inView(tgt.s.x,tgt.s.y)){
+      if(this.time.now-u.lastShot < w.rate) return; u.lastShot=this.time.now;
+      if(Math.random()<0.35) this.applyDamage(tgt, w.dmg*w.pellets*0.8, u);
+      return;
+    }
     const a=Phaser.Math.Angle.Between(u.s.x,u.s.y,tgt.s.x,tgt.s.y)+Phaser.Math.FloatBetween(-0.08,0.08); this.shoot(u,a); }
 
   /* ------------- end ------------- */
