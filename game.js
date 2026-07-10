@@ -209,7 +209,7 @@ class Boot extends Phaser.Scene{
     const cy = height / 2;
 
     this.add.rectangle(0, 0, width, height, 0x000000).setOrigin(0);
-    this.add.image(cx, cy - 50, 'art_splash').setScale(0.5);
+    this.add.image(cx, cy - 50, 'art_splash2').setScale(0.5);
 
     const text = this.add.text(cx, cy + 100, 'CLICCA PER ACCEDERE', { 
         fontSize: '20px', fontFamily: 'Orbitron', color: '#ffffff' 
