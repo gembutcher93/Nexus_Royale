@@ -15,7 +15,8 @@ const ART={
   splash:'assets/splash.jpg',
   ops:{vyre:'assets/op_vyre.png',nova:'assets/op_nova.png',oracle:'assets/op_oracle.png',aegis:'assets/op_aegis.png',wraith:'assets/op_omega.png'},
   bot:'assets/op_bot.png',
-  intro:'assets/intro.mp4'
+  intro:'assets/intro.mp4',
+  logo:'assets/logo.png'
 };
 let ART_OK={};
 
@@ -187,6 +188,7 @@ class Boot extends Phaser.Scene{
     this.load.image('art_splash',ART.splash);
     Object.keys(ART.ops).forEach(k=>this.load.image('port_'+k,ART.ops[k]));
     this.load.image('port_bot',ART.bot);
+    this.load.image('logo',ART.logo);
     this.load.video('intro_video',ART.intro,'loadeddata',false,false);
     this.load.on('loaderror',(f)=>{ ART_OK[f.key]=false; console.warn('asset mancante:',f.key); });
   }
@@ -445,100 +447,61 @@ class Splash extends Phaser.Scene{
   constructor(){ super('Splash'); }
   create(){
     const W=this.scale.width,H=this.scale.height,cx=W/2,cy=H/2;
-    this.add.rectangle(0,0,W,H,0x04030c).setOrigin(0);
-    this.skipped=false;
-    const done=()=>{ if(this.skipped) return; this.skipped=true; SFX.resume(); SFX.ui();
-      if(this.introVideo){ try{ this.introVideo.stop(); }catch(e){} }
-      this.cameras.main.fadeOut(280,4,3,12);
-      this.time.delayedCall(300,()=>this.scene.start(SEEN_TUTORIAL?'Menu':'Tutorial')); };
-    this.input.on('pointerdown',(p)=>{ if(this.introVideo && p.x>W-70 && p.y<80) return; done(); });
+    this.add.rectangle(0,0,W,H,0x000000).setOrigin(0);
+    this.started=false; this.done_=false;
 
-    // --- intro video (if available) ---
+    // ---------- GATE: black screen + logo button ----------
+    const hasLogo=this.textures.exists('logo');
+    const logo = hasLogo
+      ? this.add.image(cx,cy-20,'logo').setDepth(5)
+      : this.add.text(cx,cy-20,'NEXUS\nROYALE',{fontFamily:TITLE_FONT,fontSize:Math.min(46,W*0.11)+'px',fontStyle:'900',color:'#33e1ff',align:'center'}).setOrigin(0.5).setDepth(5);
+    if(hasLogo){ const lw=Math.min(W*0.72,300); logo.setDisplaySize(lw,lw*logo.height/logo.width); }
+    // soft breathing halo
+    const halo=this.add.image(cx,cy-20,'glow').setTint(0x33e1ff).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(W*0.9,W*0.9).setAlpha(0.18).setDepth(4);
+    this.tweens.add({targets:halo,alpha:0.34,duration:1400,yoyo:true,repeat:-1});
+    this.tweens.add({targets:logo,scale:logo.scale*1.03,duration:1600,yoyo:true,repeat:-1});
+    const tap=this.add.text(cx,cy+Math.min(H*0.18,150),'▶  CLICCA PER ACCEDERE AL NEXUS',{fontFamily:TITLE_FONT,fontSize:Math.min(15,W*0.038)+'px',fontStyle:'900',color:'#c9c6ea'}).setOrigin(0.5).setDepth(6);
+    this.tweens.add({targets:tap,alpha:{from:1,to:0.4},duration:900,yoyo:true,repeat:-1});
+    this.gate=[logo,halo,tap];
+
+    // start on first tap (this user gesture unlocks audio -> video plays WITH sound)
+    this.input.once('pointerdown',()=>this.begin());
+  }
+
+  begin(){
+    if(this.started) return; this.started=true;
+    SFX.resume();
+    const W=this.scale.width,H=this.scale.height,cx=W/2,cy=H/2;
+    this.gate.forEach(o=>this.tweens.add({targets:o,alpha:0,duration:250,onComplete:()=>o.destroy()}));
+
+    const finish=()=>{ if(this.done_) return; this.done_=true;
+      if(this.introVideo){ try{ this.introVideo.stop(); }catch(e){} }
+      this.cameras.main.fadeOut(280,0,0,0);
+      this.time.delayedCall(300,()=>this.scene.start(SEEN_TUTORIAL?'Menu':'Tutorial')); };
+    this.finish=finish;
+
+    // intro video WITH audio (allowed now: we have a user gesture)
     if(this.cache.video && this.cache.video.exists('intro_video')){
       const v=this.add.video(cx,cy,'intro_video').setDepth(0);
       v.on('play',()=>{ const sc=Math.max(W/v.width,H/v.height); v.setScale(sc); });
-      v.setMute(true);            // i browser bloccano l'autoplay con audio
+      try{ v.setMute(false); v.setVolume(1); }catch(e){}
       v.play(false);
-      v.on('complete',()=>{ if(!this.skipped) done(); });
+      v.on('complete',finish); v.on('stalled',()=>{}); 
       this.introVideo=v;
-      // speaker button (44x44 touch target) — tap to enable sound, doesn't skip
-      const bx=W-38, by=44;
-      const ring=this.add.circle(bx,by,22,0x061018,0.75).setStrokeStyle(2,C.cyan,0.9).setDepth(8);
-      const icon=this.add.text(bx,by,'🔇',{fontSize:'18px'}).setOrigin(0.5).setDepth(9);
-      const hint=this.add.text(bx,by+30,'AUDIO',{fontFamily:TITLE_FONT,fontSize:'9px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5).setDepth(9);
-      const hit=this.add.zone(bx,by,52,52).setOrigin(0.5).setDepth(10).setInteractive({useHandCursor:true});
-      hit.on('pointerdown',(p,lx,ly,ev)=>{ if(ev&&ev.stopPropagation) ev.stopPropagation();
-        const m=!v.isMuted(); v.setMute(m); icon.setText(m?'🔇':'🔊'); SFX.resume(); });
-      this.tweens.add({targets:[ring,icon],alpha:{from:1,to:0.55},duration:1200,yoyo:true,repeat:-1});
-    }
-    // --- key art background, cover-fit + slow zoom (Ken Burns) ---
-    if(!this.textures.exists('art_splash')){ // fallback skyline if the image is missing
-      const sky=this.add.graphics().setDepth(0);
-      for(let i=0;i<26;i++){ const bw=Phaser.Math.Between(24,70), bx=Phaser.Math.Between(-20,W), bh=Phaser.Math.Between(60,H*0.42);
-        sky.fillStyle(0x0a0820,1); sky.fillRect(bx,H-bh,bw,bh);
-        sky.lineStyle(1,Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.purple]),0.35); sky.strokeRect(bx,H-bh,bw,bh); }
-    }
-    const art=this.add.image(cx,cy,this.textures.exists('art_splash')?'art_splash':'glow').setDepth(0);
-    if(!this.textures.exists('art_splash') || this.introVideo) art.setVisible(false);
-    const sc=Math.max(W/art.width,H/art.height)*1.02;
-    art.setScale(sc).setAlpha(0);
-    this.tweens.add({targets:art,alpha:1,duration:900});
-    this.tweens.add({targets:art,scale:sc*1.09,y:cy-H*0.02,duration:11000,ease:'Sine.inOut'});
-    // vignette + bottom fade so text reads
-    this.add.image(cx,cy,'vignette').setDisplaySize(W*1.6,H*1.6).setAlpha(0.85).setDepth(1);
-    const grad=this.add.graphics().setDepth(1);
-    for(let i=0;i<40;i++){ grad.fillStyle(0x04030c, i/40); grad.fillRect(0,H*0.55+i*(H*0.45/40),W,H*0.45/40+1); }
-
-    // --- neon flicker overlay (signs breathing) ---
-    const flick=this.add.rectangle(0,0,W,H,C.magenta,0.05).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
-    this.tweens.add({targets:flick,alpha:{from:0.02,to:0.10},duration:1500,yoyo:true,repeat:-1});
-    const flick2=this.add.rectangle(0,0,W,H,C.cyan,0.04).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
-    this.tweens.add({targets:flick2,alpha:{from:0.01,to:0.07},duration:2300,yoyo:true,repeat:-1,delay:400});
-
-    // --- rain ---
-    this.rain=[];
-    for(let i=0;i<70;i++){
-      const r=this.add.rectangle(Phaser.Math.Between(0,W),Phaser.Math.Between(-H,H),1,Phaser.Math.Between(10,26),0x9fd8ff,0.35).setOrigin(0).setDepth(3);
-      r.sp=Phaser.Math.Between(420,900); this.rain.push(r);
-    }
-    // --- scanlines ---
-    const sl=this.add.graphics().setDepth(4); sl.fillStyle(0x000000,0.16);
-    for(let y=0;y<H;y+=3) sl.fillRect(0,y,W,1);
-
-    // --- passing drone ---
-    this.time.delayedCall(600,()=>{
-      const d=this.add.image(-60,H*0.16,'ship').setDepth(3).setScale(0.42).setAlpha(0.9).setBlendMode(Phaser.BlendModes.ADD);
-      this.tweens.add({targets:d,x:W+80,y:H*0.13,duration:5200,ease:'Sine.inOut'});
-    });
-
-    // --- logo slam ---
-    const glow=this.add.image(cx,H*0.70,'glow').setTint(C.magenta).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(700,260).setAlpha(0).setDepth(5);
-    const t1=this.add.text(cx+4,H*0.70+4,'NEXUS ROYALE',{fontFamily:TITLE_FONT,fontSize:Math.min(46,W*0.088)+'px',fontStyle:'900',color:'#ff2ea6'}).setOrigin(0.5).setAlpha(0).setDepth(5);
-    const t2=this.add.text(cx,H*0.70,'NEXUS ROYALE',{fontFamily:TITLE_FONT,fontSize:Math.min(46,W*0.088)+'px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setAlpha(0).setDepth(6).setShadow(0,0,'#0af',22);
-    if(t2.setLetterSpacing) t2.setLetterSpacing(5);
-    [t1,t2].forEach(t=>t.setScale(2.4));
-    this.time.delayedCall(1500,()=>{
-      SFX.resume(); SFX.tone(90,0.4,'sawtooth',0.18,45); SFX.noise(0.3,0.16,900);
-      this.tweens.add({targets:[t1,t2],alpha:1,scale:1,duration:360,ease:'Back.out'});
-      this.tweens.add({targets:glow,alpha:0.30,duration:420,yoyo:true,repeat:-1});
+      // allow skipping after 1s
+      this.time.delayedCall(1000,()=>{ this.input.once('pointerdown',finish); });
+      this.add.text(cx,H-30,'tocca per saltare',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5).setDepth(6).setAlpha(0.7);
+      this.time.delayedCall(12000,finish);
+    } else {
+      // no video: short logo-slam fallback then continue
+      this.add.rectangle(0,0,W,H,0x04030c).setOrigin(0);
+      const t2=this.add.text(cx,cy,'NEXUS ROYALE',{fontFamily:TITLE_FONT,fontSize:Math.min(44,W*0.09)+'px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setShadow(0,0,'#0af',22).setScale(2.2).setAlpha(0);
+      SFX.tone(90,0.4,'sawtooth',0.18,45); SFX.noise(0.3,0.16,900);
+      this.tweens.add({targets:t2,alpha:1,scale:1,duration:360,ease:'Back.out'});
       this.cameras.main.shake(240,0.006);
-      const line=this.add.rectangle(cx,H*0.70+30,Math.min(300,W*0.72),2,C.cyan,0.9).setDepth(6).setScale(0.02,1);
-      this.tweens.add({targets:line,scaleX:1,duration:520,ease:'Quad.out'});
-      const sub=this.add.text(cx,H*0.70+48,'INKANIMUS',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#8a86c8',fontStyle:'800'}).setOrigin(0.5).setDepth(6).setAlpha(0);
-      this.tweens.add({targets:sub,alpha:1,duration:600,delay:200});
-    });
-
-    this.time.delayedCall(2500,()=>{
-      const tap=this.add.text(cx,H*0.90,'TOCCA PER INIZIARE',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#c9c6ea',fontStyle:'900'}).setOrigin(0.5).setDepth(7).setAlpha(0);
-      this.tweens.add({targets:tap,alpha:1,duration:400});
-      this.tweens.add({targets:tap,alpha:0.35,duration:800,yoyo:true,repeat:-1,delay:400});
-    });
-    this.time.delayedCall(11000,done);
-  }
-  update(t,dt){
-    const H=this.scale.height,W=this.scale.width;
-    if(!this.rain) return;
-    this.rain.forEach(r=>{ r.y+=r.sp*(dt/1000); if(r.y>H){ r.y=-30; r.x=Phaser.Math.Between(0,W); } });
+      this.input.once('pointerdown',finish);
+      this.time.delayedCall(2200,finish);
+    }
   }
 }
 

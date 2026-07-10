@@ -1,7 +1,7 @@
 /* Cache offline. ALZA LA VERSIONE ogni volta che modifichi i file. */
-const CACHE='nexus-royale-v5';
+const CACHE='nexus-royale-v6';
 const ASSETS=['./index.html','./game.js','./assets_fallback.js','./manifest.json',
-  './assets/splash.jpg','./assets/intro.mp4',
+  './assets/splash.jpg','./assets/intro.mp4','./assets/logo.png',
   './assets/op_vyre.png','./assets/op_nova.png','./assets/op_oracle.png',
   './assets/op_aegis.png','./assets/op_omega.png','./assets/op_bot.png',
   'https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js'];
