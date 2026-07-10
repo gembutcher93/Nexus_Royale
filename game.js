@@ -13,6 +13,7 @@ const T={ tap:44, s1:8,s2:16,s3:24,s4:32,
 // --- swappable assets (replace the files in /assets, keep the names) ---
 const ART={
   splash:'assets/splash.jpg',
+  splash2:'assets/splash2.jpg',
   ops:{vyre:'assets/op_vyre.png',nova:'assets/op_nova.png',oracle:'assets/op_oracle.png',aegis:'assets/op_aegis.png',wraith:'assets/op_omega.png'},
   bot:'assets/op_bot.png',
   intro:'assets/intro.mp4'
