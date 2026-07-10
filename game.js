@@ -451,23 +451,23 @@ class Splash extends Phaser.Scene{
       if(this.introVideo){ try{ this.introVideo.stop(); }catch(e){} }
       this.cameras.main.fadeOut(280,4,3,12);
       this.time.delayedCall(300,()=>this.scene.start(SEEN_TUTORIAL?'Menu':'Tutorial')); };
-   this.input.on('pointerdown', (p) => { 
-    // 1. Controlla se il click è nell'area del pulsante audio
+ this.input.on('pointerdown', (p) => { 
     if (this.introVideo && p.x > W - 70 && p.y < 80) {
-        // Gestisci l'audio qui (o richiama la funzione del tuo tasto audio)
         const m = !this.introVideo.isMuted();
         this.introVideo.setMute(m);
-       if (this.introVideo.video.paused) {
-            this.introVideo.play();
-        }
-        // Eventuale aggiornamento icona se necessario
-        return; // ESCE senza chiamare done()
+
+        // FORZA il play su Android se il video si è fermato
+        // Il setTimeout serve a dare tempo al browser di processare il cambio audio
+        setTimeout(() => {
+            if (this.introVideo && this.introVideo.video.paused) {
+                this.introVideo.play();
+            }
+        }, 100); 
+
+        return; 
     }
-    
-    // 2. Se non è il pulsante, allora chiama done()
     done(); 
 });
-
 
     // --- intro video (if available) ---
     if(this.cache.video && this.cache.video.exists('intro_video')){
