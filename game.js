@@ -451,19 +451,25 @@ class Splash extends Phaser.Scene{
       if(this.introVideo){ try{ this.introVideo.stop(); }catch(e){} }
       this.cameras.main.fadeOut(280,4,3,12);
       this.time.delayedCall(300,()=>this.scene.start(SEEN_TUTORIAL?'Menu':'Tutorial')); };
- this.input.on('pointerdown', (p) => { 
+this.input.on('pointerdown', (p) => { 
+    // Controllo area pulsante
     if (this.introVideo && p.x > W - 70 && p.y < 80) {
-        const m = !this.introVideo.isMuted();
-        this.introVideo.setMute(m);
-
-        // FORZA il play su Android se il video si è fermato
-        // Il setTimeout serve a dare tempo al browser di processare il cambio audio
-        setTimeout(() => {
-            if (this.introVideo && this.introVideo.video.paused) {
-                this.introVideo.play();
-            }
-        }, 100); 
-
+        // Invece di setMute, agiamo direttamente sul volume
+        const videoElement = this.introVideo.video; // Accedi all'elemento DOM video
+        
+        if (videoElement.muted) {
+            videoElement.muted = false;
+            videoElement.volume = 1.0;
+        } else {
+            videoElement.muted = true;
+            videoElement.volume = 0.0;
+        }
+        
+        // E aggiungiamo un controllo di sicurezza per Android
+        if (videoElement.paused) {
+            videoElement.play();
+        }
+        
         return; 
     }
     done(); 
