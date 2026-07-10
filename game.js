@@ -13,7 +13,6 @@ const T={ tap:44, s1:8,s2:16,s3:24,s4:32,
 // --- swappable assets (replace the files in /assets, keep the names) ---
 const ART={
   splash:'assets/splash.jpg',
-  splash2:'assets/splash2.jpg',
   ops:{vyre:'assets/op_vyre.png',nova:'assets/op_nova.png',oracle:'assets/op_oracle.png',aegis:'assets/op_aegis.png',wraith:'assets/op_omega.png'},
   bot:'assets/op_bot.png',
   intro:'assets/intro.mp4'
@@ -204,40 +203,10 @@ class Boot extends Phaser.Scene{
         return;
       }
     }
-
-    const { width, height } = this.cameras.main;
-    const cx = width / 2;
-    const cy = height / 2;
-
-    this.add.rectangle(0, 0, width, height, 0x000000).setOrigin(0);
-    this.add.image(cx, cy - 50, 'art_splash2').setScale(0.5);
-
-    const text = this.add.text(cx, cy + 100, 'CLICCA PER ACCEDERE', { 
-        fontSize: '20px', fontFamily: 'Orbitron', color: '#ffffff' 
-    }).setOrigin(0.5);
-
-    this.tweens.add({ targets: text, alpha: 0.3, duration: 800, yoyo: true, repeat: -1 });
-
-   this.input.once('pointerdown', () => {
-        // Aggiunta: impedisce il click se il fallback è ancora in corso
-        const missing = Object.keys(ART_OK).filter(k => ART_OK[k] === false);
-        if (missing.length > 0 && !this.textures.exists('art_splash')) {
-            console.log("Attendi il caricamento...");
-            return; 
-        }
-
-        this.sound.context.resume().then(() => {
-            // Se non hai ancora chiamato buildAll nel fallback, lo chiami qui
-            if (typeof this.buildAll === 'function') this.buildAll();
-            this.scene.start('Intro');
-        });
-    });
-  
+    this.buildAll();
   }
-
   buildAll(){
-    if(this._built) 
-    return; this._built=true;
+    if(this._built) return; this._built=true;
     // --- canvas gradient textures (soft glow + vignette) ---
     const rad=(key,size,stops)=>{
       const cv=this.textures.createCanvas(key,size,size); const ctx=cv.getContext();
@@ -467,7 +436,7 @@ class Boot extends Phaser.Scene{
     mkChar('ch_bot','bot',C.enemy);
 
     g.destroy();
-    
+    this.scene.start('Splash');
   }
 }
 
