@@ -519,6 +519,7 @@ class Tutorial extends Phaser.Scene{
       {c:'#35e06a',t:'MUOVI & SPARA',b:['Stick sinistro per muoverti.','Auto-aim spara da solo a chi vedi a schermo.','In mira manuale usi lo stick destro.']},
       {c:'#ff2ea6',t:'LOOT & ARMI',b:['Raccogli cure, scudi e armi.','Su un\u2019arma a terra appare PRENDI: tocca per equipaggiarla.','Le casse dorate (airdrop) hanno armi potenti.']},
       {c:'#a25bff',t:'ZONA & ABILIT\u00c0',b:['Resta dentro il cerchio: fuori perdi vita.','Ogni operatore ha un\u2019ABILIT\u00c0 unica,','usala col tasto in basso a destra.']},
+      {c:'#ffd23f',t:'CREDITI \u2192 INKANIMUS',b:['I crediti vinti restano nel tuo profilo.','Dal menu usa INVIA CREDITI A INKANIMUS:','generi un codice e lo incolli nell\u2019app InkAnimus','per convertirli in premi dello studio.']},
     ];
     this.i=0; this.slideEls=[];
     const cardW=Math.min(360,W*0.88), cardH=Math.min(300,H*0.42), cardY=H*0.40;
@@ -766,10 +767,15 @@ class Loadout extends Phaser.Scene{
       hit.on('pointerdown',()=>{ SFX.ui(); GAME.char=o.id; this.refresh(); });
       this.opRows.push({box,dot,right,o,sel,y,bw,rh}); });
 
-    this.descTxt=this.add.text(cx,H*0.585,'',{fontSize:'12px',color:'#a8a4d0',align:'center',wordWrap:{width:W*0.86}}).setOrigin(0.5);
-    this.preview=this.add.image(cx-W*0.36,H*0.585,'ch_vyre_0').setScale(1.5).setAngle(-90);
+    // description in its own framed box; walking preview sits in a separate left cell (never overlaps text)
+    const dbY=H*0.60, dbW=Math.min(360,W*0.9), dbH=H*0.085, dbX=cx-dbW/2;
+    cyberFrame(this,dbX,dbY-dbH/2,dbW,dbH,0x2a2550,0);
+    const prevCell=64;
+    this.add.rectangle(dbX+prevCell/2+6,dbY,prevCell,dbH-10,0x0b0918,0.6).setDepth(1);
+    this.preview=this.add.image(dbX+prevCell/2+6,dbY,'ch_vyre_0').setScale(1.15).setAngle(-90).setDepth(2);
+    this.descTxt=this.add.text(dbX+prevCell+18,dbY,'',{fontSize:'11px',color:'#c9c6ea',align:'left',wordWrap:{width:dbW-prevCell-34},lineSpacing:2}).setOrigin(0,0.5).setDepth(2);
     this.previewF=0;
-    this.time.addEvent({delay:130,loop:true,callback:()=>{ this.previewF=(this.previewF+1)%4; const k='ch_'+GAME.char+'_'+(1+this.previewF); if(this.textures.exists(k)) this.preview.setTexture(k); }});
+    this.time.addEvent({delay:150,loop:true,callback:()=>{ this.previewF=(this.previewF+1)%4; const k='ch_'+GAME.char+'_'+(1+this.previewF); if(this.textures.exists(k)) this.preview.setTexture(k); }});
     this.unlockBtn=this.add.rectangle(cx,H*0.635,Math.min(240,W*0.7),34,0x241a00).setStrokeStyle(2,C.gold).setInteractive({useHandCursor:true}).setVisible(false);
     this.unlockTxt=this.add.text(cx,H*0.635,'',{fontSize:'13px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setVisible(false);
     this.unlockBtn.on('pointerdown',()=>{ const o=OP(GAME.char); if(Profile.unlock(o.id,o.cost)) SFX.pickup(); else { SFX.ui(); this.flash('SERVONO '+o.cost+' CREDITI'); } this.refresh(); });
