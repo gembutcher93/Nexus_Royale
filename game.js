@@ -457,6 +457,9 @@ class Splash extends Phaser.Scene{
         // Gestisci l'audio qui (o richiama la funzione del tuo tasto audio)
         const m = !this.introVideo.isMuted();
         this.introVideo.setMute(m);
+       if (this.introVideo.video.paused) {
+            this.introVideo.play();
+        }
         // Eventuale aggiornamento icona se necessario
         return; // ESCE senza chiamare done()
     }
