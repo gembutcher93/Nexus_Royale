@@ -666,17 +666,17 @@ class Menu extends Phaser.Scene{
     });
 
     // ---- dropdown: MODALITÀ ----
-    this.mkDrop(cx, H*0.35, '◤ MODALITÀ ◢',
+    this.mkDrop(cx, H*0.36, '◤ MODALITÀ ◢',
       [{k:'royale',t:'ROYALE',s:'100 giocatori · lungo'},{k:'blitz',t:'BLITZ',s:'30 giocatori · veloce'}],
       ()=>GAME.match, (k)=>{ GAME.match=k; });
 
     // ---- dropdown: MIRA ----
-    this.mkDrop(cx, H*0.46, '◤ MIRA ◢',
+    this.mkDrop(cx, H*0.47, '◤ MIRA ◢',
       [{k:'auto',t:'ASSISTITA',s:'auto-aim · punti ×1.0'},{k:'manual',t:'MANUALE',s:'skill · punti ×1.5'}],
       ()=>GAME.mode, (k)=>{ GAME.mode=k; });
 
     // ---- big START ----
-    const sy=H*0.575, sbw=Math.min(340,W*0.86);
+    const sy=H*0.56, sbw=Math.min(340,W*0.86);
     cyberFrame(this,cx-sbw/2,sy-34,sbw,68,C.player,0);
     const sg=this.add.image(cx,sy,'glow').setTint(C.cyan).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(sbw,120).setAlpha(0.12).setDepth(1);
     this.tweens.add({targets:sg,alpha:0.24,duration:1200,yoyo:true,repeat:-1});
@@ -684,20 +684,20 @@ class Menu extends Phaser.Scene{
     this.add.rectangle(cx,sy,sbw,68,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
       .on('pointerdown',()=>{ SFX.resume(); SFX.ui(); this.scene.start('Loadout'); });
 
-    // ---- SFIDA UN AMICO (big, right under START) ----
-    const fy=H*0.66, fbw=Math.min(340,W*0.86);
+    // ---- SFIDA UN AMICO (big, spaced under START) ----
+    const fy=H*0.685, fbw=Math.min(340,W*0.86);
     cyberFrame(this,cx-fbw/2,fy-26,fbw,52,C.magenta,0);
     this.add.text(cx,fy,'⚔  SFIDA UN AMICO',{fontFamily:TITLE_FONT,fontSize:'16px',color:'#ff2ea6',fontStyle:'900'}).setOrigin(0.5).setDepth(2);
     this.add.rectangle(cx,fy,fbw,52,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
       .on('pointerdown',()=>{ SFX.ui(); this.openChallenge(); });
 
-    // ---- bottom row: PROFILO + ALTRO (both visible) ----
-    const my=H*0.74, half=Math.min(167,W*0.42);
+    // ---- bottom row: PROFILO + ALTRO (spaced) ----
+    const my=H*0.79, half=Math.min(164,W*0.41);
     const homeBtn=(x,label,col,cb)=>{ cyberFrame(this,x-half/2,my-26,half,52,col,0);
       this.add.text(x,my,label,{fontFamily:TITLE_FONT,fontSize:'15px',color:hexStr(col),fontStyle:'900'}).setOrigin(0.5).setDepth(2);
       this.add.rectangle(x,my,half,52,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); cb(); }); };
-    homeBtn(cx-half/2-4, '👤 PROFILO', C.cyan, ()=>this.openProfile());
-    homeBtn(cx+half/2+4, '⚙ ALTRO',   0x8a86c8, ()=>this.openMenuList());
+    homeBtn(cx-half/2-8, '👤 PROFILO', C.cyan, ()=>this.openProfile());
+    homeBtn(cx+half/2+8, '⚙ ALTRO',   0x8a86c8, ()=>this.openMenuList());
 
     this.refresh();
     try{ if(!localStorage.getItem('nexusQualitySet')) this.time.delayedCall(200,()=>this.askQuality()); }catch(e){}
@@ -742,10 +742,10 @@ class Menu extends Phaser.Scene{
     const items=[['◈  SFIDE GIORNALIERE',()=>this.openChallenges()],['👤  PROFILO',()=>this.openProfile()],
       ['◆  INVIA CREDITI A INKANIMUS',()=>this.openTransfer()],['⚙  OPZIONI',()=>this.openSettings()],
       ['?  COME SI GIOCA',()=>this.scene.start('Tutorial')]];
-    const pw=Math.min(360,W*0.9), ph=items.length*58+70, py=H*0.5-ph/2;
+    const pw=Math.min(360,W*0.9), ph=items.length*62+76, py=H*0.5-ph/2;
     els.push(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,401));
     els.push(this.add.text(cx,py+28,'MENU',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
-    items.forEach((it,i)=>{ const yy=py+64+i*58;
+    items.forEach((it,i)=>{ const yy=py+70+i*62;
       els.push(cyberFrame(this,cx-pw/2+16,yy-24,pw-32,48,0x2a2550,402));
       els.push(this.add.text(cx-pw/2+34,yy,it[0],{fontFamily:TITLE_FONT,fontSize:'14px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0,0.5).setDepth(403));
       els.push(this.add.rectangle(cx,yy,pw-32,48,0xffffff,0.001).setDepth(404).setInteractive({useHandCursor:true}).on('pointerdown',(pt,lx,ly,ev)=>{ if(ev&&ev.stopPropagation)ev.stopPropagation(); const fn=it[1]; close(); this.time.delayedCall(10,fn); }));
@@ -1002,16 +1002,16 @@ class Loadout extends Phaser.Scene{
     this.cName=this.add.text(rx,cardY+22,'',{fontFamily:TITLE_FONT,fontSize:'22px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
     this.cRole=this.add.text(rx,cardY+46,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'900',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
     // lore: bounded height, never overlaps ability block below
-    const loreH=Math.round(cardH*0.24);
-    this.cLore=this.add.text(rx,cardY+62,'',{fontSize:'11px',color:'#c9c6ea',align:'left',wordWrap:{width:rw},lineSpacing:2,fixedHeight:loreH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,loreH);
+    const loreH=Math.round(cardH*0.30);
+    this.cLore=this.add.text(rx,cardY+60,'',{fontSize:'11px',color:'#c9c6ea',align:'left',wordWrap:{width:rw},lineSpacing:3,fixedHeight:loreH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,loreH);
     // ability block (fixed lower zone of the card)
-    const abY=cardY+cardH-104;
+    const abY=cardY+cardH-116;
     this.add.rectangle(rx,abY,rw,1,C.cyan,0.35).setOrigin(0,0.5).setDepth(2);
     this.add.text(rx,abY+12,'ABILITÀ',{fontFamily:TITLE_FONT,fontSize:'8px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
     this.cAbIcon=this.add.text(rx,abY+30,'',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
     this.cAbName=this.add.text(rx+28,abY+30,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
-    const abDescH=Math.round(cardH*0.26);
-    this.cAbDesc=this.add.text(rx,abY+46,'',{fontSize:'11px',color:'#a8b0bd',align:'left',wordWrap:{width:rw},lineSpacing:2,fixedHeight:abDescH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,abDescH);
+    const abDescH=Math.round(cardH*0.30);
+    this.cAbDesc=this.add.text(rx,abY+46,'',{fontSize:'11px',color:'#b8bfcc',align:'left',wordWrap:{width:rw},lineSpacing:3,fixedHeight:abDescH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,abDescH);
     // unlock button (shown when locked)
     this.unlockBtn=this.add.rectangle(lx,cardY+cardH-24,cardW*0.42,40,0x241a00).setStrokeStyle(2,C.gold).setDepth(3).setInteractive({useHandCursor:true}).setVisible(false);
     this.unlockTxt=this.add.text(lx,cardY+cardH-24,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(4).setVisible(false);
@@ -2001,9 +2001,15 @@ class Game extends Phaser.Scene{
     if(r.bonus>0) this.add.text(cx,H*0.54,'+'+r.bonus+' bonus sfide!',{fontSize:'14px',fontStyle:'800',color:'#ffd23f'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
     this.add.text(cx,H*0.57,'totale ◆ '+r.total,{fontSize:'12px',color:'#a8a4d0',fontStyle:'700'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
     this.add.text(cx,H*0.625,'crediti accumulati nel profilo\nusali per skin/operatori oppure inviali a InkAnimus',{fontSize:'10px',color:'#8a86c8',align:'center',lineSpacing:3}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
-    const copy=this.add.rectangle(cx,H*0.78,Math.min(300,W*0.7),46,0x14102b).setStrokeStyle(2,C.gold).setScrollFactor(0).setDepth(301).setInteractive({useHandCursor:true});
-    const copyT=this.add.text(cx,H*0.78,'⧉  COPIA CODICE',{fontSize:'16px',color:'#ffd23f',fontStyle:'800'}).setOrigin(0.5).setScrollFactor(0).setDepth(302);
-    copy.on('pointerdown',()=>{ try{ navigator.clipboard.writeText(r.code); copyT.setText('✓ COPIATO'); }catch(e){ copyT.setText('✓ (seleziona il codice)'); } });
+    const copy=this.add.rectangle(cx,H*0.78,Math.min(300,W*0.7),46,0x14102b).setStrokeStyle(2,r.wasChallenge?C.magenta:C.gold).setScrollFactor(0).setDepth(301).setInteractive({useHandCursor:true});
+    const copyT=this.add.text(cx,H*0.78,r.wasChallenge?'⚔  COPIA RISULTATO SFIDA':'⧉  COPIA CODICE',{fontSize:'15px',color:r.wasChallenge?'#ff2ea6':'#ffd23f',fontStyle:'800'}).setOrigin(0.5).setScrollFactor(0).setDepth(302);
+    if(r.wasChallenge && Profile.data._lastResult){
+      this.add.text(cx,H*0.72,'⚔ SFIDA · dai questo codice al tuo avversario',{fontSize:'12px',color:'#ff2ea6',fontStyle:'900'}).setOrigin(0.5).setScrollFactor(0).setDepth(302);
+      const rcode=makeResultCode(Profile.data._lastResult.cid,Profile.data._lastResult);
+      copy.on('pointerdown',()=>{ try{ navigator.clipboard.writeText(rcode); copyT.setText('✓ RISULTATO COPIATO'); }catch(e){ copyT.setText('✓ copiato'); } });
+    } else {
+      copy.on('pointerdown',()=>{ try{ navigator.clipboard.writeText(r.code); copyT.setText('✓ COPIATO'); }catch(e){ copyT.setText('✓ (seleziona il codice)'); } });
+    }
     const again=this.add.rectangle(cx-Math.min(78,W*0.2),H*0.87,Math.min(150,W*0.4),50,0x14102b).setStrokeStyle(2,C.player).setScrollFactor(0).setDepth(301).setInteractive({useHandCursor:true});
     this.add.text(cx-Math.min(78,W*0.2),H*0.87,'↻ RIGIOCA',{fontSize:'16px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setScrollFactor(0).setDepth(302);
     again.on('pointerdown',()=>{ SFX.ui(); this.scene.start('Game'); });
