@@ -997,22 +997,30 @@ class Loadout extends Phaser.Scene{
     this.add.rectangle(lx,cardY+cardH*0.42,cardW*0.42,cardH*0.62,0x0b0918,0.55).setDepth(1);
     this.bigPort=this.add.image(lx,cardY+cardH*0.42,'port_vyre').setDepth(2);
     this.bigGlow=this.add.image(lx,cardY+cardH*0.42,'glow').setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(cardW*0.5,cardW*0.5).setAlpha(0.2).setDepth(1);
-    // right column — positions relative to card top, verified to stay inside cardH
+    // right column — name, role, then tappable STORIA + ABILITÀ (open clean popups; no cropped text)
     const rx=cardX+cardW*0.54, rw=cardW*0.42;
-    this.cName=this.add.text(rx,cardY+24,'',{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
-    this.cRole=this.add.text(rx,cardY+46,'',{fontFamily:TITLE_FONT,fontSize:'10px',fontStyle:'900',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
-    // STORIA label + text (fixed area)
-    this.add.text(rx,cardY+64,'STORIA',{fontFamily:TITLE_FONT,fontSize:'8px',color:'#5f7a8a',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    const loreH=Math.round(cardH*0.26);
-    this.cLore=this.add.text(rx,cardY+74,'',{fontSize:'11px',color:'#c9c6ea',align:'left',wordWrap:{width:rw},lineSpacing:3,fixedHeight:loreH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,loreH);
-    // ABILITÀ block (below the lore area, still inside card)
-    const abY=cardY+74+loreH+8;
-    this.add.rectangle(rx,abY,rw,1,C.cyan,0.35).setOrigin(0,0.5).setDepth(2);
-    this.add.text(rx,abY+12,'ABILITÀ',{fontFamily:TITLE_FONT,fontSize:'8px',color:'#5f7a8a',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.cAbIcon=this.add.text(rx,abY+30,'',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.cAbName=this.add.text(rx+28,abY+30,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
-    const abDescH=Math.max(28,(cardY+cardH-16)-(abY+44));
-    this.cAbDesc=this.add.text(rx,abY+44,'',{fontSize:'11px',color:'#b8bfcc',align:'left',wordWrap:{width:rw},lineSpacing:3,fixedHeight:abDescH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,abDescH);
+    this.cName=this.add.text(rx,cardY+30,'',{fontFamily:TITLE_FONT,fontSize:'22px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
+    this.cRole=this.add.text(rx,cardY+56,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'900',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
+
+    // STORIA button
+    const storyY=cardY+cardH*0.42;
+    const storyBox=cyberFrame(this,rx,storyY-20,rw,40,0x3a3470,0);
+    this.add.text(rx+14,storyY,'📖 STORIA',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#c9c6ea',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.add.text(rx+rw-14,storyY,'›',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#8a86c8',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
+    this.add.rectangle(rx+rw/2,storyY,rw,40,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
+      .on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
+
+    // ABILITÀ block: name + tappable "come funziona"
+    const abY=cardY+cardH*0.62;
+    this.add.rectangle(rx,abY-14,rw,1,C.cyan,0.35).setOrigin(0,0.5).setDepth(2);
+    this.add.text(rx,abY,'ABILITÀ',{fontFamily:TITLE_FONT,fontSize:'9px',color:'#5f7a8a',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.cAbIcon=this.add.text(rx,abY+26,'',{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.cAbName=this.add.text(rx+32,abY+26,'',{fontFamily:TITLE_FONT,fontSize:'16px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
+    const abInfo=cyberFrame(this,rx,abY+46,rw,38,C.cyan,0);
+    this.add.text(rx+14,abY+65,'ℹ  come funziona',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.add.text(rx+rw-14,abY+65,'›',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#33e1ff',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
+    this.add.rectangle(rx+rw/2,abY+65,rw,38,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
+      .on('pointerdown',()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup(o.abName.toUpperCase()+'  '+o.icon, o.desc||'', o.col); });
     // unlock button (shown when locked)
     this.unlockBtn=this.add.rectangle(lx,cardY+cardH-24,cardW*0.42,40,0x241a00).setStrokeStyle(2,C.gold).setDepth(3).setInteractive({useHandCursor:true}).setVisible(false);
     this.unlockTxt=this.add.text(lx,cardY+cardH-24,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(4).setVisible(false);
@@ -1041,6 +1049,17 @@ class Loadout extends Phaser.Scene{
     this.refresh();
   }
   flash(m){ this.flashTxt.setText(m).setAlpha(1); this.tweens.add({targets:this.flashTxt,alpha:0,duration:1400}); }
+  openInfoPopup(title,body,col){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
+    E(this.add.rectangle(0,0,W,H,0x05040d,0.9).setOrigin(0).setDepth(500).setInteractive());
+    const pw=Math.min(360,W*0.9), ph=Math.min(320,H*0.42), py=H*0.5-ph/2;
+    E(cyberFrame(this,cx-pw/2,py,pw,ph,col||C.cyan,501));
+    E(this.add.text(cx,py+30,title,{fontFamily:TITLE_FONT,fontSize:'16px',fontStyle:'900',color:hexStr(col||C.cyan),align:'center',wordWrap:{width:pw-40}}).setOrigin(0.5).setDepth(502));
+    E(this.add.rectangle(cx,py+54,pw*0.7,1,col||C.cyan,0.5).setDepth(502));
+    E(this.add.text(cx,py+70,body,{fontSize:'14px',color:'#dfe4ee',align:'left',wordWrap:{width:pw-48},lineSpacing:6}).setOrigin(0.5,0).setDepth(502));
+    const cb=E(this.add.rectangle(cx,py+ph-32,Math.min(200,W*0.5),44,0x14102b).setStrokeStyle(2,C.player).setDepth(502).setInteractive({useHandCursor:true}));
+    E(this.add.text(cx,py+ph-32,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(503));
+    cb.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); });
+  }
   refresh(){
     const o=OP(GAME.char), unlocked=Profile.unlockedOp(o.id), colStr=hexStr(o.col);
     this.opChips.forEach(c=>{ const u=Profile.unlockedOp(c.o.id);
@@ -1051,10 +1070,8 @@ class Loadout extends Phaser.Scene{
     this.bigGlow.setTint(o.col);
     this.cName.setText(o.name).setColor(colStr);
     this.cRole.setText(o.role||'');
-    this.cLore.setText(o.lore||'');
     this.cAbIcon.setText(o.icon).setColor(colStr);
     this.cAbName.setText(o.abName.toUpperCase());
-    this.cAbDesc.setText(o.desc);
     if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' ◆'); }
     else { this.unlockBtn.setVisible(false); this.unlockTxt.setVisible(false); }
     this.skinBtns.forEach(b=>{ const u=Profile.unlockedSkin(b.sk.id); b.selG.clear();
@@ -1221,10 +1238,12 @@ class Game extends Phaser.Scene{
       this.tweens.add({targets:ring,alpha:0,scale:1.4,duration:1200,onComplete:()=>ring.destroy()});
       // parachute
       const chute=this.add.image(L.x,L.y-DROP-30,'chute').setDepth(9).setTint(u.isPlayer?C.player:C.enemy); if(this.toWorld) this.toWorld(chute);
-      const dur=1050+Phaser.Math.Between(-120,220);
-      this.tweens.add({targets:chute,y:L.y-34,duration:dur,ease:'Sine.in'});
+      // PLAYER descends slower and more controlled (softer landing, less chaos)
+      const dur = u.isPlayer ? 2100 : (1050+Phaser.Math.Between(-120,220));
+      const ease = u.isPlayer ? 'Sine.out' : 'Sine.in';
+      this.tweens.add({targets:chute,y:L.y-34,duration:dur,ease});
       this.tweens.add({targets:chute,alpha:0,duration:200,delay:dur-160,onComplete:()=>chute.destroy()});
-      this.tweens.add({targets:u.s,y:L.y,scale:1,duration:dur,ease:'Sine.in',
+      this.tweens.add({targets:u.s,y:L.y,scale:1,duration:dur,ease,
         onComplete:()=>{ if(u.s.body){ u.s.body.enable=true; u.s.body.reset(L.x,L.y); }
           if(u.isPlayer) this.goLive(); }});
     });
@@ -1342,9 +1361,18 @@ class Game extends Phaser.Scene{
     const addWall=(x,y,w,h,edge,type)=>{
       const G=this.gCity;
       if(type==='water'){
-        G.fillStyle(C.water,0.92); G.fillRect(x,y,w,h);
-        G.lineStyle(3,C.waterEdge,0.7); G.strokeRect(x,y,w,h);
-        G.fillStyle(C.waterEdge,0.10); G.fillRect(x+4,y+4,w-8,h-8);
+        G.fillStyle(0x0a1f3a,1); G.fillRect(x,y,w,h);                          // deep water base
+        G.fillStyle(C.water,0.6); G.fillRect(x+3,y+3,w-6,h-6);
+        // neon banks
+        G.fillStyle(C.waterEdge,0.9); G.fillRect(x,y,3,h); G.fillRect(x+w-3,y,3,h);
+        // static ripples
+        G.fillStyle(C.waterEdge,0.18);
+        for(let ry=y+10; ry<y+h-6; ry+=Phaser.Math.Between(22,40)) G.fillRect(x+6,ry,w-12,2);
+        // one animated shimmer per segment (cheap, only if glow on)
+        if(this.FX.glow && this.animCount<this.FX.signs+6){ this.animCount++;
+          const sh=this.add.rectangle(x+w/2,y+h*0.3,w-10,3,C.waterEdge,0.5).setDepth(0).setBlendMode(Phaser.BlendModes.ADD);
+          this.tweens.add({targets:sh,y:y+h*0.8,alpha:0,duration:Phaser.Math.Between(2200,3600),repeat:-1,repeatDelay:Phaser.Math.Between(200,1200),onRepeat:()=>{sh.y=y+h*0.2;sh.alpha=0.5;}});
+        }
       } else if(type==='cover'){
         const car = w>h;
         G.fillStyle(0x000000,0.32); G.fillRect(x+2,y+3,w,h);
@@ -1394,7 +1422,7 @@ class Game extends Phaser.Scene{
       } else { // border
         G.fillStyle(0x0f0c22,1); G.fillRect(x,y,w,h); G.lineStyle(3,edge,0.9); G.strokeRect(x,y,w,h);
       }
-      const body=this.walls.create(x+w/2,y+h/2,'px').setVisible(false); body.setDisplaySize(w,h); body.refreshBody();
+      const body=this.walls.create(x+w/2,y+h/2,'px').setVisible(false); body.setDisplaySize(w,h); body.refreshBody(); body.isWater=(type==='water');
       this.wallRects.push({x,y,w,h,type,dc:(edge||C.waterEdge)});
     };
 
@@ -1402,12 +1430,24 @@ class Game extends Phaser.Scene{
     addWall(0,0,WORLD_W,t,C.cyan,'border'); addWall(0,WORLD_H-t,WORLD_W,t,C.cyan,'border');
     addWall(0,0,t,WORLD_H,C.cyan,'border'); addWall(WORLD_W-t,0,t,WORLD_H,C.cyan,'border');
 
-    // water channels (Sky-Train canals)
-    addWall(WORLD_W*0.44,80,90,WORLD_H*0.34,0,'water');
-    addWall(WORLD_W*0.60,WORLD_H*0.55,WORLD_W*0.30,90,0,'water');
-
+    // ===== NEON RIVER — a coherent canal flowing ALONG a street (not cutting through) =====
     const cols=this.GC,rows=this.GR,cw=WORLD_W/cols,ch=WORLD_H/rows;
-    const ROAD=110, PAD=26; // keep buildings inside the sidewalk pad
+    const ROAD=110, PAD=26;
+    // pick a vertical avenue for the river (a road line, so it follows the city, not random)
+    const riverCol=Math.max(1,Math.min(cols-1,Math.round(cols*0.42)));
+    const rvX=riverCol*cw - 34, rvW=68;
+    // draw the river as segments BETWEEN intersections, leaving bridge gaps at each cross street
+    for(let j=0;j<rows;j++){
+      const segTop=j*ch + (j===0?0:34), segBot=(j+1)*ch - 34;   // gap around each horizontal road = bridge
+      if(segBot-segTop>30) addWall(rvX,segTop,rvW,segBot-segTop,0,'water');
+    }
+    // bridge decks at the crossings (visual: paved strip over the river)
+    for(let j=1;j<rows;j++){ const by=j*ch;
+      this.gCity.fillStyle(0x2a2a38,1); this.gCity.fillRect(rvX-6,by-30,rvW+12,60);
+      this.gCity.lineStyle(2,0x3c3c50,0.9); this.gCity.strokeRect(rvX-6,by-30,rvW+12,60);
+      this.gCity.fillStyle(C.gold,0.5); this.gCity.fillRect(rvX-6,by-30,rvW+12,2); this.gCity.fillRect(rvX-6,by+28,rvW+12,2);
+    }
+
     for(let cxr=0;cxr<cols;cxr++)for(let cyr=0;cyr<rows;cyr++){
       if(Math.random()<0.26) continue;
       const px=cxr*cw+ROAD/2+PAD, py=cyr*ch+ROAD/2+PAD;
@@ -1486,7 +1526,8 @@ class Game extends Phaser.Scene{
   }
 
   spawnUnit(isPlayer){
-    const d=Phaser.Utils.Array.GetRandom(DISTRICTS); const p=this.freeSpot(d);
+    // bots land spread over the WHOLE map (more random), player near a district
+    const p = isPlayer ? this.freeSpot(Phaser.Utils.Array.GetRandom(DISTRICTS)) : this.freeSpot();
     const op=isPlayer?OP(GAME.char):null;
     const charKey=isPlayer?('ch_'+GAME.char):'ch_bot';
     const s=this.physics.add.image(p.x,p.y,charKey+'_0').setDepth(6); s.body.setCircle(15,17,17); s.setCollideWorldBounds(true);
@@ -1528,6 +1569,7 @@ class Game extends Phaser.Scene{
   }
   onBulletWall(b,wall){
     if(!b.active) return;
+    if(wall.isWater) return;   // il fiume non ferma i proiettili
     if(b.behavior==='explosive'){ this.explode(b.x,b.y,b.splashDmg,b.splashR,b.owner); b.destroy(); return; }
     if(b.behavior==='bounce'){
       const bx=wall.body.left, br=wall.body.right, bt=wall.body.top, bb=wall.body.bottom;
