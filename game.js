@@ -73,11 +73,11 @@ let SEEN_TUTORIAL=false;
 
 // ---- operators (Apex-style: colour + unique ability) ----
 const OPERATORS=[
-  {id:'vyre',  name:'VYRE',  col:0x33e1ff, ab:'DASH',   abName:'Scatto',      icon:'»', cd:5000,  cost:0,    desc:'Scatto rapido: schivi e chiudi la distanza (breve invulnerabilità).'},
-  {id:'nova',  name:'NOVA',  col:0xff2ea6, ab:'GRENADE',abName:'Granata',     icon:'✸', cd:8000,  cost:0,    desc:'Lanci una granata che esplode ad area verso dove miri.'},
-  {id:'oracle',name:'ORACLE',col:0x35e06a, ab:'SCAN',   abName:'Scansione',   icon:'◎', cd:9000,  cost:1200, desc:'Riveli i nemici vicini per qualche secondo, anche sulla minimappa.'},
-  {id:'aegis', name:'AEGIS', col:0x38b6ff, ab:'DOME',   abName:'Cupola',      icon:'◗', cd:14000, cost:2500, desc:'Generi una cupola che blocca i proiettili nemici.'},
-  {id:'wraith',name:'OMEGA', col:0xa25bff, ab:'CLOAK',  abName:'Invisibilità',icon:'○', cd:12000, cost:4000, desc:'Diventi invisibile: i nemici smettono di vederti.'},
+  {id:'vyre',  name:'VYRE',  col:0x33e1ff, ab:'DASH',   abName:'Scatto',      icon:'»', cd:5000,  cost:0,    desc:'Scatto rapido: schivi e chiudi la distanza (breve invulnerabilità).', role:'DUELLANTE', lore:'Ex corriere dei bassifondi di Nexus, Vyre ha imparato a muoversi dove gli altri restano bloccati. Impianti agli arti e riflessi potenziati ne fanno il predatore più veloce dell\u2019arena.'},
+  {id:'nova',  name:'NOVA',  col:0xff2ea6, ab:'GRENADE',abName:'Granata',     icon:'✸', cd:8000,  cost:0,    desc:'Lanci una granata che esplode ad area verso dove miri.', role:'ASSALTO', lore:'Sabotatrice e hacker, Nova firma ogni bersaglio con un lampo di luce viola. Dice che gli esplosivi sono solo \u201cun modo rumoroso di chiudere una discussione\u201d.'},
+  {id:'oracle',name:'ORACLE',col:0x35e06a, ab:'SCAN',   abName:'Scansione',   icon:'◎', cd:9000,  cost:1200, desc:'Riveli i nemici vicini per qualche secondo, anche sulla minimappa.', role:'RICOGNIZIONE', lore:'Nessuno sa se Oracle sia una persona o una rete di droni con una voce sola. Vede prima che tu ti muova. Sul campo, sapere dov\u2019\u00e8 il nemico vale pi\u00f9 di qualsiasi arma.'},
+  {id:'aegis', name:'AEGIS', col:0x38b6ff, ab:'DOME',   abName:'Cupola',      icon:'◗', cd:14000, cost:2500, desc:'Generi una cupola che blocca i proiettili nemici.', role:'DIFENSORE', lore:'Ex guardia corazzata della Corp, Aegis ha disertato portandosi via lo scudo a energia. Ora protegge chi paga il prezzo giusto. Muro vivente: dove pianta i piedi, non si passa.'},
+  {id:'wraith',name:'OMEGA', col:0xa25bff, ab:'CLOAK',  abName:'Invisibilità',icon:'○', cd:12000, cost:4000, desc:'Diventi invisibile: i nemici smettono di vederti.', role:'INFILTRATORE', lore:'Un progetto sperimentale sfuggito al controllo. Omega piega la luce e sparisce. Chi l\u2019ha visto in azione parla di un\u2019ombra che colpisce e non c\u2019\u00e8 pi\u00f9. Il pi\u00f9 raro, il pi\u00f9 temuto.'},
 ];
 const OP=id=>OPERATORS.find(o=>o.id===id)||OPERATORS[0];
 
@@ -667,7 +667,7 @@ class Menu extends Phaser.Scene{
     // cycle-on-tap dropdown (mobile friendly)
     const box=cyberFrame(this,cx-bw/2,y-22,bw,44,C.cyan,0);
     const t1=this.add.text(cx-bw/2+18,y,'',{fontFamily:TITLE_FONT,fontSize:'15px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    const t2=this.add.text(cx-bw/2+150,y,'',{fontSize:'10px',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
+    const t2=this.add.text(cx-bw/2+150,y,'',{fontSize:'13px',color:'#a8b0bd'}).setOrigin(0,0.5).setDepth(2);
     const arr=this.add.text(cx+bw/2-18,y,'⇄',{fontFamily:TITLE_FONT,fontSize:'15px',color:'#33e1ff',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
     const upd=()=>{ const cur=opts.find(o=>o.k===getSel())||opts[0]; t1.setText(cur.t); t2.setPosition(cx-bw/2+22+t1.width+12,y).setText(cur.s); };
     this.add.rectangle(cx,y,bw,44,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
@@ -701,64 +701,57 @@ class Menu extends Phaser.Scene{
       add(this.add.text(cx,yy+12,Math.min(c.prog,c.goal)+' / '+c.goal,{fontSize:'9px',color:'#c9c6ea',fontStyle:'800'}).setOrigin(0.5));
     });
   }); }
-  openProfile(){ overlayPanel(this,'PROFILO',(cx,y,W,add)=>{ const d=Profile.data;
+  openProfile(){
+    const W=this.scale.width,H=this.scale.height,cx=W/2, d=Profile.data;
+    const els=[]; const E=o=>{els.push(o);return o;};
+    E(this.add.rectangle(0,0,W,H,0x05040d,0.95).setOrigin(0).setDepth(400).setInteractive());
+    const pw=Math.min(360,W*0.92), py=H*0.06, ph=H*0.88;
+    E(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,401));
+    E(this.add.text(cx,py+26,'PROFILO',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setDepth(402));
+    E(this.add.rectangle(cx,py+46,pw*0.7,1,C.cyan,0.5).setDepth(402));
+
     const fmt=t=>{ const m=Math.floor(t/60), sec=t%60; return m?(m+'m '+sec+'s'):(sec+'s'); };
     const favOp=(()=>{ const o=d.ops||{}; let b=null,n=0; Object.keys(o).forEach(k=>{ if(o[k]>n){n=o[k];b=k;} }); return b?OP(b).name:'—'; })();
-    const avgPl=d.matches? (d.placeSum/d.matches).toFixed(1):'—';
-    const kd=d.matches? (d.kills/d.matches).toFixed(1):'0';
+    const avgPl=d.matches?(d.placeSum/d.matches).toFixed(1):'—';
     const rows=[
-      ['Partite giocate',d.matches],
-      ['Vittorie',d.wins+(d.matches?'  ('+Math.round(d.wins/d.matches*100)+'%)':'')],
-      ['Serie vittorie record',d.bestStreak||0],
-      ['Eliminazioni totali',d.kills],
-      ['Record kill in partita',d.bestKills||0],
-      ['Media kill/partita',kd],
-      ['Danni totali',(d.totalDmg||0).toLocaleString('it')],
-      ['Record danni in partita',(d.maxDmg||0).toLocaleString('it')],
-      ['Miglior piazzamento',d.best>=99?'—':'#'+d.best],
-      ['Piazzamento medio',avgPl==='—'?'—':'#'+avgPl],
-      ['Partita più lunga',fmt(d.bestTime||0)],
-      ['Tempo totale in gioco',fmt(d.totalTime||0)],
-      ['Punteggio record',(d.topScore||0).toLocaleString('it')],
-      ['Operatore preferito',favOp],
-      ['Crediti disponibili','◆ '+d.credits],
-      ['Crediti totali guadagnati','◆ '+(d.lifetime||0)],
+      ['Partite giocate',d.matches],['Vittorie',d.wins+(d.matches?'  ('+Math.round(d.wins/d.matches*100)+'%)':'')],
+      ['Serie vittorie record',d.bestStreak||0],['Eliminazioni totali',d.kills],
+      ['Record kill in partita',d.bestKills||0],['Media kill/partita',d.matches?(d.kills/d.matches).toFixed(1):'0'],
+      ['Danni totali',(d.totalDmg||0).toLocaleString('it')],['Record danni in partita',(d.maxDmg||0).toLocaleString('it')],
+      ['Miglior piazzamento',d.best>=99?'—':'#'+d.best],['Piazzamento medio',avgPl==='—'?'—':'#'+avgPl],
+      ['Partita più lunga',fmt(d.bestTime||0)],['Tempo totale in gioco',fmt(d.totalTime||0)],
+      ['Punteggio record',(d.topScore||0).toLocaleString('it')],['Operatore preferito',favOp],
+      ['Crediti disponibili','◆ '+d.credits],['Crediti totali guadagnati','◆ '+(d.lifetime||0)],
       ['Crediti trasferiti','◆ '+(d.transferred||0)],
     ];
-    rows.forEach((r,i)=>{ const yy=y+i*22;
-      add(this.add.text(cx-W*0.42,yy,r[0],{fontSize:'11px',color:'#a8a4d0'}).setOrigin(0,0.5));
-      add(this.add.text(cx+W*0.42,yy,''+r[1],{fontFamily:TITLE_FONT,fontSize:'11px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(1,0.5)); });
-  }); }
+    // scroll viewport between header and footer button
+    const vTop=py+62, vBot=py+ph-72, vH=vBot-vTop, rowH=26, contentH=rows.length*rowH;
+    const cont=this.add.container(0,0).setDepth(402); E(cont);
+    rows.forEach((r,i)=>{ const yy=i*rowH;
+      cont.add(this.add.text(cx-pw/2+22,yy,r[0],{fontSize:'13px',color:'#c9c6ea'}).setOrigin(0,0));
+      cont.add(this.add.text(cx+pw/2-22,yy,''+r[1],{fontFamily:TITLE_FONT,fontSize:'13px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(1,0)); });
+    cont.y=vTop;
+    const maskG=this.make.graphics(); maskG.fillRect(cx-pw/2,vTop,pw,vH);
+    cont.setMask(maskG.createGeometryMask());
+    const minY=vTop-Math.max(0,contentH-vH);
+    // drag to scroll
+    const zone=E(this.add.zone(cx,(vTop+vBot)/2,pw,vH).setInteractive({draggable:true}).setDepth(402));
+    let sy0=0;
+    zone.on('dragstart',()=>{ sy0=cont.y; });
+    zone.on('drag',(pt,dx,dy)=>{ cont.y=Phaser.Math.Clamp(sy0+(pt.y-((vTop+vBot)/2))+(cont.__o||0),minY,vTop); });
+    zone.on('wheel',(pt,dx,dy)=>{ cont.y=Phaser.Math.Clamp(cont.y-dy*0.5,minY,vTop); });
+    // simpler drag: track pointer delta
+    let startPtr=null, startCy=0;
+    zone.on('pointerdown',pt=>{ startPtr=pt.y; startCy=cont.y; });
+    zone.on('pointermove',pt=>{ if(startPtr!==null && pt.isDown){ cont.y=Phaser.Math.Clamp(startCy+(pt.y-startPtr),minY,vTop); } });
+    zone.on('pointerup',()=>{ startPtr=null; });
+    // scroll hint
+    if(contentH>vH) E(this.add.text(cx,vBot+2,'▲ scorri ▼',{fontFamily:TITLE_FONT,fontSize:'9px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
 
-  openTransfer(){ overlayPanel(this,'INVIA A INKANIMUS',(cx,y,W,add)=>{
-    let amt=Math.min(100,Profile.data.credits);
-    add(this.add.text(cx,y-6,'Scegli quanti crediti spostare\nnel tuo profilo InkAnimus.',{fontSize:'11px',color:'#c9c6ea',align:'center',lineSpacing:3}).setOrigin(0.5));
-    const amtTxt=add(this.add.text(cx,y+40,'',{fontFamily:TITLE_FONT,fontSize:'26px',color:'#ffd23f',fontStyle:'900'}).setOrigin(0.5));
-    const avail=add(this.add.text(cx,y+66,'',{fontSize:'10px',color:'#8a86c8'}).setOrigin(0.5));
-    const refresh=()=>{ amtTxt.setText('◆ '+amt); avail.setText('disponibili: '+Profile.data.credits); };
-    const chips=[['-100',-100],['-10',-10],['+10',10],['+100',100]];
-    chips.forEach((c,i)=>{ const bw=W*0.20, x=cx+(i-1.5)*(bw+6), yy=y+104;
-      const b=add(this.add.rectangle(x,yy,bw,T.tap,0x0d0b1c).setStrokeStyle(2,C.cyan).setInteractive({useHandCursor:true}));
-      add(this.add.text(x,yy,c[0],{fontFamily:TITLE_FONT,fontSize:'11px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5));
-      b.on('pointerdown',()=>{ SFX.ui(); amt=Phaser.Math.Clamp(amt+c[1],0,Profile.data.credits); refresh(); }); });
-    const allB=add(this.add.rectangle(cx,y+152,W*0.5,T.tap,0x0d0b1c).setStrokeStyle(2,C.gold).setInteractive({useHandCursor:true}));
-    add(this.add.text(cx,y+152,'TUTTI I CREDITI',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#ffd23f',fontStyle:'900'}).setOrigin(0.5));
-    allB.on('pointerdown',()=>{ SFX.ui(); amt=Profile.data.credits; refresh(); });
-
-    const out=add(this.add.text(cx,y+232,'',{fontSize:'9px',color:'#ffd23f',fontFamily:'monospace',align:'center',wordWrap:{width:W*0.84},backgroundColor:'#0b0918',padding:{x:8,y:6}}).setOrigin(0.5).setVisible(false));
-    const genB=add(this.add.rectangle(cx,y+196,W*0.72,T.tap+4,0x14102b).setStrokeStyle(3,C.player).setInteractive({useHandCursor:true}));
-    const genT=add(this.add.text(cx,y+196,'GENERA CODICE',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5));
-    genB.on('pointerdown',()=>{
-      if(amt<=0||amt>Profile.data.credits){ SFX.ui(); return; }
-      const code=makeTransferCode(amt);
-      if(!code){ SFX.ui(); return; }
-      SFX.pickup(); out.setText(code).setVisible(true);
-      genT.setText('COPIA IL CODICE ↓'); refresh();
-      if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(code).catch(()=>{}); }
-    });
-    out.setInteractive({useHandCursor:true}).on('pointerdown',()=>{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(out.text).catch(()=>{}); });
-    refresh();
-  }); }
+    const close=E(this.add.rectangle(cx,py+ph-34,Math.min(220,W*0.6),46,0x14102b).setStrokeStyle(2,C.player).setDepth(405).setInteractive({useHandCursor:true}));
+    E(this.add.text(cx,py+ph-34,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'15px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(406));
+    close.on('pointerdown',()=>{ SFX.ui(); maskG.destroy(); els.forEach(o=>o.destroy()); });
+  }
 
   openSettings(){ overlayPanel(this,'OPZIONI',(cx,y,W,add)=>{
     add(this.add.text(cx,y,'EFFETTI GRAFICI',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5));
@@ -798,74 +791,89 @@ class Loadout extends Phaser.Scene{
   create(){
     const W=this.scale.width,H=this.scale.height,cx=W/2;
     menuBg(this);
-    this.add.text(16,26,'‹ INDIETRO',{fontSize:'14px',color:'#8a86c8',fontStyle:'800'}).setOrigin(0,0.5).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.scene.start('Menu'); });
-    this.add.text(W-16,26,'◆ '+Profile.data.credits,{fontSize:'14px',color:'#ffd23f',fontStyle:'900'}).setOrigin(1,0.5);
-    this.add.text(cx,H*0.075,'SCEGLI OPERATORE',{fontSize:'18px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5);
+    // top bar
+    this.add.text(14,24,'‹ INDIETRO',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#c9c6ea',fontStyle:'900',backgroundColor:'#0b0918',padding:{x:12,y:10}}).setOrigin(0,0.5).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.scene.start('Menu'); });
+    this.add.text(W-16,24,'◆ '+Profile.data.credits,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#ffd23f',fontStyle:'900'}).setOrigin(1,0.5);
+    this.add.text(cx,H*0.075,'SCEGLI OPERATORE',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5);
 
-    this.opRows=[]; const rh=H*0.083, ry0=H*0.135, bw=Math.min(360,W*0.9);
+    // operator selector row (portraits)
     const PORT={vyre:'port_vyre',nova:'port_nova',oracle:'port_oracle',aegis:'port_aegis',wraith:'port_wraith'};
-    OPERATORS.forEach((o,i)=>{ const y=ry0+i*rh;
-      const box=cyberFrame(this,cx-bw/2,y-(rh-8)/2,bw,rh-8,0x2a2550,0);
-      const dot=this.add.circle(cx-bw/2+26,y,17,0x0b0918).setStrokeStyle(2,o.col,0.9).setDepth(2);
-      const pk=PORT[o.id];
-      if(this.textures.exists(pk)) this.add.image(cx-bw/2+26,y,pk).setDisplaySize(26,42).setDepth(2);
-      this.add.text(cx-bw/2+56,y-9,o.name,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-      this.add.text(cx-bw/2+56,y+11,o.icon+' '+o.abName,{fontSize:'12px',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
-      const right=this.add.text(cx+bw/2-16,y,'',{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
-      const sel=this.add.graphics().setDepth(1);
-      const hit=this.add.rectangle(cx,y,bw,rh-8,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true});
-      hit.on('pointerdown',()=>{ SFX.ui(); GAME.char=o.id; this.refresh(); });
-      this.opRows.push({box,dot,right,o,sel,y,bw,rh}); });
+    this.PORT=PORT; this.opChips=[];
+    const n=OPERATORS.length, gap=Math.min(64,W*0.17), x0=cx-(n-1)*gap/2, oy=H*0.145;
+    OPERATORS.forEach((o,i)=>{ const x=x0+i*gap;
+      const ring=this.add.circle(x,oy,26,0x0b0918).setStrokeStyle(3,0x2a2550);
+      let ic=null; if(this.textures.exists(PORT[o.id])){ ic=this.add.image(x,oy,PORT[o.id]).setDisplaySize(34,52); }
+      const lock=this.add.text(x,oy,'🔒',{fontSize:'15px'}).setOrigin(0.5).setVisible(false);
+      this.add.rectangle(x,oy,56,56,0xffffff,0.001).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); GAME.char=o.id; this.refresh(); });
+      this.opChips.push({ring,ic,lock,o,x,oy}); });
 
-    // description in its own framed box; walking preview sits in a separate left cell (never overlaps text)
-    const dbY=H*0.60, dbW=Math.min(360,W*0.9), dbH=H*0.085, dbX=cx-dbW/2;
-    cyberFrame(this,dbX,dbY-dbH/2,dbW,dbH,0x2a2550,0);
-    const prevCell=64;
-    this.add.rectangle(dbX+prevCell/2+6,dbY,prevCell,dbH-10,0x0b0918,0.6).setDepth(1);
-    this.preview=this.add.image(dbX+prevCell/2+6,dbY,'ch_vyre_0').setScale(1.15).setAngle(-90).setDepth(2);
-    this.descTxt=this.add.text(dbX+prevCell+18,dbY,'',{fontSize:'11px',color:'#c9c6ea',align:'left',wordWrap:{width:dbW-prevCell-34},lineSpacing:2}).setOrigin(0,0.5).setDepth(2);
-    this.previewF=0;
-    this.time.addEvent({delay:150,loop:true,callback:()=>{ this.previewF=(this.previewF+1)%4; const k='ch_'+GAME.char+'_'+(1+this.previewF); if(this.textures.exists(k)) this.preview.setTexture(k); }});
-    this.unlockBtn=this.add.rectangle(cx,H*0.635,Math.min(240,W*0.7),34,0x241a00).setStrokeStyle(2,C.gold).setInteractive({useHandCursor:true}).setVisible(false);
-    this.unlockTxt=this.add.text(cx,H*0.635,'',{fontSize:'13px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setVisible(false);
+    // ===== CHARACTER CARD =====
+    const cardY=H*0.20, cardH=H*0.52, cardX=cx-Math.min(360,W*0.92)/2, cardW=Math.min(360,W*0.92);
+    cyberFrame(this,cardX,cardY,cardW,cardH,C.cyan,0);
+    // left: big portrait
+    const lx=cardX+cardW*0.30;
+    this.add.rectangle(lx,cardY+cardH*0.46,cardW*0.42,cardH*0.7,0x0b0918,0.55).setDepth(1);
+    this.bigPort=this.add.image(lx,cardY+cardH*0.46,'port_vyre').setDepth(2);
+    this.bigGlow=this.add.image(lx,cardY+cardH*0.46,'glow').setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(cardW*0.5,cardW*0.5).setAlpha(0.2).setDepth(1);
+    // right column
+    const rx=cardX+cardW*0.54, rw=cardW*0.42;
+    this.cName=this.add.text(rx,cardY+22,'',{fontFamily:TITLE_FONT,fontSize:'22px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
+    this.cRole=this.add.text(rx,cardY+46,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'900',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
+    this.cLore=this.add.text(rx,cardY+66,'',{fontSize:'12px',color:'#c9c6ea',align:'left',wordWrap:{width:rw},lineSpacing:4}).setOrigin(0,0).setDepth(2);
+    // ability block
+    const abY=cardY+cardH-96;
+    this.add.rectangle(rx,abY,rw,1,C.cyan,0.35).setOrigin(0,0.5).setDepth(2);
+    this.cAbIcon=this.add.text(rx,abY+18,'',{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.cAbName=this.add.text(rx+30,abY+18,'',{fontFamily:TITLE_FONT,fontSize:'14px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
+    this.cAbDesc=this.add.text(rx,abY+38,'',{fontSize:'12px',color:'#a8b0bd',align:'left',wordWrap:{width:rw},lineSpacing:3}).setOrigin(0,0).setDepth(2);
+    // unlock button (shown when locked)
+    this.unlockBtn=this.add.rectangle(lx,cardY+cardH-24,cardW*0.42,40,0x241a00).setStrokeStyle(2,C.gold).setDepth(3).setInteractive({useHandCursor:true}).setVisible(false);
+    this.unlockTxt=this.add.text(lx,cardY+cardH-24,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(4).setVisible(false);
     this.unlockBtn.on('pointerdown',()=>{ const o=OP(GAME.char); if(Profile.unlock(o.id,o.cost)) SFX.pickup(); else { SFX.ui(); this.flash('SERVONO '+o.cost+' CREDITI'); } this.refresh(); });
 
-    this.add.text(cx,H*0.685,'SKIN',{fontSize:'12px',color:'#8a86c8',fontStyle:'800'}).setOrigin(0.5);
+    // ===== SKIN ROW (inside selection screen) =====
+    const sy=cardY+cardH+30;
+    this.add.text(cx,sy-18,'◤ SKIN ◢',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5);
     this.skinBtns=[]; const sg=Math.min(84,W*0.22), sx0=cx-(SKINS.length-1)*sg/2;
-    SKINS.forEach((s,i)=>{ const x=sx0+i*sg, y=H*0.725;
-      const box=this.add.rectangle(x,y,sg-8,T.tap+4,0x0d0b1c).setStrokeStyle(3,0x2a2550).setInteractive({useHandCursor:true});
-      this.add.text(x,y-8,s.name,{fontFamily:TITLE_FONT,fontSize:'9px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5);
-      const sub=this.add.text(x,y+11,'',{fontSize:'10px',color:'#a8a4d0'}).setOrigin(0.5);
-      box.on('pointerdown',()=>{ SFX.ui(); if(Profile.unlockedSkin(s.id)) GAME.skin=s.id; else if(Profile.unlockSkin(s.id,s.cost)){ GAME.skin=s.id; SFX.pickup(); } else this.flash('SERVONO '+s.cost+' CREDITI'); this.refresh(); });
-      this.skinBtns.push({box,sub,s}); });
+    SKINS.forEach((sk,i)=>{ const x=sx0+i*sg;
+      const box=cyberFrame(this,x-(sg-10)/2,sy-4,sg-10,44,0x2a2550,0);
+      this.add.text(x,sy+4,sk.name,{fontFamily:TITLE_FONT,fontSize:'10px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5).setDepth(2);
+      const sub=this.add.text(x,sy+22,'',{fontSize:'11px',color:'#8a86c8'}).setOrigin(0.5).setDepth(2);
+      const selG=this.add.graphics().setDepth(1);
+      this.add.rectangle(x,sy+8,sg-10,44,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); if(Profile.unlockedSkin(sk.id)) GAME.skin=sk.id; else if(Profile.unlockSkin(sk.id,sk.cost)){ GAME.skin=sk.id; SFX.pickup(); } else this.flash('SERVONO '+sk.cost+' CREDITI'); this.refresh(); });
+      this.skinBtns.push({sub,sk,selG,x,sy}); });
 
-    const ry=H*0.80; this.add.text(cx,ry-14,STUDIO_REWARD.name,{fontSize:'10px',color:'#8a86c8',fontStyle:'800'}).setOrigin(0.5);
-    const rbw=Math.min(300,W*0.78); this.add.rectangle(cx,ry+2,rbw,10,0x1a1533).setStrokeStyle(1,0x2a2550);
-    this.rewardFill=this.add.rectangle(cx-rbw/2,ry+2,1,10,C.gold).setOrigin(0,0.5); this.rewardBw=rbw;
+    // ===== START =====
+    const by=H*0.925, bbw=Math.min(340,W*0.86);
+    cyberFrame(this,cx-bbw/2,by-30,bbw,60,C.player,0);
+    this.startTxt=this.add.text(cx,by,'',{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setDepth(2);
+    this.add.rectangle(cx,by,bbw,60,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
+      .on('pointerdown',()=>{ if(!Profile.unlockedOp(GAME.char)){ SFX.ui(); this.flash('OPERATORE BLOCCATO'); return; } SFX.resume(); SFX.ui(); this.scene.start('Game'); });
 
-    const start=this.add.rectangle(cx,H*0.90,Math.min(320,W*0.84),54,0x14102b).setStrokeStyle(3,C.player);
-    const sgl=this.add.image(cx,H*0.90,'glow').setTint(C.cyan).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(360,110).setAlpha(0.12);
-    this.tweens.add({targets:sgl,alpha:0.24,duration:1200,yoyo:true,repeat:-1});
-    this.startTxt=this.add.text(cx,H*0.90,'',{fontSize:'19px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5); this.startBox=start;
-    start.setInteractive({useHandCursor:true}).on('pointerdown',()=>{ if(!Profile.unlockedOp(GAME.char)){ SFX.ui(); this.flash('OPERATORE BLOCCATO'); return; } SFX.resume(); SFX.ui(); this.scene.start('Game'); });
-    this.flashTxt=this.add.text(cx,H*0.855,'',{fontSize:'12px',fontStyle:'900',color:'#ff6b8a'}).setOrigin(0.5).setAlpha(0);
+    this.flashTxt=this.add.text(cx,by-42,'',{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'900',color:'#ff6b8a'}).setOrigin(0.5).setDepth(5).setAlpha(0);
     this.refresh();
   }
   flash(m){ this.flashTxt.setText(m).setAlpha(1); this.tweens.add({targets:this.flashTxt,alpha:0,duration:1400}); }
-  refresh(){ const sel=OP(GAME.char), unlocked=Profile.unlockedOp(sel.id);
-    this.opRows.forEach(r=>{ const u=Profile.unlockedOp(r.o.id);
-      r.sel.clear();
-      if(GAME.char===r.o.id){ const cx2=this.scale.width/2;
-        r.sel.lineStyle(2,r.o.col,1); r.sel.strokeRect(cx2-r.bw/2+2,r.y-(r.rh-8)/2+2,r.bw-4,r.rh-12);
-        r.sel.fillStyle(r.o.col,0.07); r.sel.fillRect(cx2-r.bw/2+2,r.y-(r.rh-8)/2+2,r.bw-4,r.rh-12); }
-      r.dot.setStrokeStyle(2,u?r.o.col:0x33314f,0.9); r.right.setText(u?'✓':(r.o.cost+' ◆')).setColor(u?'#35e06a':'#ffd23f'); });
-    this.descTxt.setText(sel.desc);
-    if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+sel.cost+' ◆'); } else { this.unlockBtn.setVisible(false); this.unlockTxt.setVisible(false); }
-    this.skinBtns.forEach(b=>{ const u=Profile.unlockedSkin(b.s.id); b.box.setStrokeStyle(3,GAME.skin===b.s.id?C.cyan:0x2a2550);
-      b.sub.setText(u?(GAME.skin===b.s.id?'attiva':'ok'):(b.s.cost+'◆')).setColor(u?'#8a86c8':'#ffd23f'); });
-    if(this.preview) this.preview.setTint(SKIN(GAME.skin).tint);
-    this.startTxt.setText(unlocked?'▶  ENTRA IN PARTITA':'🔒  BLOCCATO').setColor(unlocked?'#33e1ff':'#8a86c8'); this.startBox.setStrokeStyle(3,unlocked?C.player:0x3a3470);
-    this.rewardFill.width=Math.max(1,this.rewardBw*Phaser.Math.Clamp(Profile.data.credits/STUDIO_REWARD.cost,0,1));
+  refresh(){
+    const o=OP(GAME.char), unlocked=Profile.unlockedOp(o.id), colStr=hexStr(o.col);
+    this.opChips.forEach(c=>{ const u=Profile.unlockedOp(c.o.id);
+      c.ring.setStrokeStyle(3, GAME.char===c.o.id?c.o.col:0x2a2550);
+      if(c.ic) c.ic.setAlpha(u?1:0.4); c.lock.setVisible(!u); });
+    if(this.textures.exists(this.PORT[o.id])) this.bigPort.setTexture(this.PORT[o.id]);
+    const ph=this.scale.height*0.30; this.bigPort.setDisplaySize(ph*(this.bigPort.width/this.bigPort.height), ph).setAlpha(unlocked?1:0.5);
+    this.bigGlow.setTint(o.col);
+    this.cName.setText(o.name).setColor(colStr);
+    this.cRole.setText(o.role||'');
+    this.cLore.setText(o.lore||'');
+    this.cAbIcon.setText(o.icon).setColor(colStr);
+    this.cAbName.setText(o.abName.toUpperCase());
+    this.cAbDesc.setText(o.desc);
+    if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' ◆'); }
+    else { this.unlockBtn.setVisible(false); this.unlockTxt.setVisible(false); }
+    this.skinBtns.forEach(b=>{ const u=Profile.unlockedSkin(b.sk.id); b.selG.clear();
+      if(GAME.skin===b.sk.id){ b.selG.lineStyle(2,C.cyan,1); b.selG.strokeRect(b.x-(Math.min(84,this.scale.width*0.22)-10)/2,b.sy-4,Math.min(84,this.scale.width*0.22)-10,44); }
+      b.sub.setText(u?(GAME.skin===b.sk.id?'attiva':'ok'):(b.sk.cost+'◆')).setColor(u?'#8a86c8':'#ffd23f'); });
+    this.startTxt.setText(unlocked?'▶  ENTRA IN PARTITA':'🔒  BLOCCATO').setColor(unlocked?'#33e1ff':'#8a86c8');
   }
 }
 
