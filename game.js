@@ -85,7 +85,7 @@ const STUDIO_REWARD={name:'PREMIO STUDIO',cost:5000};
 
 // ---- persistent profile + daily challenges (localStorage) ----
 const Profile={
-  data:{credits:0,lifetime:0,transferred:0,matches:0,wins:0,kills:0,best:99,
+  data:{credits:0,lifetime:0,transferred:0,matches:0,wins:0,kills:0,best:99,challenges:[],pendingChal:null,
     bestKills:0, maxDmg:0, totalDmg:0, bestTime:0, totalTime:0, placeSum:0,
     streak:0, bestStreak:0, topScore:0, ops:{},
     unlocked:['vyre','nova'],skins:['base'],daily:null},
@@ -133,6 +133,47 @@ try{ const q=localStorage.getItem('nexusQuality'); if(q) GAME.quality=q;
      const a=localStorage.getItem('nexusMmAlpha'); if(a!==null) GAME.mmAlpha=Math.max(0.15,Math.min(1,parseFloat(a)||1)); }catch(e){}
 
 // ---- INKANIMUS: trasferimento crediti (un codice, non piu' uno per partita) ----
+// ============ SFIDA CON CODICE (seed condiviso, no server) ============
+let CHALLENGE=null;                      // {seed, mode, char, from} quando si gioca una sfida
+let _realRandom=Math.random;
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function seedRandom(seed){ Math.random=mulberry32(seed>>>0); }
+function unseedRandom(){ Math.random=_realRandom; }
+function seedFromStr(str){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+
+// crea un codice SFIDA: fissa seed+modalità, l'amico giochera' la stessa identica partita
+function makeChallengeCode(){
+  const seed=(Date.now()>>>0)^Math.floor(_realRandom()*0xffffffff);
+  const cid=(Date.now().toString(36)+_realRandom().toString(36).slice(2,6)).toUpperCase();
+  const payload={ v:1, t:'chal', cid, seed:seed>>>0, mode:GAME.match, aim:GAME.mode, from:(Profile.data.name||'SFIDANTE'), ts:Date.now() };
+  try{ return 'NXC1:'+btoa(JSON.stringify(payload)); }catch(e){ return 'NXC1:'+JSON.stringify(payload); }
+}
+function parseChallengeCode(raw){
+  const txt=(raw||'').trim(); if(txt.indexOf('NXC1:')!==0 && txt.indexOf('NXR1:')!==0) return null;
+  try{ const d=JSON.parse(decodeURIComponent(escape(atob(txt.slice(5))))); return d; }catch(e){ try{ return JSON.parse(txt.slice(5)); }catch(e2){ return null; } }
+}
+// crea un codice RISULTATO da confrontare
+function makeResultCode(cid,res){
+  const payload={ v:1, t:'res', cid, who:(Profile.data.name||'IO'), place:res.placement, kills:res.kills,
+    dmg:Math.round(res.damage||0), timeSec:res.durationSec||0, score:res.score||0, win:!!res.win, ts:Date.now() };
+  try{ return 'NXV1:'+btoa(JSON.stringify(payload)); }catch(e){ return 'NXV1:'+JSON.stringify(payload); }
+}
+function parseResultCode(raw){
+  const txt=(raw||'').trim(); if(txt.indexOf('NXV1:')!==0) return null;
+  try{ return JSON.parse(decodeURIComponent(escape(atob(txt.slice(5))))); }catch(e){ try{ return JSON.parse(txt.slice(5)); }catch(e2){ return null; } }
+}
+// confronto: chi vince? (piazzamento < , poi kill > , poi danni > , poi tempo > )
+function judgeChallenge(mine,theirs){
+  const cmp=(a,b)=>{
+    if(a.place!==b.place) return a.place<b.place?-1:1;
+    if(a.kills!==b.kills) return a.kills>b.kills?-1:1;
+    if(a.dmg!==b.dmg) return a.dmg>b.dmg?-1:1;
+    if((a.timeSec||0)!==(b.timeSec||0)) return a.timeSec>b.timeSec?-1:1;
+    return 0;
+  };
+  const r=cmp(mine,theirs); return r<0?'io':(r>0?'avversario':'pari');
+}
+
 function makeTransferCode(amount){
   if(amount<=0 || amount>Profile.data.credits) return null;
   const tid=(Date.now().toString(36)+Math.random().toString(36).slice(2,8)).toUpperCase();
@@ -678,7 +719,7 @@ class Menu extends Phaser.Scene{
   openMenuList(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[];
     const close=()=>{ SFX.ui(); els.forEach(o=>o.destroy()); };
     els.push(this.add.rectangle(0,0,W,H,0x05040d,0.92).setOrigin(0).setDepth(400).setInteractive().on('pointerdown',()=>close()));
-    const items=[['◈  SFIDE',()=>this.openChallenges()],['👤  PROFILO',()=>this.openProfile()],
+    const items=[['⚔  SFIDA UN AMICO',()=>this.openChallenge()],['◈  SFIDE GIORNALIERE',()=>this.openChallenges()],['👤  PROFILO',()=>this.openProfile()],
       ['◆  INVIA CREDITI A INKANIMUS',()=>this.openTransfer()],['⚙  OPZIONI',()=>this.openSettings()],
       ['?  COME SI GIOCA',()=>this.scene.start('Tutorial')]];
     const pw=Math.min(360,W*0.9), ph=items.length*58+70, py=H*0.5-ph/2;
@@ -692,6 +733,91 @@ class Menu extends Phaser.Scene{
   }
 
   refresh(){ this.credTxt.setText('◆ '+Profile.data.credits+' CREDITI'); }
+  openChallenge(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
+    E(this.add.rectangle(0,0,W,H,0x05040d,0.95).setOrigin(0).setDepth(400).setInteractive());
+    const pw=Math.min(360,W*0.92), py=H*0.07, ph=H*0.86;
+    E(cyberFrame(this,cx-pw/2,py,pw,ph,C.magenta,401));
+    E(this.add.text(cx,py+26,'SFIDA UN AMICO',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#ff2ea6'}).setOrigin(0.5).setDepth(402));
+    E(this.add.text(cx,py+50,'stessa mappa, stessi bot, stessa zona.\nGiocate separati, poi confrontate i risultati.',{fontSize:'11px',color:'#c9c6ea',align:'center',lineSpacing:3}).setOrigin(0.5).setDepth(402));
+
+    let yb=py+84;
+    const bigBtn=(label,col,cb)=>{ const b=E(this.add.rectangle(cx,yb,pw*0.84,46,0x14102b).setStrokeStyle(2,col).setDepth(402).setInteractive({useHandCursor:true}));
+      E(this.add.text(cx,yb,label,{fontFamily:TITLE_FONT,fontSize:'13px',color:hexStr(col),fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+      b.on('pointerdown',()=>{ SFX.ui(); cb(); }); yb+=58; };
+    const out=E(this.add.text(cx,0,'',{fontSize:'9px',color:'#ffd23f',fontFamily:'monospace',align:'center',wordWrap:{width:pw*0.82},backgroundColor:'#0b0918',padding:{x:8,y:6}}).setOrigin(0.5,0).setDepth(403).setVisible(false));
+    const showCode=(txt,y)=>{ out.setText(txt).setPosition(cx,y).setVisible(true);
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).catch(()=>{}); };
+
+    // 1) create a challenge
+    bigBtn('① CREA SFIDA (copia codice)',C.cyan,()=>{ const code=makeChallengeCode();
+      const d=parseChallengeCode(code); Profile.data.pendingChal={cid:d.cid,seed:d.seed,mode:d.mode,role:'sfidante'}; Profile.save();
+      GAME.match=d.mode; CHALLENGE={seed:d.seed,mode:d.mode,cid:d.cid,from:d.from};
+      showCode(code, yb); });
+
+    // 2) accept a challenge (paste code)
+    bigBtn('② ACCETTA SFIDA (incolla codice)',C.magenta,()=>{
+      const raw=prompt('Incolla il codice SFIDA (NXC1:...)'); if(!raw) return;
+      const d=parseChallengeCode(raw); if(!d||d.t!=='chal'){ this.toastC('Codice sfida non valido'); return; }
+      GAME.match=d.mode||'royale'; CHALLENGE={seed:d.seed,mode:GAME.match,cid:d.cid,from:d.from||'SFIDANTE'};
+      Profile.data.pendingChal={cid:d.cid,seed:d.seed,mode:GAME.match,role:'avversario',from:d.from}; Profile.save();
+      close(); this.scene.start('Loadout'); });
+
+    // 3) compare a result
+    bigBtn('③ CONFRONTA RISULTATO',C.gold,()=>{
+      const mine=Profile.data._lastResult;
+      if(!mine){ this.toastC('Prima gioca una sfida'); return; }
+      const raw=prompt('Incolla il codice RISULTATO dell\'avversario (NXV1:...)'); if(!raw) return;
+      const their=parseResultCode(raw); if(!their||their.cid!==mine.cid){ this.toastC('Risultato di un\'altra sfida'); return; }
+      const w=judgeChallenge(mine,their);
+      Profile.data.challenges=Profile.data.challenges||[];
+      Profile.data.challenges.unshift({cid:mine.cid,win:w,me:mine,vs:their,ts:Date.now()});
+      if(Profile.data.challenges.length>30) Profile.data.challenges.length=30;
+      Profile.save();
+      close(); this.showVerdict(w,mine,their); });
+
+    // my result code (if just played a challenge)
+    if(Profile.data._lastResult){ yb+=4;
+      E(this.add.text(cx,yb,'Il TUO codice risultato (dallo all\'amico):',{fontSize:'10px',color:'#8a86c8'}).setOrigin(0.5).setDepth(402)); yb+=20;
+      const rc=makeResultCode(Profile.data._lastResult.cid,Profile.data._lastResult);
+      const rbox=E(this.add.text(cx,yb,rc,{fontSize:'9px',color:'#35e06a',fontFamily:'monospace',align:'center',wordWrap:{width:pw*0.82},backgroundColor:'#0b0918',padding:{x:8,y:6}}).setOrigin(0.5,0).setDepth(402).setInteractive({useHandCursor:true}));
+      rbox.on('pointerdown',()=>{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(rc).catch(()=>{}); this.toastC('Copiato'); });
+      yb+=rbox.height+10;
+    }
+
+    // history
+    const hist=Profile.data.challenges||[];
+    if(hist.length){ E(this.add.text(cx,py+ph-150,'— STORICO SFIDE —',{fontFamily:TITLE_FONT,fontSize:'10px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
+      hist.slice(0,4).forEach((h,i)=>{ const yy=py+ph-132+i*24;
+        const res=h.win==='io'?'VINTA':(h.win==='avversario'?'PERSA':'PARI'), col=h.win==='io'?'#35e06a':(h.win==='avversario'?'#ff3b6b':'#ffd23f');
+        E(this.add.text(cx-pw/2+22,yy,'vs '+(h.vs.who||'?'),{fontSize:'10px',color:'#c9c6ea'}).setOrigin(0,0.5).setDepth(402));
+        E(this.add.text(cx+pw/2-22,yy,res,{fontFamily:TITLE_FONT,fontSize:'10px',color:col,fontStyle:'900'}).setOrigin(1,0.5).setDepth(402));
+      });
+    }
+
+    const close=()=>{ SFX.ui(); els.forEach(o=>o.destroy()); };
+    const cb=E(this.add.rectangle(cx,py+ph-30,Math.min(200,W*0.55),42,0x14102b).setStrokeStyle(2,C.player).setDepth(405).setInteractive({useHandCursor:true}));
+    E(this.add.text(cx,py+ph-30,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(406));
+    cb.on('pointerdown',close);
+  }
+  toastC(m){ const t=this.add.text(this.scale.width/2,this.scale.height*0.5,m,{fontFamily:TITLE_FONT,fontSize:'13px',color:'#fff',fontStyle:'900',backgroundColor:'#ff2ea6',padding:{x:14,y:10}}).setOrigin(0.5).setDepth(600); this.tweens.add({targets:t,alpha:0,duration:1600,delay:400,onComplete:()=>t.destroy()}); }
+  showVerdict(w,mine,their){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[];
+    els.push(this.add.rectangle(0,0,W,H,0x05040d,0.95).setOrigin(0).setDepth(500).setInteractive());
+    const col=w==='io'?C.green:(w==='avversario'?0xff3b6b:C.gold), title=w==='io'?'HAI VINTO':(w==='avversario'?'HAI PERSO':'PAREGGIO');
+    els.push(cyberFrame(this,cx-Math.min(340,W*0.9)/2,H*0.24,Math.min(340,W*0.9),H*0.5,col,501));
+    els.push(this.add.text(cx,H*0.30,title,{fontFamily:TITLE_FONT,fontSize:'30px',fontStyle:'900',color:hexStr(col)}).setOrigin(0.5).setDepth(502));
+    const rows=[['piazzamento','#'+mine.place,'#'+their.place],['kill',mine.kills,their.kills],['danni',mine.dmg,their.dmg]];
+    els.push(this.add.text(cx-70,H*0.40,'TU',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(502));
+    els.push(this.add.text(cx+70,H*0.40,(their.who||'AVV').slice(0,8),{fontFamily:TITLE_FONT,fontSize:'12px',color:'#ff2ea6',fontStyle:'900'}).setOrigin(0.5).setDepth(502));
+    rows.forEach((r,i)=>{ const yy=H*0.45+i*30;
+      els.push(this.add.text(cx,yy,r[0],{fontSize:'10px',color:'#8a86c8'}).setOrigin(0.5).setDepth(502));
+      els.push(this.add.text(cx-70,yy,''+r[1],{fontFamily:TITLE_FONT,fontSize:'14px',color:'#fff',fontStyle:'900'}).setOrigin(0.5).setDepth(502));
+      els.push(this.add.text(cx+70,yy,''+r[2],{fontFamily:TITLE_FONT,fontSize:'14px',color:'#fff',fontStyle:'900'}).setOrigin(0.5).setDepth(502));
+    });
+    const cb=this.add.rectangle(cx,H*0.68,180,44,0x14102b).setStrokeStyle(2,C.player).setDepth(502).setInteractive({useHandCursor:true});
+    els.push(cb); els.push(this.add.text(cx,H*0.68,'OK',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(503));
+    cb.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); });
+  }
+
   openTransfer(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
     E(this.add.rectangle(0,0,W,H,0x05040d,0.95).setOrigin(0).setDepth(400).setInteractive());
     const pw=Math.min(360,W*0.92), py=H*0.10, ph=H*0.8;
@@ -913,6 +1039,8 @@ class Game extends Phaser.Scene{
     this.cfg=matchCfg(); WORLD_W=this.cfg.w; WORLD_H=this.cfg.h;
     TOTAL_PLAYERS=this.cfg.total; this.FX=fxq(); this.fx=this.FX.glow;
     this.over=false; this.startTime=this.time.now; this.kills=0; this.damageDealt=0;
+    this.challenge = CHALLENGE;                      // snapshot for this match
+    if(this.challenge){ seedRandom(this.challenge.seed); }   // deterministic map/bots/zone
     this.physics.world.setBounds(0,0,WORLD_W,WORLD_H);
 
     // floor + district tints + roads
@@ -956,6 +1084,7 @@ class Game extends Phaser.Scene{
 
     this._wprompt=null; this.landMarker=null; this.markerRing=null;
     this.initZone();
+    if(this.challenge){ unseedRandom(); }            // back to true randomness for effects
     this.setupInput();
     this.buildHUD();
     this.setupCameras();
@@ -1825,7 +1954,8 @@ class Game extends Phaser.Scene{
     const payload={v:1,app:'nexus-royale',matchId,ts:Date.now(),char:GAME.char,mode:GAME.mode,kills:this.kills,placement:place,durationSec,score,credits};
     let code=''; try{ code=btoa(JSON.stringify(payload)); }catch(e){ code=JSON.stringify(payload); }
     const rec=Profile.record({kills:this.kills,win,placement:place,credits,mode:GAME.mode,damage:this.damageDealt,durationSec,score,op:GAME.char});
-    this.showResults(win,{place,kills:this.kills,durationSec,score,credits,mult,placePts,killPts,code,earned:rec.earned,bonus:rec.bonus,total:Profile.data.credits});
+    if(this.challenge){ Profile.data._lastResult={cid:this.challenge.cid,placement:place,kills:this.kills,damage:Math.round(this.damageDealt),durationSec,score,win}; Profile.save(); CHALLENGE=null; }
+    this.showResults(win,{place,kills:this.kills,durationSec,score,credits,mult,placePts,killPts,code,earned:rec.earned,bonus:rec.bonus,total:Profile.data.credits,wasChallenge:!!this.challenge});
   }
   showResults(win,r){
     const W=this.scale.width,H=this.scale.height,cx=W/2;
