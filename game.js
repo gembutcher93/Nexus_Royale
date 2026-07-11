@@ -644,22 +644,34 @@ function overlayPanel(sc,title,build){ const W=sc.scale.width,H=sc.scale.height,
 /* ============================ HOME ============================ */
 class Menu extends Phaser.Scene{
   constructor(){ super('Menu'); }
-  create(){
+  create(data){
     const W=this.scale.width,H=this.scale.height,cx=W/2;
     menuBg(this); menuTitle(this,H*0.11);
+    if(data&&data.openChallenge){ this.time.delayedCall(60,()=>this.openChallenge()); }
     if(!Profile.unlockedOp(GAME.char)) GAME.char='vyre';
 
     // credits chip
-    cyberFrame(this,cx-100,H*0.185-18,200,36,C.gold,0);
-    this.credTxt=this.add.text(cx,H*0.185,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(2);
+    cyberFrame(this,cx-100,H*0.175-18,200,36,C.gold,0);
+    this.credTxt=this.add.text(cx,H*0.175,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(2);
+
+    // ---- stat bricks (Emergent-style) ----
+    const d=Profile.data, wr=d.matches?Math.round(d.wins/d.matches*100):0;
+    const bricks=[['◈','PARTITE',d.matches,C.cyan],['★','VITTORIE',d.wins,C.gold],['✕','KILL',d.kills,C.magenta],['%','WINRATE',wr+'%',C.green]];
+    const bw2=Math.min(78,W*0.205), bgap=bw2+6, bx0=cx-(bricks.length-1)*bgap/2, byy=H*0.245;
+    bricks.forEach((b,i)=>{ const x=bx0+i*bgap;
+      cyberFrame(this,x-bw2/2,byy-26,bw2,52,0x2a2550,0);
+      this.add.text(x-bw2/2+8,byy-12,b[0],{fontFamily:TITLE_FONT,fontSize:'11px',color:hexStr(b[3]),fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+      this.add.text(x+bw2/2-8,byy-12,b[1],{fontFamily:TITLE_FONT,fontSize:'8px',color:'#8a86c8',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
+      this.add.text(x,byy+8,''+b[2],{fontFamily:TITLE_FONT,fontSize:'17px',color:'#fff',fontStyle:'900'}).setOrigin(0.5).setDepth(2);
+    });
 
     // ---- dropdown: MODALITÀ ----
-    this.mkDrop(cx, H*0.30, '◤ MODALITÀ ◢',
+    this.mkDrop(cx, H*0.35, '◤ MODALITÀ ◢',
       [{k:'royale',t:'ROYALE',s:'100 giocatori · lungo'},{k:'blitz',t:'BLITZ',s:'30 giocatori · veloce'}],
       ()=>GAME.match, (k)=>{ GAME.match=k; });
 
     // ---- dropdown: MIRA ----
-    this.mkDrop(cx, H*0.42, '◤ MIRA ◢',
+    this.mkDrop(cx, H*0.46, '◤ MIRA ◢',
       [{k:'auto',t:'ASSISTITA',s:'auto-aim · punti ×1.0'},{k:'manual',t:'MANUALE',s:'skill · punti ×1.5'}],
       ()=>GAME.mode, (k)=>{ GAME.mode=k; });
 
@@ -719,7 +731,7 @@ class Menu extends Phaser.Scene{
   openMenuList(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[];
     const close=()=>{ SFX.ui(); els.forEach(o=>o.destroy()); };
     els.push(this.add.rectangle(0,0,W,H,0x05040d,0.92).setOrigin(0).setDepth(400).setInteractive().on('pointerdown',()=>close()));
-    const items=[['⚔  SFIDA UN AMICO',()=>this.openChallenge()],['◈  SFIDE GIORNALIERE',()=>this.openChallenges()],['👤  PROFILO',()=>this.openProfile()],
+    const items=[['◈  SFIDE GIORNALIERE',()=>this.openChallenges()],['👤  PROFILO',()=>this.openProfile()],
       ['◆  INVIA CREDITI A INKANIMUS',()=>this.openTransfer()],['⚙  OPZIONI',()=>this.openSettings()],
       ['?  COME SI GIOCA',()=>this.scene.start('Tutorial')]];
     const pw=Math.min(360,W*0.9), ph=items.length*58+70, py=H*0.5-ph/2;
@@ -949,7 +961,11 @@ class Loadout extends Phaser.Scene{
     // top bar
     this.add.text(14,24,'‹ INDIETRO',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#c9c6ea',fontStyle:'900',backgroundColor:'#0b0918',padding:{x:12,y:10}}).setOrigin(0,0.5).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.scene.start('Menu'); });
     this.add.text(W-16,24,'◆ '+Profile.data.credits,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#ffd23f',fontStyle:'900'}).setOrigin(1,0.5);
-    this.add.text(cx,H*0.075,'SCEGLI OPERATORE',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5);
+    this.add.text(cx,H*0.072,'SCEGLI OPERATORE',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5);
+    // SFIDA UN AMICO (here in Deploy, next to mode choice)
+    const sfBtn=this.add.text(16,H*0.072,'⚔ SFIDA',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#ff2ea6',fontStyle:'900',backgroundColor:'#0b0918',padding:{x:10,y:8}}).setOrigin(0,0.5).setDepth(5).setInteractive({useHandCursor:true});
+    sfBtn.on('pointerdown',()=>{ SFX.ui(); const m=this.scene.get('Menu'); if(m && m.openChallenge){ this.scene.launch('Menu'); this.scene.setVisible(false,'Menu'); } this.scene.start('Menu',{openChallenge:true}); });
+    
 
     // operator selector row (portraits)
     const PORT={vyre:'port_vyre',nova:'port_nova',oracle:'port_oracle',aegis:'port_aegis',wraith:'port_wraith'};
