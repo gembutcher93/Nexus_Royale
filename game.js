@@ -990,28 +990,29 @@ class Loadout extends Phaser.Scene{
       this.opChips.push({ring,ic,lock,o,x,oy}); });
 
     // ===== CHARACTER CARD =====
-    const cardY=H*0.20, cardH=H*0.52, cardX=cx-Math.min(360,W*0.92)/2, cardW=Math.min(360,W*0.92);
+    const cardY=H*0.19, cardH=H*0.55, cardX=cx-Math.min(360,W*0.92)/2, cardW=Math.min(360,W*0.92);
     cyberFrame(this,cardX,cardY,cardW,cardH,C.cyan,0);
     // left: big portrait
     const lx=cardX+cardW*0.30;
-    this.add.rectangle(lx,cardY+cardH*0.46,cardW*0.42,cardH*0.7,0x0b0918,0.55).setDepth(1);
-    this.bigPort=this.add.image(lx,cardY+cardH*0.46,'port_vyre').setDepth(2);
-    this.bigGlow=this.add.image(lx,cardY+cardH*0.46,'glow').setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(cardW*0.5,cardW*0.5).setAlpha(0.2).setDepth(1);
-    // right column
+    this.add.rectangle(lx,cardY+cardH*0.42,cardW*0.42,cardH*0.62,0x0b0918,0.55).setDepth(1);
+    this.bigPort=this.add.image(lx,cardY+cardH*0.42,'port_vyre').setDepth(2);
+    this.bigGlow=this.add.image(lx,cardY+cardH*0.42,'glow').setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(cardW*0.5,cardW*0.5).setAlpha(0.2).setDepth(1);
+    // right column — positions relative to card top, verified to stay inside cardH
     const rx=cardX+cardW*0.54, rw=cardW*0.42;
-    this.cName=this.add.text(rx,cardY+22,'',{fontFamily:TITLE_FONT,fontSize:'22px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
-    this.cRole=this.add.text(rx,cardY+46,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'900',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
-    // lore: bounded height, never overlaps ability block below
-    const loreH=Math.round(cardH*0.30);
-    this.cLore=this.add.text(rx,cardY+60,'',{fontSize:'11px',color:'#c9c6ea',align:'left',wordWrap:{width:rw},lineSpacing:3,fixedHeight:loreH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,loreH);
-    // ability block (fixed lower zone of the card)
-    const abY=cardY+cardH-116;
+    this.cName=this.add.text(rx,cardY+24,'',{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
+    this.cRole=this.add.text(rx,cardY+46,'',{fontFamily:TITLE_FONT,fontSize:'10px',fontStyle:'900',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
+    // STORIA label + text (fixed area)
+    this.add.text(rx,cardY+64,'STORIA',{fontFamily:TITLE_FONT,fontSize:'8px',color:'#5f7a8a',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    const loreH=Math.round(cardH*0.26);
+    this.cLore=this.add.text(rx,cardY+74,'',{fontSize:'11px',color:'#c9c6ea',align:'left',wordWrap:{width:rw},lineSpacing:3,fixedHeight:loreH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,loreH);
+    // ABILITÀ block (below the lore area, still inside card)
+    const abY=cardY+74+loreH+8;
     this.add.rectangle(rx,abY,rw,1,C.cyan,0.35).setOrigin(0,0.5).setDepth(2);
-    this.add.text(rx,abY+12,'ABILITÀ',{fontFamily:TITLE_FONT,fontSize:'8px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.add.text(rx,abY+12,'ABILITÀ',{fontFamily:TITLE_FONT,fontSize:'8px',color:'#5f7a8a',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
     this.cAbIcon=this.add.text(rx,abY+30,'',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
     this.cAbName=this.add.text(rx+28,abY+30,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
-    const abDescH=Math.round(cardH*0.30);
-    this.cAbDesc=this.add.text(rx,abY+46,'',{fontSize:'11px',color:'#b8bfcc',align:'left',wordWrap:{width:rw},lineSpacing:3,fixedHeight:abDescH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,abDescH);
+    const abDescH=Math.max(28,(cardY+cardH-16)-(abY+44));
+    this.cAbDesc=this.add.text(rx,abY+44,'',{fontSize:'11px',color:'#b8bfcc',align:'left',wordWrap:{width:rw},lineSpacing:3,fixedHeight:abDescH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,abDescH);
     // unlock button (shown when locked)
     this.unlockBtn=this.add.rectangle(lx,cardY+cardH-24,cardW*0.42,40,0x241a00).setStrokeStyle(2,C.gold).setDepth(3).setInteractive({useHandCursor:true}).setVisible(false);
     this.unlockTxt=this.add.text(lx,cardY+cardH-24,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(4).setVisible(false);
