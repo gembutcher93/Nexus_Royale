@@ -1113,6 +1113,12 @@ class Game extends Phaser.Scene{
 
     this.player=this.spawnUnit(true);
     for(let i=0;i<TOTAL_PLAYERS-1;i++) this.spawnUnit(false);
+    // pick ~10 elite bots with a signature ability (charge dash)
+    const bots=this.units.filter(u=>!u.isPlayer);
+    Phaser.Utils.Array.Shuffle(bots).slice(0,10).forEach(u=>{ u.elite=true; u.eliteCd=0;
+      u.hp=Math.round(u.hp*1.25); u.maxhp=u.hp;
+      const ring=this.add.circle(u.s.x,u.s.y,20,0,0).setStrokeStyle(2,0xff3b6b,0.9).setDepth(4); if(this.toWorld) this.toWorld(ring); u.eliteRing=ring;
+    });
     this.aliveCount=TOTAL_PLAYERS;
 
     // player halo
@@ -1621,7 +1627,7 @@ class Game extends Phaser.Scene{
     // PERF: off-screen deaths are silent (no particles, no corpse, no tweens)
     if(!visible){
       this.mkLoot(u.s.x,u.s.y,'weapon',u.weapon,'lootW');
-      if(u.gun) u.gun.destroy(); if(u.skinHalo) u.skinHalo.destroy(); u.s.destroy();
+      if(u.gun) u.gun.destroy(); if(u.skinHalo) u.skinHalo.destroy(); if(u.eliteRing) u.eliteRing.destroy(); u.s.destroy();
       if(by&&by.isPlayer&&!u.isPlayer){ this.kills++; this.flashKill(); SFX.kill(); }
       if(this.aliveCount===1&&this.player.alive) this.endMatch(true);
       return;
@@ -1631,7 +1637,7 @@ class Game extends Phaser.Scene{
       const a=Math.random()*6.28,sp=Phaser.Math.Between(40,150); this.tweens.add({targets:p,x:u.s.x+Math.cos(a)*sp,y:u.s.y+Math.sin(a)*sp,scale:0,duration:420,onComplete:()=>p.destroy()}); }
     this.mkLoot(u.s.x,u.s.y,'weapon',u.weapon,'lootW');
     if(u.gun) u.gun.destroy();
-    if(u.skinHalo) u.skinHalo.destroy();
+    if(u.skinHalo) u.skinHalo.destroy(); if(u.eliteRing) u.eliteRing.destroy();
     // death animation: hit -> falling -> down (corpse stays)
     const dx=u.s.x, dy=u.s.y, rot=u.s.rotation, key=u.charKey;
     if(u.s.body) u.s.body.enable=false;
@@ -1988,14 +1994,27 @@ class Game extends Phaser.Scene{
         if(tgt){ s.setRotation(Phaser.Math.Angle.Between(s.x,s.y,tgt.s.x,tgt.s.y)); this.botShoot(u,tgt); } }
       else if(tgt){ const a=Phaser.Math.Angle.Between(s.x,s.y,tgt.s.x,tgt.s.y); s.setRotation(a);
         const dist=Phaser.Math.Distance.Between(s.x,s.y,tgt.s.x,tgt.s.y), ideal=w.range*0.6;
-        if(dist>ideal+40){ vx=Math.cos(a); vy=Math.sin(a); } else if(dist<ideal-40){ vx=-Math.cos(a); vy=-Math.sin(a); }
-        if(time>ai.retarget){ ai.strafe*=-1; ai.retarget=time+Phaser.Math.Between(600,1400); }
-        vx+=Math.cos(a+Math.PI/2)*ai.strafe*0.7; vy+=Math.sin(a+Math.PI/2)*ai.strafe*0.7; this.botShoot(u,tgt); }
+        // ELITE ability: assault charge — quick lunge toward target, then keep pressure
+        if(u.elite && time>u.eliteCd && dist>ideal && dist<w.range*1.2 && this.inView(s.x,s.y,60)){
+          u.eliteCd=time+7000;
+          const cx2=Math.cos(a), cy2=Math.sin(a);
+          s.body.setVelocity(cx2*520,cy2*520);
+          const tr=this.add.image(s.x,s.y,'glow').setTint(0xff3b6b).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(50,50).setDepth(3); if(this.toWorld) this.toWorld(tr);
+          this.tweens.add({targets:tr,alpha:0,scale:0.3,duration:300,onComplete:()=>tr.destroy()});
+          u.charging=time+260;
+        }
+        if(u.charging>time){ /* keep lunge velocity this frame */ }
+        else { if(dist>ideal+40){ vx=Math.cos(a); vy=Math.sin(a); } else if(dist<ideal-40){ vx=-Math.cos(a); vy=-Math.sin(a); }
+          if(time>ai.retarget){ ai.strafe*=-1; ai.retarget=time+Phaser.Math.Between(600,1400); }
+          vx+=Math.cos(a+Math.PI/2)*ai.strafe*0.7; vy+=Math.sin(a+Math.PI/2)*ai.strafe*0.7; }
+        this.botShoot(u,tgt); }
       else if(lt){ const a=Phaser.Math.Angle.Between(s.x,s.y,lt.x,lt.y); vx=Math.cos(a); vy=Math.sin(a); s.setRotation(a);
         if(Phaser.Math.Distance.Between(s.x,s.y,lt.x,lt.y)<28){ this.pickup(u,lt); ai.lt=null; } }
       else { if(time>ai.retarget||Phaser.Math.Distance.Between(s.x,s.y,ai.tx,ai.ty)<40){ const sp=this.freeSpot(); ai.tx=sp.x; ai.ty=sp.y; ai.retarget=time+Phaser.Math.Between(1500,3500); }
         const a=Phaser.Math.Angle.Between(s.x,s.y,ai.tx,ai.ty); vx=Math.cos(a); vy=Math.sin(a); s.setRotation(a); }
-      const l=Math.hypot(vx,vy)||1; s.body.setVelocity(vx/l*spd,vy/l*spd);
+      if(u.charging>time){ /* lunge velocity already set, keep it */ }
+      else { const l=Math.hypot(vx,vy)||1; s.body.setVelocity(vx/l*spd,vy/l*spd); }
+      if(u.eliteRing){ u.eliteRing.setPosition(s.x,s.y); }
     });
   }
   inView(x,y,pad){ const v=this.cameras.main.worldView, m=pad||120;
