@@ -684,12 +684,20 @@ class Menu extends Phaser.Scene{
     this.add.rectangle(cx,sy,sbw,68,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
       .on('pointerdown',()=>{ SFX.resume(); SFX.ui(); this.scene.start('Loadout'); });
 
-    // ---- big MENU (opens a dropdown list) ----
-    const my=H*0.685, mbw=Math.min(340,W*0.86);
-    cyberFrame(this,cx-mbw/2,my-30,mbw,60,0x3a3470,0);
-    this.add.text(cx,my,'⚙  MENU',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#c9c6ea',fontStyle:'900'}).setOrigin(0.5).setDepth(2);
-    this.add.rectangle(cx,my,mbw,60,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
-      .on('pointerdown',()=>{ SFX.ui(); this.openMenuList(); });
+    // ---- SFIDA UN AMICO (big, right under START) ----
+    const fy=H*0.66, fbw=Math.min(340,W*0.86);
+    cyberFrame(this,cx-fbw/2,fy-26,fbw,52,C.magenta,0);
+    this.add.text(cx,fy,'⚔  SFIDA UN AMICO',{fontFamily:TITLE_FONT,fontSize:'16px',color:'#ff2ea6',fontStyle:'900'}).setOrigin(0.5).setDepth(2);
+    this.add.rectangle(cx,fy,fbw,52,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
+      .on('pointerdown',()=>{ SFX.ui(); this.openChallenge(); });
+
+    // ---- bottom row: PROFILO + ALTRO (both visible) ----
+    const my=H*0.74, half=Math.min(167,W*0.42);
+    const homeBtn=(x,label,col,cb)=>{ cyberFrame(this,x-half/2,my-26,half,52,col,0);
+      this.add.text(x,my,label,{fontFamily:TITLE_FONT,fontSize:'15px',color:hexStr(col),fontStyle:'900'}).setOrigin(0.5).setDepth(2);
+      this.add.rectangle(x,my,half,52,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); cb(); }); };
+    homeBtn(cx-half/2-4, '👤 PROFILO', C.cyan, ()=>this.openProfile());
+    homeBtn(cx+half/2+4, '⚙ ALTRO',   0x8a86c8, ()=>this.openMenuList());
 
     this.refresh();
     try{ if(!localStorage.getItem('nexusQualitySet')) this.time.delayedCall(200,()=>this.askQuality()); }catch(e){}
@@ -871,52 +879,57 @@ class Menu extends Phaser.Scene{
   openProfile(){
     const W=this.scale.width,H=this.scale.height,cx=W/2, d=Profile.data;
     const els=[]; const E=o=>{els.push(o);return o;};
-    E(this.add.rectangle(0,0,W,H,0x05040d,0.95).setOrigin(0).setDepth(400).setInteractive());
-    const pw=Math.min(360,W*0.92), py=H*0.06, ph=H*0.88;
+    E(this.add.rectangle(0,0,W,H,0x05040d,0.96).setOrigin(0).setDepth(400).setInteractive());
+    const pw=Math.min(370,W*0.94), py=H*0.05, ph=H*0.9;
     E(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,401));
-    E(this.add.text(cx,py+26,'PROFILO',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setDepth(402));
-    E(this.add.rectangle(cx,py+46,pw*0.7,1,C.cyan,0.5).setDepth(402));
 
-    const fmt=t=>{ const m=Math.floor(t/60), sec=t%60; return m?(m+'m '+sec+'s'):(sec+'s'); };
-    const favOp=(()=>{ const o=d.ops||{}; let b=null,n=0; Object.keys(o).forEach(k=>{ if(o[k]>n){n=o[k];b=k;} }); return b?OP(b).name:'—'; })();
-    const avgPl=d.matches?(d.placeSum/d.matches).toFixed(1):'—';
-    const rows=[
-      ['Partite giocate',d.matches],['Vittorie',d.wins+(d.matches?'  ('+Math.round(d.wins/d.matches*100)+'%)':'')],
-      ['Serie vittorie record',d.bestStreak||0],['Eliminazioni totali',d.kills],
-      ['Record kill in partita',d.bestKills||0],['Media kill/partita',d.matches?(d.kills/d.matches).toFixed(1):'0'],
-      ['Danni totali',(d.totalDmg||0).toLocaleString('it')],['Record danni in partita',(d.maxDmg||0).toLocaleString('it')],
-      ['Miglior piazzamento',d.best>=99?'—':'#'+d.best],['Piazzamento medio',avgPl==='—'?'—':'#'+avgPl],
-      ['Partita più lunga',fmt(d.bestTime||0)],['Tempo totale in gioco',fmt(d.totalTime||0)],
-      ['Punteggio record',(d.topScore||0).toLocaleString('it')],['Operatore preferito',favOp],
-      ['Crediti disponibili','◆ '+d.credits],['Crediti totali guadagnati','◆ '+(d.lifetime||0)],
-      ['Crediti trasferiti','◆ '+(d.transferred||0)],
+    // header: operator portrait + name + wallet strip
+    const op=OP(GAME.char), PORT={vyre:'port_vyre',nova:'port_nova',oracle:'port_oracle',aegis:'port_aegis',wraith:'port_wraith'};
+    if(this.textures.exists(PORT[op.id])){ const im=E(this.add.image(cx-pw/2+52,py+52,PORT[op.id]).setDepth(402)); const h=68; im.setDisplaySize(h*(im.width/im.height),h); }
+    E(this.add.text(cx-pw/2+96,py+34,'OPERATORE',{fontFamily:TITLE_FONT,fontSize:'9px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0,0.5).setDepth(402));
+    E(this.add.text(cx-pw/2+96,py+52,op.name,{fontFamily:TITLE_FONT,fontSize:'22px',color:hexStr(op.col),fontStyle:'900'}).setOrigin(0,0.5).setDepth(402));
+    E(this.add.text(cx-pw/2+96,py+70,(op.role||'')+' · Skin '+SKIN(GAME.skin).name,{fontSize:'10px',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(402));
+    // wallet chips row
+    const wchips=[['CR ATTUALI',d.credits,C.gold],['LIFETIME',d.lifetime||0,C.cyan],['TRASFERITI',d.transferred||0,C.magenta]];
+    const wcw=(pw-40)/3;
+    wchips.forEach((c,i)=>{ const x=cx-pw/2+20+i*wcw+wcw/2, yy=py+104;
+      cyberFrame(this,x-wcw/2+3,yy-16,wcw-6,34,c[2],401);
+      E(this.add.text(x,yy-6,c[0],{fontFamily:TITLE_FONT,fontSize:'8px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
+      E(this.add.text(x,yy+8,''+c[1],{fontFamily:TITLE_FONT,fontSize:'14px',color:hexStr(c[2]),fontStyle:'900'}).setOrigin(0.5).setDepth(402));
+    });
+    E(this.add.text(cx,py+134,'STATISTICHE COMPLETE',{fontFamily:TITLE_FONT,fontSize:'10px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
+
+    // grid of stat cards (scrollable)
+    const fmt=t=>{ const m=Math.floor(t/60),sec=t%60; return m?(m+'m'+sec+'s'):(sec+'s'); };
+    const cards=[
+      ['PARTITE',d.matches],['VITTORIE',d.wins],['WINRATE',(d.matches?Math.round(d.wins/d.matches*100):0)+'%'],['KILL TOTALI',d.kills],
+      ['MIGLIOR KILL',d.bestKills||0],['MEDIA KILL',d.matches?(d.kills/d.matches).toFixed(1):'0'],['DANNO MAX',(d.maxDmg||0).toLocaleString('it')],['DANNO TOT.',(d.totalDmg||0).toLocaleString('it')],
+      ['MIGLIOR PIAZZ.',d.best>=99?'—':'#'+d.best],['PIAZZ. MEDIO',d.matches?'#'+(d.placeSum/d.matches).toFixed(1):'—'],['SERIE ATTUALE',d.streak||0],['MIGLIOR SERIE',d.bestStreak||0],
+      ['TOP SCORE',(d.topScore||0).toLocaleString('it')],['PART. PIÙ LUNGA',fmt(d.bestTime||0)],['TEMPO TOTALE',fmt(d.totalTime||0)],['TRASFERITI',d.transferred||0],
     ];
-    // scroll viewport between header and footer button
-    const vTop=py+62, vBot=py+ph-72, vH=vBot-vTop, rowH=26, contentH=rows.length*rowH;
-    const cont=this.add.container(0,0).setDepth(402); E(cont);
-    rows.forEach((r,i)=>{ const yy=i*rowH;
-      cont.add(this.add.text(cx-pw/2+22,yy,r[0],{fontSize:'13px',color:'#c9c6ea'}).setOrigin(0,0));
-      cont.add(this.add.text(cx+pw/2-22,yy,''+r[1],{fontFamily:TITLE_FONT,fontSize:'13px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(1,0)); });
+    const vTop=py+148, vBot=py+ph-64, vH=vBot-vTop;
+    const cols=2, cardW=(pw-40-12)/cols, cardH=48, rowGap=8, colGap=12;
+    const cont=E(this.add.container(0,0).setDepth(402));
+    cards.forEach((c,i)=>{ const r=Math.floor(i/cols), col=i%cols;
+      const x=cx-pw/2+20+col*(cardW+colGap), yy=r*(cardH+rowGap);
+      const g=this.add.graphics(); g.fillStyle(0x12151c,0.9); g.fillRect(x,yy,cardW,cardH); g.lineStyle(1,0x2a2550,1); g.strokeRect(x,yy,cardW,cardH);
+      g.fillStyle(C.cyan,1); g.fillRect(x,yy,3,cardH);
+      cont.add(g);
+      cont.add(this.add.text(x+12,yy+13,c[0],{fontFamily:TITLE_FONT,fontSize:'9px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0,0.5));
+      cont.add(this.add.text(x+12,yy+32,''+c[1],{fontFamily:TITLE_FONT,fontSize:'16px',color:'#fff',fontStyle:'900'}).setOrigin(0,0.5));
+    });
     cont.y=vTop;
-    const maskG=this.make.graphics(); maskG.fillRect(cx-pw/2,vTop,pw,vH);
-    cont.setMask(maskG.createGeometryMask());
+    const contentH=Math.ceil(cards.length/cols)*(cardH+rowGap);
+    const maskG=this.make.graphics(); maskG.fillRect(cx-pw/2,vTop,pw,vH); cont.setMask(maskG.createGeometryMask());
     const minY=vTop-Math.max(0,contentH-vH);
-    // drag to scroll
-    const zone=E(this.add.zone(cx,(vTop+vBot)/2,pw,vH).setInteractive({draggable:true}).setDepth(402));
-    let sy0=0;
-    zone.on('dragstart',()=>{ sy0=cont.y; });
-    zone.on('drag',(pt,dx,dy)=>{ cont.y=Phaser.Math.Clamp(sy0+(pt.y-((vTop+vBot)/2))+(cont.__o||0),minY,vTop); });
-    zone.on('wheel',(pt,dx,dy)=>{ cont.y=Phaser.Math.Clamp(cont.y-dy*0.5,minY,vTop); });
-    // simpler drag: track pointer delta
-    let startPtr=null, startCy=0;
-    zone.on('pointerdown',pt=>{ startPtr=pt.y; startCy=cont.y; });
-    zone.on('pointermove',pt=>{ if(startPtr!==null && pt.isDown){ cont.y=Phaser.Math.Clamp(startCy+(pt.y-startPtr),minY,vTop); } });
-    zone.on('pointerup',()=>{ startPtr=null; });
-    // scroll hint
-    if(contentH>vH) E(this.add.text(cx,vBot+2,'▲ scorri ▼',{fontFamily:TITLE_FONT,fontSize:'9px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
+    const zone=E(this.add.zone(cx,(vTop+vBot)/2,pw,vH).setInteractive({draggable:true}).setDepth(403));
+    let sp=null,scy=0; zone.on('pointerdown',pt=>{sp=pt.y;scy=cont.y;});
+    zone.on('pointermove',pt=>{ if(sp!==null&&pt.isDown) cont.y=Phaser.Math.Clamp(scy+(pt.y-sp),minY,vTop); });
+    zone.on('pointerup',()=>sp=null); zone.on('pointerout',()=>sp=null);
+    if(contentH>vH) E(this.add.text(cx,vBot+4,'▲ scorri ▼',{fontFamily:TITLE_FONT,fontSize:'9px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
 
-    const close=E(this.add.rectangle(cx,py+ph-34,Math.min(220,W*0.6),46,0x14102b).setStrokeStyle(2,C.player).setDepth(405).setInteractive({useHandCursor:true}));
-    E(this.add.text(cx,py+ph-34,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'15px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(406));
+    const close=E(this.add.rectangle(cx,py+ph-30,Math.min(200,W*0.55),42,0x14102b).setStrokeStyle(2,C.player).setDepth(405).setInteractive({useHandCursor:true}));
+    E(this.add.text(cx,py+ph-30,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(406));
     close.on('pointerdown',()=>{ SFX.ui(); maskG.destroy(); els.forEach(o=>o.destroy()); });
   }
 
@@ -963,9 +976,7 @@ class Loadout extends Phaser.Scene{
     this.add.text(W-16,24,'◆ '+Profile.data.credits,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#ffd23f',fontStyle:'900'}).setOrigin(1,0.5);
     this.add.text(cx,H*0.072,'SCEGLI OPERATORE',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5);
     // SFIDA UN AMICO (here in Deploy, next to mode choice)
-    const sfBtn=this.add.text(16,H*0.072,'⚔ SFIDA',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#ff2ea6',fontStyle:'900',backgroundColor:'#0b0918',padding:{x:10,y:8}}).setOrigin(0,0.5).setDepth(5).setInteractive({useHandCursor:true});
-    sfBtn.on('pointerdown',()=>{ SFX.ui(); const m=this.scene.get('Menu'); if(m && m.openChallenge){ this.scene.launch('Menu'); this.scene.setVisible(false,'Menu'); } this.scene.start('Menu',{openChallenge:true}); });
-    
+
 
     // operator selector row (portraits)
     const PORT={vyre:'port_vyre',nova:'port_nova',oracle:'port_oracle',aegis:'port_aegis',wraith:'port_wraith'};
@@ -990,13 +1001,17 @@ class Loadout extends Phaser.Scene{
     const rx=cardX+cardW*0.54, rw=cardW*0.42;
     this.cName=this.add.text(rx,cardY+22,'',{fontFamily:TITLE_FONT,fontSize:'22px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
     this.cRole=this.add.text(rx,cardY+46,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'900',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
-    this.cLore=this.add.text(rx,cardY+64,'',{fontSize:'11px',color:'#c9c6ea',align:'left',wordWrap:{width:rw},lineSpacing:3,fixedHeight:Math.round(cardH*0.30)}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,Math.round(cardH*0.30));
-    // ability block
-    const abY=cardY+cardH-96;
+    // lore: bounded height, never overlaps ability block below
+    const loreH=Math.round(cardH*0.24);
+    this.cLore=this.add.text(rx,cardY+62,'',{fontSize:'11px',color:'#c9c6ea',align:'left',wordWrap:{width:rw},lineSpacing:2,fixedHeight:loreH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,loreH);
+    // ability block (fixed lower zone of the card)
+    const abY=cardY+cardH-104;
     this.add.rectangle(rx,abY,rw,1,C.cyan,0.35).setOrigin(0,0.5).setDepth(2);
-    this.cAbIcon=this.add.text(rx,abY+18,'',{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.cAbName=this.add.text(rx+30,abY+18,'',{fontFamily:TITLE_FONT,fontSize:'14px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
-    this.cAbDesc=this.add.text(rx,abY+38,'',{fontSize:'12px',color:'#a8b0bd',align:'left',wordWrap:{width:rw},lineSpacing:3}).setOrigin(0,0).setDepth(2);
+    this.add.text(rx,abY+12,'ABILITÀ',{fontFamily:TITLE_FONT,fontSize:'8px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.cAbIcon=this.add.text(rx,abY+30,'',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.cAbName=this.add.text(rx+28,abY+30,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
+    const abDescH=Math.round(cardH*0.26);
+    this.cAbDesc=this.add.text(rx,abY+46,'',{fontSize:'11px',color:'#a8b0bd',align:'left',wordWrap:{width:rw},lineSpacing:2,fixedHeight:abDescH}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,abDescH);
     // unlock button (shown when locked)
     this.unlockBtn=this.add.rectangle(lx,cardY+cardH-24,cardW*0.42,40,0x241a00).setStrokeStyle(2,C.gold).setDepth(3).setInteractive({useHandCursor:true}).setVisible(false);
     this.unlockTxt=this.add.text(lx,cardY+cardH-24,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(4).setVisible(false);

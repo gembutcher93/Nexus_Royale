@@ -1,5 +1,5 @@
 /* Cache offline. ALZA LA VERSIONE ogni volta che modifichi i file. */
-const CACHE='nexus-royale-v13';
+const CACHE='nexus-royale-v14';
 const ASSETS=['./index.html','./game.js','./assets_fallback.js','./manifest.json',
   './assets/splash.jpg','./assets/intro.mp4','./assets/logo.png',
   './assets/op_vyre.png','./assets/op_nova.png','./assets/op_oracle.png',
