@@ -73,11 +73,11 @@ let SEEN_TUTORIAL=false;
 
 // ---- operators (Apex-style: colour + unique ability) ----
 const OPERATORS=[
-  {id:'vyre',  name:'VYRE',  col:0x33e1ff, ab:'DASH',   abName:'Scatto',      icon:'»', cd:5000,  cost:0,    desc:'Scatto rapido: schivi e chiudi la distanza (breve invulnerabilità).', role:'DUELLANTE', lore:'Ex corriere dei bassifondi di Nexus, Vyre ha imparato a muoversi dove gli altri restano bloccati. Impianti agli arti e riflessi potenziati ne fanno il predatore più veloce dell\u2019arena.'},
-  {id:'nova',  name:'NOVA',  col:0xff2ea6, ab:'GRENADE',abName:'Granata',     icon:'✸', cd:8000,  cost:0,    desc:'Lanci una granata che esplode ad area verso dove miri.', role:'ASSALTO', lore:'Sabotatrice e hacker, Nova firma ogni bersaglio con un lampo di luce viola. Dice che gli esplosivi sono solo \u201cun modo rumoroso di chiudere una discussione\u201d.'},
-  {id:'oracle',name:'ORACLE',col:0x35e06a, ab:'SCAN',   abName:'Scansione',   icon:'◎', cd:9000,  cost:1200, desc:'Riveli i nemici vicini per qualche secondo, anche sulla minimappa.', role:'RICOGNIZIONE', lore:'Nessuno sa se Oracle sia una persona o una rete di droni con una voce sola. Vede prima che tu ti muova. Sul campo, sapere dov\u2019\u00e8 il nemico vale pi\u00f9 di qualsiasi arma.'},
-  {id:'aegis', name:'AEGIS', col:0x38b6ff, ab:'DOME',   abName:'Cupola',      icon:'◗', cd:14000, cost:2500, desc:'Generi una cupola che blocca i proiettili nemici.', role:'DIFENSORE', lore:'Ex guardia corazzata della Corp, Aegis ha disertato portandosi via lo scudo a energia. Ora protegge chi paga il prezzo giusto. Muro vivente: dove pianta i piedi, non si passa.'},
-  {id:'wraith',name:'OMEGA', col:0xa25bff, ab:'CLOAK',  abName:'Invisibilità',icon:'○', cd:12000, cost:4000, desc:'Diventi invisibile: i nemici smettono di vederti.', role:'INFILTRATORE', lore:'Un progetto sperimentale sfuggito al controllo. Omega piega la luce e sparisce. Chi l\u2019ha visto in azione parla di un\u2019ombra che colpisce e non c\u2019\u00e8 pi\u00f9. Il pi\u00f9 raro, il pi\u00f9 temuto.'},
+  {id:'vyre',  name:'VYRE',  col:0x33e1ff, ab:'DASH',   abName:'Scatto',      icon:'»', cd:5000,  cost:0,    desc:'Scatto rapido: schivi e chiudi la distanza (breve invulnerabilità).', role:'DUELLANTE', lore:'Ex corriere dei bassifondi, riflessi potenziati. Il predatore più veloce dell\u2019arena.'},
+  {id:'nova',  name:'NOVA',  col:0xff2ea6, ab:'GRENADE',abName:'Granata',     icon:'✸', cd:8000,  cost:0,    desc:'Lanci una granata che esplode ad area verso dove miri.', role:'ASSALTO', lore:'Sabotatrice e hacker. Per lei gli esplosivi sono \u201cun modo rumoroso di chiudere una discussione\u201d.'},
+  {id:'oracle',name:'ORACLE',col:0x35e06a, ab:'SCAN',   abName:'Scansione',   icon:'◎', cd:9000,  cost:1200, desc:'Riveli i nemici vicini per qualche secondo, anche sulla minimappa.', role:'RICOGNIZIONE', lore:'Persona o rete di droni? Vede prima che tu ti muova. Sapere dov\u2019\u00e8 il nemico vale più di un\u2019arma.'},
+  {id:'aegis', name:'AEGIS', col:0x38b6ff, ab:'DOME',   abName:'Cupola',      icon:'◗', cd:14000, cost:2500, desc:'Generi una cupola che blocca i proiettili nemici.', role:'DIFENSORE', lore:'Ex guardia della Corp, disertore con scudo a energia. Muro vivente: dove pianta i piedi, non si passa.'},
+  {id:'wraith',name:'OMEGA', col:0xa25bff, ab:'CLOAK',  abName:'Invisibilità',icon:'○', cd:12000, cost:4000, desc:'Diventi invisibile: i nemici smettono di vederti.', role:'INFILTRATORE', lore:'Progetto sperimentale fuori controllo. Piega la luce e sparisce. Un\u2019ombra che colpisce e non c\u2019\u00e8 più.'},
 ];
 const OP=id=>OPERATORS.find(o=>o.id===id)||OPERATORS[0];
 
@@ -676,6 +676,7 @@ class Menu extends Phaser.Scene{
   }
 
   openMenuList(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[];
+    const close=()=>{ SFX.ui(); els.forEach(o=>o.destroy()); };
     els.push(this.add.rectangle(0,0,W,H,0x05040d,0.92).setOrigin(0).setDepth(400).setInteractive().on('pointerdown',()=>close()));
     const items=[['◈  SFIDE',()=>this.openChallenges()],['👤  PROFILO',()=>this.openProfile()],
       ['◆  INVIA CREDITI A INKANIMUS',()=>this.openTransfer()],['⚙  OPZIONI',()=>this.openSettings()],
@@ -683,16 +684,44 @@ class Menu extends Phaser.Scene{
     const pw=Math.min(360,W*0.9), ph=items.length*58+70, py=H*0.5-ph/2;
     els.push(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,401));
     els.push(this.add.text(cx,py+28,'MENU',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
-    const close=()=>{ SFX.ui(); els.forEach(o=>o.destroy()); };
     items.forEach((it,i)=>{ const yy=py+64+i*58;
       els.push(cyberFrame(this,cx-pw/2+16,yy-24,pw-32,48,0x2a2550,402));
       els.push(this.add.text(cx-pw/2+34,yy,it[0],{fontFamily:TITLE_FONT,fontSize:'14px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0,0.5).setDepth(403));
-      els.push(this.add.rectangle(cx,yy,pw-32,48,0xffffff,0.001).setDepth(404).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ close(); it[1](); }));
+      els.push(this.add.rectangle(cx,yy,pw-32,48,0xffffff,0.001).setDepth(404).setInteractive({useHandCursor:true}).on('pointerdown',(pt,lx,ly,ev)=>{ if(ev&&ev.stopPropagation)ev.stopPropagation(); const fn=it[1]; close(); this.time.delayedCall(10,fn); }));
     });
   }
 
   refresh(){ this.credTxt.setText('◆ '+Profile.data.credits+' CREDITI'); }
-  openChallenges(){ overlayPanel(this,'SFIDE GIORNALIERE',(cx,y,W,add)=>{
+  openTransfer(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
+    E(this.add.rectangle(0,0,W,H,0x05040d,0.95).setOrigin(0).setDepth(400).setInteractive());
+    const pw=Math.min(360,W*0.92), py=H*0.10, ph=H*0.8;
+    E(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,401));
+    E(this.add.text(cx,py+28,'INVIA A INKANIMUS',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setDepth(402));
+    E(this.add.text(cx,py+64,'Scegli quanti crediti spostare\nnel tuo profilo InkAnimus.',{fontSize:'12px',color:'#c9c6ea',align:'center',lineSpacing:3}).setOrigin(0.5).setDepth(402));
+    let amt=Math.min(100,Profile.data.credits);
+    const amtTxt=E(this.add.text(cx,py+120,'',{fontFamily:TITLE_FONT,fontSize:'30px',color:'#ffd23f',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
+    const avail=E(this.add.text(cx,py+150,'',{fontSize:'11px',color:'#8a86c8'}).setOrigin(0.5).setDepth(402));
+    const refresh=()=>{ amtTxt.setText('◆ '+amt); avail.setText('disponibili: '+Profile.data.credits); };
+    [['-100',-100],['-10',-10],['+10',10],['+100',100]].forEach((c,i)=>{ const bw=pw*0.20, x=cx+(i-1.5)*(bw+6), yy=py+192;
+      E(cyberFrame(this,x-bw/2,yy-22,bw,44,C.cyan,402));
+      E(this.add.text(x,yy,c[0],{fontFamily:TITLE_FONT,fontSize:'12px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+      E(this.add.rectangle(x,yy,bw,44,0xffffff,0.001).setDepth(404).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); amt=Phaser.Math.Clamp(amt+c[1],0,Profile.data.credits); refresh(); })); });
+    E(cyberFrame(this,cx-pw*0.28,py+228,pw*0.56,44,C.gold,402));
+    E(this.add.text(cx,py+250,'TUTTI I CREDITI',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#ffd23f',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+    E(this.add.rectangle(cx,py+250,pw*0.56,44,0xffffff,0.001).setDepth(404).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); amt=Profile.data.credits; refresh(); }));
+    const out=E(this.add.text(cx,py+340,'',{fontSize:'10px',color:'#ffd23f',fontFamily:'monospace',align:'center',wordWrap:{width:pw*0.82},backgroundColor:'#0b0918',padding:{x:8,y:8}}).setOrigin(0.5).setDepth(403).setVisible(false));
+    const genB=E(this.add.rectangle(cx,py+296,pw*0.72,48,0x14102b).setStrokeStyle(3,C.player).setDepth(402).setInteractive({useHandCursor:true}));
+    const genT=E(this.add.text(cx,py+296,'GENERA CODICE',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+    genB.on('pointerdown',()=>{ if(amt<=0||amt>Profile.data.credits){ SFX.ui(); return; } const code=makeTransferCode(amt); if(!code){ SFX.ui(); return; }
+      SFX.pickup(); out.setText(code).setVisible(true); genT.setText('CODICE PRONTO ✓ (tocca per copiare)'); refresh();
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(code).catch(()=>{}); });
+    out.setInteractive({useHandCursor:true}).on('pointerdown',()=>{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(out.text).catch(()=>{}); });
+    const close=E(this.add.rectangle(cx,py+ph-34,Math.min(200,W*0.6),46,0x14102b).setStrokeStyle(2,C.player).setDepth(405).setInteractive({useHandCursor:true}));
+    E(this.add.text(cx,py+ph-34,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(406));
+    close.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); });
+    refresh();
+  }
+    openChallenges(){ overlayPanel(this,'SFIDE GIORNALIERE',(cx,y,W,add)=>{
     Profile.data.daily.list.forEach((c,i)=>{ const yy=y+i*58;
       add(this.add.text(cx-W*0.4,yy-10,c.t,{fontSize:'14px',color:c.done?'#35e06a':'#e8e6ff',fontStyle:'800'}).setOrigin(0,0.5));
       add(this.add.text(cx+W*0.4,yy-10,(c.done?'✓ ':'')+'+'+c.reward+'◆',{fontSize:'13px',color:'#ffd23f',fontStyle:'800'}).setOrigin(1,0.5));
@@ -819,7 +848,7 @@ class Loadout extends Phaser.Scene{
     const rx=cardX+cardW*0.54, rw=cardW*0.42;
     this.cName=this.add.text(rx,cardY+22,'',{fontFamily:TITLE_FONT,fontSize:'22px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
     this.cRole=this.add.text(rx,cardY+46,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'900',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
-    this.cLore=this.add.text(rx,cardY+66,'',{fontSize:'12px',color:'#c9c6ea',align:'left',wordWrap:{width:rw},lineSpacing:4}).setOrigin(0,0).setDepth(2);
+    this.cLore=this.add.text(rx,cardY+64,'',{fontSize:'11px',color:'#c9c6ea',align:'left',wordWrap:{width:rw},lineSpacing:3,fixedHeight:Math.round(cardH*0.30)}).setOrigin(0,0).setDepth(2).setCrop(0,0,rw,Math.round(cardH*0.30));
     // ability block
     const abY=cardY+cardH-96;
     this.add.rectangle(rx,abY,rw,1,C.cyan,0.35).setOrigin(0,0.5).setDepth(2);
@@ -1309,8 +1338,8 @@ class Game extends Phaser.Scene{
     s.unit=u; this.physics.add.collider(s,this.walls);
     if(isPlayer){ const sk=SKIN(GAME.skin); u.skin=sk; s.setTint(sk.tint);
       if(sk.halo>0 && fxq().glow){ const hl=this.add.image(p.x,p.y,'glow').setTint(op.col).setBlendMode(Phaser.BlendModes.ADD)
-          .setDisplaySize(64,64).setAlpha(0.30*sk.halo).setDepth(5);
-        this.tweens.add({targets:hl,alpha:0.55*sk.halo,duration:700,yoyo:true,repeat:-1}); u.skinHalo=hl; } }
+          .setDisplaySize(46,46).setAlpha(0.22*sk.halo).setDepth(1);
+        this.tweens.add({targets:hl,alpha:0.4*sk.halo,duration:700,yoyo:true,repeat:-1}); u.skinHalo=hl; } }
     this.units.push(u); return u;
   }
 
@@ -1729,7 +1758,7 @@ class Game extends Phaser.Scene{
     if(fr!==u.frame){ u.frame=fr; u.s.setTexture(u.charKey+'_'+fr); }
     const base = u.isPlayer && u.skin ? u.skin.tint : 0xffffff;
     u.s.setTint(u.outside?0xff6688:base);
-    if(u.skinHalo){ u.skinHalo.setPosition(u.s.x,u.s.y); } }); }
+    if(u.skinHalo){ u.skinHalo.setPosition(u.s.x,u.s.y+4); } }); }
 
   updateZoneState(delta){ const z=this.zone; z.timer-=delta;
     if(z.state==='wait'){ if(z.timer<=0){ this.advanceZone(); z.state='shrink'; z.timer=this.cfg.shrink; z.sr=z.r; z.scx=z.cx; z.scy=z.cy; } }
