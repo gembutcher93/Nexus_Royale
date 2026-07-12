@@ -1907,7 +1907,7 @@ class Game extends Phaser.Scene{
     if(op.ab==='DASH'){ let ang=P.aim, mvx=this._mvx||0, mvy=this._mvy||0; if(Math.hypot(mvx,mvy)>0.2) ang=Math.atan2(mvy,mvx);
       this.dash={until:this.time.now+220,vx:Math.cos(ang),vy:Math.sin(ang)}; P.iframe=this.time.now+280; SFX.tone(600,0.12,'square',0.12,900); }
     else if(op.ab==='GRENADE'){ this.throwGrenade(P.aim); }
-    else if(op.ab==='DOME'){ if(this.dome&&this.dome.gfx) this.dome.gfx.destroy();
+    else if(op.ab==='DOME'){ if(this.dome&&this.dome.gfx) this.dome.gfx.destroy(); if(this.dome&&this.dome.gfx2) this.dome.gfx2.destroy();
       const c=this.add.circle(P.s.x,P.s.y,160,C.shield,0.10).setStrokeStyle(3,C.shield,0.85).setDepth(50); if(this.toWorld) this.toWorld(c);
       this.tweens.add({targets:c,alpha:{from:0.22,to:0.10},duration:600,yoyo:true,repeat:-1});
       this.dome={x:P.s.x,y:P.s.y,r:160,until:this.time.now+6000,owner:P,gfx:c};
@@ -1963,8 +1963,49 @@ class Game extends Phaser.Scene{
       }
       P.swarmBonus=this.time.now+4800;   // next attack after cloak is empowered
     }
+    else if(op.ult==='BASTION'){
+      // Fortezza: bigger, stronger dome that blocks bullets AND regenerates shield+hp while inside
+      if(this.dome&&this.dome.gfx) this.dome.gfx.destroy(); if(this.dome&&this.dome.gfx2) this.dome.gfx2.destroy();
+      const R=210, dur=8000;
+      const c=this.add.circle(P.s.x,P.s.y,R,C.shield,0.12).setStrokeStyle(4,C.shield,0.95).setDepth(50); if(this.toWorld) this.toWorld(c);
+      const c2=this.add.circle(P.s.x,P.s.y,R-8,0,0).setStrokeStyle(2,0x8be3ff,0.5).setDepth(50); if(this.toWorld) this.toWorld(c2);
+      this.tweens.add({targets:[c,c2],alpha:{from:0.28,to:0.12},duration:700,yoyo:true,repeat:-1});
+      this.dome={x:P.s.x,y:P.s.y,r:R,until:this.time.now+dur,owner:P,gfx:c,gfx2:c2};
+      this.bastion={until:this.time.now+dur,x:P.s.x,y:P.s.y,r:R};
+      this.toast('BASTIONE · fortezza attiva',C.shield);
+      this.time.delayedCall(dur,()=>{ if(c&&c.active)c.destroy(); if(c2&&c2.active)c2.destroy(); });
+    }
+    else if(op.ult==='PORTAL'){
+      // Oracle: zoom out, tap a point on the map, teleport there, zoom back
+      this.portalAiming=true;
+      this.cameras.main.stopFollow();
+      this.tweens.add({targets:this.cameras.main,zoom:LIVE_ZOOM*0.4,duration:400,ease:'Sine.out'});
+      if(this.fog) this.fog.setVisible(false), this.fogBack.clear();   // see the whole area while aiming
+      this.toast('PORTALE · tocca dove andare',C.green);
+      // one-shot tap handler
+      const handler=(pointer)=>{
+        if(!this.portalAiming) return; this.portalAiming=false;
+        const wx=this.cameras.main.worldView.x+pointer.x/this.cameras.main.zoom;
+        const wy=this.cameras.main.worldView.y+pointer.y/this.cameras.main.zoom;
+        const tx=Phaser.Math.Clamp(wx,60,WORLD_W-60), ty=Phaser.Math.Clamp(wy,60,WORLD_H-60);
+        // teleport fx
+        const a=this.add.image(P.s.x,P.s.y,'glow').setTint(C.green).setBlendMode(Phaser.BlendModes.ADD).setDepth(11).setDisplaySize(80,80); if(this.toWorld) this.toWorld(a);
+        this.tweens.add({targets:a,alpha:0,scale:0.2,duration:400,onComplete:()=>a.destroy()});
+        P.s.setPosition(tx,ty); if(P.s.body) P.s.body.reset(tx,ty);
+        const b=this.add.image(tx,ty,'glow').setTint(C.green).setBlendMode(Phaser.BlendModes.ADD).setDepth(11).setDisplaySize(20,20); if(this.toWorld) this.toWorld(b);
+        this.tweens.add({targets:b,alpha:0,scale:4,duration:400,onComplete:()=>b.destroy()});
+        SFX.tone(700,0.2,'sine',0.14,1200);
+        this.cameras.main.startFollow(P.s,true,0.12,0.12);
+        this.tweens.add({targets:this.cameras.main,zoom:(SCOPED[P.weapon]?0.62:LIVE_ZOOM),duration:400,ease:'Sine.inOut'});
+        if(this.fog) this.fog.setVisible(true);
+        this.toast('PORTALE',C.green);
+      };
+      this.input.once('pointerdown',handler);
+      // safety: auto-cancel after 5s if no tap
+      this.time.delayedCall(5000,()=>{ if(this.portalAiming){ this.portalAiming=false; this.cameras.main.startFollow(P.s,true,0.12,0.12);
+        this.tweens.add({targets:this.cameras.main,zoom:(SCOPED[P.weapon]?0.62:LIVE_ZOOM),duration:400}); if(this.fog) this.fog.setVisible(true); } });
+    }
     else {
-      // PORTAL / BASTION — coming next round
       this.toast(op.ultName+' · in arrivo',0x8a86c8); P.ultReady=this.time.now+3000;
     }
   }
@@ -2140,7 +2181,8 @@ class Game extends Phaser.Scene{
     } else P.s.body.setVelocity(mvx*spd,mvy*spd);
 
     let aimAng=P.aim, firing=false;
-    if(GAME.mode==='manual'){
+    if(this.portalAiming){ firing=false; }
+    else if(GAME.mode==='manual'){
       if(this.isTouch){ if(this.aimStick.active&&(Math.abs(this.aimStick.dx)+Math.abs(this.aimStick.dy))>0.25){ aimAng=Math.atan2(this.aimStick.dy,this.aimStick.dx); firing=true; } }
       else { aimAng=Phaser.Math.Angle.Between(P.s.x,P.s.y,this.pointerAim.x,this.pointerAim.y); firing=this.pointerAim.down; }
       if(!firing&&ml>0.1) aimAng=Math.atan2(mvy,mvx);
@@ -2156,6 +2198,13 @@ class Game extends Phaser.Scene{
     if(this.sentence){ const t=this.sentence.target;
       if(!t||!t.alive||t.marked<=time){ if(t&&t.markRing){ t.markRing.destroy(); t.markRing=null; } this.sentence=null; }
       else if(t.markRing){ t.markRing.setPosition(t.s.x,t.s.y); } }
+    // BASTIONE: regenerate shield then hp while standing inside the fortress
+    if(this.bastion && time<this.bastion.until){
+      if(Phaser.Math.Distance.Between(P.s.x,P.s.y,this.bastion.x,this.bastion.y)<this.bastion.r){
+        if(P.shield<P.maxshield) P.shield=Math.min(P.maxshield,P.shield+0.6);
+        else if(P.hp<P.maxhp) P.hp=Math.min(P.maxhp,P.hp+0.4);
+      }
+    } else if(this.bastion) this.bastion=null;
 
     // bullets
     this.bullets.getChildren().forEach(b=>{ if(!b.active) return;
