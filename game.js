@@ -4,7 +4,7 @@
 let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
-const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
+const VISION_R=340;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 const VISION_MULT={base:1, rifle:1.5, oracle:2.0};
 const TITLE_FONT='Orbitron, "Segoe UI", system-ui, sans-serif';
 // design tokens (touch>=44px, type scale, 8pt spacing, 150-300ms motion)
@@ -75,11 +75,11 @@ let SEEN_TUTORIAL=false;
 
 // ---- operators (Apex-style: colour + unique ability) ----
 const OPERATORS=[
-  {id:'vyre',  name:'VYRE',  col:0x33e1ff, ab:'DASH',   abName:'Scatto',      icon:'»', cd:5000,  cost:0,    desc:'Scatto rapido: schivi e chiudi la distanza (breve invulnerabilità).', role:'DUELLANTE', lore:'Ex corriere dei bassifondi, riflessi potenziati. Il predatore più veloce dell\u2019arena.'},
-  {id:'nova',  name:'NOVA',  col:0xff2ea6, ab:'GRENADE',abName:'Granata',     icon:'✸', cd:8000,  cost:0,    desc:'Lanci una granata che esplode ad area verso dove miri.', role:'ASSALTO', lore:'Sabotatrice e hacker. Per lei gli esplosivi sono \u201cun modo rumoroso di chiudere una discussione\u201d.'},
-  {id:'oracle',name:'ORACLE',col:0x35e06a, ab:'SCAN',   abName:'Scansione',   icon:'◎', cd:9000,  cost:1200, desc:'Riveli i nemici vicini per qualche secondo, anche sulla minimappa.', role:'RICOGNIZIONE', lore:'Persona o rete di droni? Vede prima che tu ti muova. Sapere dov\u2019\u00e8 il nemico vale più di un\u2019arma.'},
-  {id:'aegis', name:'AEGIS', col:0x38b6ff, ab:'DOME',   abName:'Cupola',      icon:'◗', cd:14000, cost:2500, desc:'Generi una cupola che blocca i proiettili nemici.', role:'DIFENSORE', lore:'Ex guardia della Corp, disertore con scudo a energia. Muro vivente: dove pianta i piedi, non si passa.'},
-  {id:'wraith',name:'OMEGA', col:0xa25bff, ab:'CLOAK',  abName:'Invisibilità',icon:'○', cd:12000, cost:4000, desc:'Diventi invisibile: i nemici smettono di vederti.', role:'INFILTRATORE', lore:'Progetto sperimentale fuori controllo. Piega la luce e sparisce. Un\u2019ombra che colpisce e non c\u2019\u00e8 più.'},
+  {id:'vyre',  name:'VYRE',  col:0x33e1ff, ab:'DASH',   abName:'Scatto',      icon:'»', cd:5000,  ult:'SENTENCE', ultName:'Sentenza',    ultCd:45000,  cost:0,    desc:'Scatto rapido: schivi e chiudi la distanza (breve invulnerabilità).', role:'DUELLANTE', lore:'Ex corriere dei bassifondi, riflessi potenziati. Il predatore più veloce dell\u2019arena.'},
+  {id:'nova',  name:'NOVA',  col:0xff2ea6, ab:'GRENADE',abName:'Granata',     icon:'✸', cd:8000,  ult:'SATURATE', ultName:'Saturazione', ultCd:55000,  cost:0,    desc:'Lanci una granata che esplode ad area verso dove miri.', role:'ASSALTO', lore:'Sabotatrice e hacker. Per lei gli esplosivi sono \u201cun modo rumoroso di chiudere una discussione\u201d.'},
+  {id:'oracle',name:'ORACLE',col:0x35e06a, ab:'SCAN',   abName:'Scansione',   icon:'◎', cd:9000,  ult:'PORTAL',   ultName:'Portale',     ultCd:50000,  cost:1200, desc:'Riveli i nemici vicini per qualche secondo, anche sulla minimappa.', role:'RICOGNIZIONE', lore:'Persona o rete di droni? Vede prima che tu ti muova. Sapere dov\u2019\u00e8 il nemico vale più di un\u2019arma.'},
+  {id:'aegis', name:'AEGIS', col:0x38b6ff, ab:'DOME',   abName:'Cupola',      icon:'◗', cd:14000, ult:'BASTION',  ultName:'Bastione',    ultCd:50000, cost:2500, desc:'Generi una cupola che blocca i proiettili nemici.', role:'DIFENSORE', lore:'Ex guardia della Corp, disertore con scudo a energia. Muro vivente: dove pianta i piedi, non si passa.'},
+  {id:'wraith',name:'OMEGA', col:0xa25bff, ab:'CLOAK',  abName:'Invisibilità',icon:'○', cd:12000, ult:'SWARM',    ultName:'Sciame Fantasma', ultCd:45000, cost:4000, desc:'Diventi invisibile: i nemici smettono di vederti.', role:'INFILTRATORE', lore:'Progetto sperimentale fuori controllo. Piega la luce e sparisce. Un\u2019ombra che colpisce e non c\u2019\u00e8 più.'},
 ];
 const OP=id=>OPERATORS.find(o=>o.id===id)||OPERATORS[0];
 
@@ -1698,7 +1698,7 @@ class Game extends Phaser.Scene{
     const u={ s,gun,isPlayer,charKey,frame:0, alive:true, hp:100,maxhp:100, shield:isPlayer?0:Phaser.Math.Between(0,50),maxshield:100,
       weapon:isPlayer?'pistol':Phaser.Utils.Array.GetRandom(['pistol','pistol','smg']),
       lastShot:0, aim:0, outside:false, iframe:0, cloak:0, scan:0,
-      op, abReady:0,
+      op, abReady:0, ultReady:0, marked:0,
       ai:{state:'wander',tx:p.x,ty:p.y,retarget:0,strafe:1,think:0,tgt:null,lt:null} };
     s.unit=u; this.physics.add.collider(s,this.walls);
     if(isPlayer){ const sk=SKIN(GAME.skin); u.skin=sk; s.setTint(sk.tint);
@@ -1711,10 +1711,13 @@ class Game extends Phaser.Scene{
   /* ------------- combat ------------- */
   shoot(u,angle){
     const w=WEAPONS[u.weapon]; if(this.time.now-u.lastShot<w.rate) return; u.lastShot=this.time.now; u.fireT=this.time.now+110;
+    // SCIAME FANTASMA: empowered first strike when leaving cloak
+    let dmgMul=1; if(u.isPlayer && u.swarmBonus>this.time.now && u.cloak<this.time.now){ dmgMul=2.2; u.swarmBonus=0;
+      this.cameras.main.shake(120,0.005); if(this.FX.glow){ const f=this.add.image(u.s.x,u.s.y,'glow').setTint(0xa25bff).setBlendMode(Phaser.BlendModes.ADD).setDepth(11).setDisplaySize(70,70); if(this.toWorld) this.toWorld(f); this.tweens.add({targets:f,alpha:0,scale:0.4,duration:300,onComplete:()=>f.destroy()}); } }
     for(let i=0;i<w.pellets;i++){
       const a=angle+Phaser.Math.FloatBetween(-w.spread,w.spread);
       const b=this.bullets.create(u.s.x+Math.cos(angle)*24,u.s.y+Math.sin(angle)*24,'dot').setDepth(8);
-      b.owner=u; b.dmg=w.dmg; b.behavior=w.b; b.setTint(w.col); if(this.FX.glow) b.setBlendMode(Phaser.BlendModes.ADD);
+      b.owner=u; b.dmg=w.dmg*dmgMul; b.behavior=w.b; b.setTint(w.col); if(this.FX.glow) b.setBlendMode(Phaser.BlendModes.ADD);
       b.pierce=w.pierce||0; b.bounces=w.bounces||0; b.splashR=w.splashR||0; b.splashDmg=w.splashDmg||0; b.turn=w.turn||0;
       b.setRotation(a);
       const big=(w.b==='explosive'); b.setScale(big?1.1:0.55, big?1.1:0.4);
@@ -1759,6 +1762,8 @@ class Game extends Phaser.Scene{
   }
   applyDamage(u,dmg,owner){
     if(u.invuln||this.time.now<(u.iframe||0)) return;
+    // SENTENZA: +40% damage from the player against the marked target
+    if(owner&&owner.isPlayer&&u.marked>this.time.now) dmg*=1.4;
     const shown=Math.round(dmg);
     if(u.shield>0){ const a=Math.min(u.shield,dmg); u.shield-=a; dmg-=a; }
     u.hp-=dmg; if(owner&&owner.isPlayer) this.damageDealt+=dmg;
@@ -1913,6 +1918,57 @@ class Game extends Phaser.Scene{
     else if(op.ab==='CLOAK'){ P.cloak=this.time.now+3800; SFX.tone(200,0.3,'sine',0.12,600); this.toast('INVISIBILE',C.purple); }
   }
 
+  activateUltimate(){
+    const P=this.player; if(!P.alive||this.phase!=='live') return; const op=P.op;
+    if(!op.ult) return; if(this.time.now<(P.ultReady||0)) return;
+    // charge is ready
+    P.ultReady=this.time.now+op.ultCd; SFX.tone(120,0.4,'sawtooth',0.16,240); this.cameras.main.shake(160,0.004);
+
+    if(op.ult==='SENTENCE'){
+      // mark nearest enemy: bonus damage + wallhack + refillable dashes for ~5s
+      let tgt=null,td=900; this.units.forEach(u=>{ if(u===P||!u.alive) return; const d=Phaser.Math.Distance.Between(P.s.x,P.s.y,u.s.x,u.s.y); if(d<td){td=d;tgt=u;} });
+      if(tgt){ tgt.marked=this.time.now+5000; this.sentence={target:tgt,until:this.time.now+5000};
+        P.abReady=0;   // refresh dash instantly
+        this.toast('SENTENZA · bersaglio marchiato',0x33e1ff);
+        const ring=this.add.circle(tgt.s.x,tgt.s.y,30,0,0).setStrokeStyle(3,0x33e1ff,1).setDepth(30); if(this.toWorld) this.toWorld(ring); tgt.markRing=ring;
+      } else { this.toast('SENTENZA · nessun bersaglio',0x8a86c8); P.ultReady=this.time.now+3000; }
+    }
+    else if(op.ult==='SATURATE'){
+      // ground marker windup, then a rain of shots over the aimed area
+      const dist=420, tx=P.s.x+Math.cos(P.aim)*dist, ty=P.s.y+Math.sin(P.aim)*dist, R=150;
+      const mark=this.add.circle(tx,ty,R,0xff2ea6,0.12).setStrokeStyle(3,0xff2ea6,0.9).setDepth(9); if(this.toWorld) this.toWorld(mark);
+      this.tweens.add({targets:mark,alpha:0.3,duration:300,yoyo:true,repeat:3});
+      this.toast('SATURAZIONE · in arrivo',0xff2ea6);
+      this.time.delayedCall(1000,()=>{ mark.destroy();
+        let hits=0;
+        for(let i=0;i<14;i++){ this.time.delayedCall(i*90,()=>{
+          const ox=tx+Phaser.Math.Between(-R,R), oy=ty+Phaser.Math.Between(-R,R);
+          this.explode(ox,oy,26,70,P);
+          if(this.FX.glow){ const f=this.add.image(ox,oy,'glow').setTint(0xff2ea6).setBlendMode(Phaser.BlendModes.ADD).setDepth(11).setDisplaySize(50,50); if(this.toWorld) this.toWorld(f);
+            this.tweens.add({targets:f,alpha:0,scale:0.3,duration:300,onComplete:()=>f.destroy()}); }
+        }); }
+      });
+    }
+    else if(op.ult==='SWARM'){
+      // 2-3 decoys that wander and distract AI + full cloak + empowered exit
+      P.cloak=this.time.now+4500; this.toast('SCIAME FANTASMA',0xa25bff);
+      const n=3; this.swarmDecoys=this.swarmDecoys||[];
+      for(let i=0;i<n;i++){ const ang=(i/n)*Math.PI*2;
+        const d=this.add.image(P.s.x,P.s.y,P.charKey+'_0').setAlpha(0.6).setDepth(6).setTint(0xa25bff); if(this.toWorld) this.toWorld(d);
+        d.decoy=true; d.vx=Math.cos(ang); d.vy=Math.sin(ang); d.until=this.time.now+5000;
+        this.tweens.add({targets:d,alpha:0,delay:4200,duration:800,onComplete:()=>d.destroy()});
+        // move decoy outward a bit
+        this.tweens.add({targets:d,x:P.s.x+Math.cos(ang)*220,y:P.s.y+Math.sin(ang)*220,duration:1400,ease:'Sine.out'});
+        this.swarmDecoys.push(d);
+      }
+      P.swarmBonus=this.time.now+4800;   // next attack after cloak is empowered
+    }
+    else {
+      // PORTAL / BASTION — coming next round
+      this.toast(op.ultName+' · in arrivo',0x8a86c8); P.ultReady=this.time.now+3000;
+    }
+  }
+
   dmgNum(x,y,amt,col){ const t=this.add.text(x,y,''+amt,{fontSize:'18px',fontStyle:'900',color:col||'#ffd23f'}).setOrigin(0.5).setDepth(30).setScrollFactor(1).setShadow(0,1,'#000',3); if(this.toWorld) this.toWorld(t);
     this.tweens.add({targets:t,y:y-34,alpha:0,duration:640,ease:'Quad.out',onComplete:()=>t.destroy()}); }
 
@@ -1982,9 +2038,16 @@ class Game extends Phaser.Scene{
     this.abG=this.add.graphics().setScrollFactor(0).setDepth(182);
     this.abIcon=this.add.text(ax,ay,OP(GAME.char).icon,{fontSize:'28px',fontStyle:'900',color:'#fff'}).setOrigin(0.5).setScrollFactor(0).setDepth(183);
     this.abLbl=this.add.text(ax,ay+46,OP(GAME.char).abName.toUpperCase(),{fontSize:'10px',fontStyle:'800',color:'#c9c6ea'}).setOrigin(0.5).setScrollFactor(0).setDepth(183);
+    // ULTIMATE button (left side)
+    const ux=54, uy=this.scale.height-58; this.ultBtn={x:ux,y:uy,r:40};
+    this.ultG=this.add.graphics().setScrollFactor(0).setDepth(182);
+    this.ultIcon=this.add.text(ux,uy,'★',{fontSize:'26px',fontStyle:'900',color:'#fff'}).setOrigin(0.5).setScrollFactor(0).setDepth(183);
+    this.ultLbl=this.add.text(ux,uy+46,(OP(GAME.char).ultName||'').toUpperCase(),{fontSize:'9px',fontStyle:'800',color:'#ffd23f'}).setOrigin(0.5).setScrollFactor(0).setDepth(183);
+    this.ultZone=this.add.zone(ux,uy,88,88).setOrigin(0.5).setScrollFactor(0).setDepth(184).setInteractive({useHandCursor:true});
+    this.ultZone.on('pointerdown',()=>this.activateUltimate());
     this.hud.toast=this.add.text(W/2,this.scale.height*0.34,'',{fontSize:'22px',fontStyle:'900',color:'#fff'}).setOrigin(0.5).setScrollFactor(0).setDepth(160).setAlpha(0);
     this.hud.killfeed=this.add.text(W/2,this.scale.height*0.42,'',{fontSize:'26px',fontStyle:'900',color:'#ff3b6b'}).setOrigin(0.5).setScrollFactor(0).setDepth(160).setAlpha(0);
-    this.hudEls=[this.hud.bars,this.hud.hpTxt,this.hud.shTxt,this.hud.wpn,this.hud.alive,this.hud.kills,this.hud.zone,this.mmGfx,this.mmImg,this.muteBtn,this.abG,this.abIcon,this.abLbl];
+    this.hudEls=[this.hud.bars,this.hud.hpTxt,this.hud.shTxt,this.hud.wpn,this.hud.alive,this.hud.kills,this.hud.zone,this.mmGfx,this.mmImg,this.muteBtn,this.abG,this.abIcon,this.abLbl,this.ultG,this.ultIcon,this.ultLbl];
   }
   toast(msg,col){ this.hud.toast.setText(msg).setTint(col||0xffffff).setAlpha(1); this.hud.toast.setY(this.scale.height*0.34);
     this.tweens.add({targets:this.hud.toast,alpha:0,y:this.scale.height*0.30,duration:900,delay:500}); }
@@ -2034,6 +2097,21 @@ class Game extends Phaser.Scene{
       ag.lineStyle(5,op.col,0.95); ag.beginPath(); ag.arc(aax,aay,ar-3,-Math.PI/2,-Math.PI/2+frac*Math.PI*2); ag.strokePath(); }
     else { ag.lineStyle(3,op.col,0.30); ag.strokeCircle(aax,aay,ar+6); }
     this.abIcon.setColor(ready?'#ffffff':'#6a6a9a');
+
+    // ---- ULTIMATE button ----
+    if(op.ult){
+      const ux=this.ultBtn.x, uy=this.ultBtn.y, ur=this.ultBtn.r, uReady=tnow>=(this.player.ultReady||0);
+      const ug=this.ultG; ug.clear();
+      ug.fillStyle(0x1a1400,0.8); ug.fillCircle(ux,uy,ur);
+      ug.lineStyle(2,C.gold,uReady?1:0.35); ug.strokeCircle(ux,uy,ur);
+      ug.lineStyle(1,C.gold,uReady?0.6:0.2); ug.strokeCircle(ux,uy,ur-7);
+      if(!uReady){ const frac=Phaser.Math.Clamp(1-((this.player.ultReady||0)-tnow)/op.ultCd,0,1);
+        ug.lineStyle(5,C.gold,0.95); ug.beginPath(); ug.arc(ux,uy,ur-3,-Math.PI/2,-Math.PI/2+frac*Math.PI*2); ug.strokePath(); }
+      else { ug.lineStyle(3,C.gold,0.4); ug.strokeCircle(ux,uy,ur+6);
+        // pulse when ready
+        ug.lineStyle(2,C.gold,0.3+0.2*Math.sin(tnow/200)); ug.strokeCircle(ux,uy,ur+10); }
+      this.ultIcon.setColor(uReady?'#ffd23f':'#6a6a4a');
+    }
   }
   drawZone(){
     const g=this.zoneGfx; g.clear(); const z=this.zone;
@@ -2074,6 +2152,10 @@ class Game extends Phaser.Scene{
     }
     P.aim=aimAng; P.s.setRotation(aimAng); if(firing) this.shoot(P,aimAng);
     if(this.fog) this.drawVisionFog();
+    // SENTENZA: keep the mark ring on the target, clear when expired/dead
+    if(this.sentence){ const t=this.sentence.target;
+      if(!t||!t.alive||t.marked<=time){ if(t&&t.markRing){ t.markRing.destroy(); t.markRing=null; } this.sentence=null; }
+      else if(t.markRing){ t.markRing.setPosition(t.s.x,t.s.y); } }
 
     // bullets
     this.bullets.getChildren().forEach(b=>{ if(!b.active) return;
