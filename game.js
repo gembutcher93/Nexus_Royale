@@ -897,9 +897,9 @@ class Menu extends Phaser.Scene{
     E(cyberFrame(this,cx-pw*0.28,py+228,pw*0.56,44,C.gold,402));
     E(this.add.text(cx,py+250,'TUTTI I CREDITI',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#ffd23f',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
     E(this.add.rectangle(cx,py+250,pw*0.56,44,0xffffff,0.001).setDepth(404).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); amt=Profile.data.credits; refresh(); }));
-    const out=E(this.add.text(cx,py+340,'',{fontSize:'10px',color:'#ffd23f',fontFamily:'monospace',align:'center',wordWrap:{width:pw*0.82},backgroundColor:'#0b0918',padding:{x:8,y:8}}).setOrigin(0.5).setDepth(403).setVisible(false));
-    const genB=E(this.add.rectangle(cx,py+296,pw*0.72,48,0x14102b).setStrokeStyle(3,C.player).setDepth(402).setInteractive({useHandCursor:true}));
-    const genT=E(this.add.text(cx,py+296,'GENERA CODICE',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+    const out=E(this.add.text(cx,py+352,'',{fontSize:'10px',color:'#ffd23f',fontFamily:'monospace',align:'center',wordWrap:{width:pw*0.82},backgroundColor:'#0b0918',padding:{x:8,y:8}}).setOrigin(0.5).setDepth(403).setVisible(false));
+    const genB=E(this.add.rectangle(cx,py+308,pw*0.72,48,0x14102b).setStrokeStyle(3,C.player).setDepth(402).setInteractive({useHandCursor:true}));
+    const genT=E(this.add.text(cx,py+308,'GENERA CODICE',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
     genB.on('pointerdown',()=>{ if(amt<=0||amt>Profile.data.credits){ SFX.ui(); return; } const code=makeTransferCode(amt); if(!code){ SFX.ui(); return; }
       SFX.pickup(); out.setText(code).setVisible(true); genT.setText('CODICE PRONTO ✓ (tocca per copiare)'); refresh();
       if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(code).catch(()=>{}); });
@@ -907,10 +907,10 @@ class Menu extends Phaser.Scene{
 
     // ---- BUONO STUDIO (appears/illuminates when the studio bar is full) ----
     const sp=Profile.data.studioProgress||0, ready=sp>=STUDIO_REWARD.cost;
-    const vy=py+ph-96;
+    const vy=py+ph-112;
     E(this.add.rectangle(cx,vy,pw*0.86,1,ready?C.green:0x2a2550,0.6).setDepth(402));
-    const vBox=E(this.add.rectangle(cx,vy+26,pw*0.82,44,ready?0x10251a:0x14102b).setStrokeStyle(2,ready?C.green:0x3a3470).setDepth(402).setInteractive({useHandCursor:true}));
-    const vTxt=E(this.add.text(cx,vy+26,ready?('🎁 GENERA BUONO '+Math.floor(sp/10000)+'€'):('🎁 Buono studio a '+STUDIO_REWARD.cost+' ('+sp+')'),
+    const vBox=E(this.add.rectangle(cx,vy+24,pw*0.82,42,ready?0x10251a:0x14102b).setStrokeStyle(2,ready?C.green:0x3a3470).setDepth(402).setInteractive({useHandCursor:true}));
+    const vTxt=E(this.add.text(cx,vy+24,ready?('🎁 GENERA BUONO '+Math.floor(sp/10000)+'€'):('🎁 Buono studio a '+STUDIO_REWARD.cost+' ('+sp+')'),
       {fontFamily:TITLE_FONT,fontSize:'12px',color:ready?'#35e06a':'#6a6a88',fontStyle:'900',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(403));
     if(ready){ this.tweens.add({targets:vBox,alpha:0.6,duration:900,yoyo:true,repeat:-1}); }
     vBox.on('pointerdown',()=>{ if(!ready){ SFX.ui(); return; } const vc=makeVoucherCode(); if(!vc){ SFX.ui(); return; }
@@ -1183,7 +1183,7 @@ class Loadout extends Phaser.Scene{
     this.cAbIcon.setText(o.icon).setColor(colStr);
     this.cAbName.setText(o.abName.toUpperCase());
     if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' 💠');
-      this.unlockBtn.width=Math.max(this.scale.width*0.42*0.9, this.unlockTxt.width+28); }
+      const uw=Math.max(this.scale.width*0.42*0.9, this.unlockTxt.width+30); this.unlockBtn.setSize(uw,42); this.unlockBtn.setStrokeStyle(2,C.gold); }
     else { this.unlockBtn.setVisible(false); this.unlockTxt.setVisible(false); }
     this.skinBtns.forEach(b=>{ const u=Profile.unlockedSkin(b.sk.id); b.selG.clear();
       if(GAME.skin===b.sk.id){ b.selG.lineStyle(2,C.cyan,1); b.selG.strokeRect(b.x-(Math.min(84,this.scale.width*0.22)-10)/2,b.sy-4,Math.min(84,this.scale.width*0.22)-10,44); }
@@ -1345,9 +1345,16 @@ class Game extends Phaser.Scene{
     if(this.landMarker){ this.landMarker.destroy(); this.markerRing.destroy(); this.landMarker=null; this.markerRing=null; }
 
     const DROP=760;
-    this.cameras.main.startFollow(this.player.s,true,0.12,0.12);
-    this.tweens.add({targets:this.cameras.main,zoom:LIVE_ZOOM,duration:900,ease:'Sine.inOut'});
-
+    // 1) camera snaps to the chosen landing spot and holds a beat (no flicker)
+    this.cameras.main.stopFollow();
+    this.cameras.main.pan(this.player.landing.x,this.player.landing.y,450,'Sine.inOut');
+    this.cameras.main.zoomTo(LIVE_ZOOM,600,'Sine.inOut');
+    // hide units until the drop actually begins
+    this.units.forEach(u=>{ if(u.s) u.s.setVisible(false); });
+    // 2) after the camera has settled, start the parachute drop for everyone
+    this.time.delayedCall(520,()=>{ this.cameras.main.startFollow(this.player.s,true,0.12,0.12); this._beginDrop(DROP); });
+  }
+  _beginDrop(DROP){
     this.units.forEach(u=>{ const L=u.landing;
       u.s.setVisible(true).setPosition(L.x,L.y-DROP).setScale(0.4);
       // target ring
