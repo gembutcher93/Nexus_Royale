@@ -1405,23 +1405,31 @@ class Game extends Phaser.Scene{
     return VISION_R*m;
   }
   createVisionFog(){
-    const W=this.scale.width,H=this.scale.height;
-    // full-screen dark overlay
-    this.fog=this.add.graphics().setDepth(40).setScrollFactor(0);
-    this.fog.fillStyle(0x02030a,0.95); this.fog.fillRect(0,0,W,H);
-    // circular hole via an inverted geometry mask
-    this.fogMaskG=this.make.graphics();
-    this.fogMask=this.fogMaskG.createGeometryMask();
-    this.fogMask.invertAlpha=true;            // mask HIDES inside the shape => clear circle
-    this.fog.setMask(this.fogMask);
-    if(this.toWorld){ this.toWorld(this.fog); }
+    // build a radial-gradient texture once: transparent center -> opaque dark edges
+    if(!this.textures.exists('fogtex')){
+      const S=512, cv=this.textures.createCanvas('fogtex',S,S), ctx=cv.getContext();
+      const g=ctx.createRadialGradient(S/2,S/2,S*0.30, S/2,S/2,S*0.5);
+      g.addColorStop(0,'rgba(2,3,10,0)');
+      g.addColorStop(0.72,'rgba(2,3,10,0)');
+      g.addColorStop(0.9,'rgba(2,3,10,0.85)');
+      g.addColorStop(1,'rgba(2,3,10,0.97)');
+      ctx.fillStyle=g; ctx.fillRect(0,0,S,S);
+      cv.refresh();
+    }
+    this.fog=this.add.image(this.scale.width/2,this.scale.height/2,'fogtex').setDepth(40).setScrollFactor(0).setScale(2);
+    this.fogBack=this.add.graphics().setDepth(39).setScrollFactor(0);
+    if(this.mainCamIgnore){ this.mainCamIgnore(this.fog); this.mainCamIgnore(this.fogBack); }
   }
   drawVisionFog(){
-    if(!this.fog||!this.fogMaskG) return;
-    const cam=this.cameras.main;
+    if(!this.fog) return;
+    const cam=this.cameras.main, W=this.scale.width, H=this.scale.height;
     const sx=(this.player.s.x-cam.worldView.x)*cam.zoom, sy=(this.player.s.y-cam.worldView.y)*cam.zoom;
     const r=this.visionRadius()*cam.zoom;
-    const g=this.fogMaskG; g.clear(); g.fillStyle(0xffffff,1); g.fillCircle(sx,sy,r);
+    const sc=r/184; this.fog.setPosition(sx,sy).setScale(sc);
+    const g=this.fogBack; g.clear(); g.fillStyle(0x02030a,0.97);
+    const R=256*sc;
+    g.fillRect(0,0,W,Math.max(0,sy-R)); g.fillRect(0,sy+R,W,Math.max(0,H-(sy+R)));
+    g.fillRect(0,Math.max(0,sy-R),Math.max(0,sx-R),Math.min(2*R,H)); g.fillRect(sx+R,Math.max(0,sy-R),Math.max(0,W-(sx+R)),Math.min(2*R,H));
   }
 
   setHUD(v){ if(this.hudEls) this.hudEls.forEach(o=>o.setVisible(v)); }
@@ -1985,7 +1993,7 @@ class Game extends Phaser.Scene{
       this.portalAiming=true;
       this.cameras.main.stopFollow();
       this.tweens.add({targets:this.cameras.main,zoom:LIVE_ZOOM*0.4,duration:400,ease:'Sine.out'});
-      if(this.fog) this.fog.setVisible(false);   // see the whole area while aiming
+      if(this.fog){ this.fog.setVisible(false); this.fogBack.clear(); }   // see the whole area while aiming
       this.toast('PORTALE · tocca dove andare',C.green);
       // one-shot tap handler
       const handler=(pointer)=>{
@@ -2173,7 +2181,7 @@ class Game extends Phaser.Scene{
   update(time,delta){
     if(this.over) return;
     if(this.phase!=='live') return; // deploy & descent are driven by tweens
-    if(!this.player.alive){ if(this.fog){ this.fog.setVisible(false); } this.drawZone(); this.updateZoneState(delta); this.drawSticks(); return; }
+    if(!this.player.alive){ if(this.fog){ this.fog.setVisible(false); this.fogBack.clear(); } this.drawZone(); this.updateZoneState(delta); this.drawSticks(); return; }
     this.zoneRot+=0.01;
     const P=this.player, spd=210; let mvx=0,mvy=0;
     if(this.isTouch){ mvx=this.moveStick.dx; mvy=this.moveStick.dy; }
