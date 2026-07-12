@@ -1405,39 +1405,23 @@ class Game extends Phaser.Scene{
     return VISION_R*m;
   }
   createVisionFog(){
-    // build a radial-gradient texture once: transparent center -> opaque dark edges
-    if(!this.textures.exists('fogtex')){
-      const S=512, cv=this.textures.createCanvas('fogtex',S,S), ctx=cv.getContext();
-      const g=ctx.createRadialGradient(S/2,S/2,S*0.30, S/2,S/2,S*0.5);
-      g.addColorStop(0,'rgba(2,3,10,0)');
-      g.addColorStop(0.72,'rgba(2,3,10,0)');
-      g.addColorStop(0.9,'rgba(2,3,10,0.85)');
-      g.addColorStop(1,'rgba(2,3,10,0.97)');
-      ctx.fillStyle=g; ctx.fillRect(0,0,S,S);
-      // hard fill outside the circle so screen corners are dark
-      cv.refresh();
-    }
-    // the fog image is fixed to the screen (uiCam layer), centered on the player each frame
-    this.fog=this.add.image(this.scale.width/2,this.scale.height/2,'fogtex').setDepth(40).setScrollFactor(0).setScale(2);
-    // a solid dark backdrop behind the fog fills the corners beyond the gradient
-    this.fogBack=this.add.graphics().setDepth(39).setScrollFactor(0);
-    // keep these on the uiCam (HUD) layer so they render above the world, undistorted
-    // fog rides the WORLD camera (scrollFactor 0 keeps it screen-fixed); uiCam HUD draws above it
-    if(this.toWorld){ this.toWorld(this.fog); this.toWorld(this.fogBack); }
+    const W=this.scale.width,H=this.scale.height;
+    // full-screen dark overlay
+    this.fog=this.add.graphics().setDepth(40).setScrollFactor(0);
+    this.fog.fillStyle(0x02030a,0.95); this.fog.fillRect(0,0,W,H);
+    // circular hole via an inverted geometry mask
+    this.fogMaskG=this.make.graphics();
+    this.fogMask=this.fogMaskG.createGeometryMask();
+    this.fogMask.invertAlpha=true;            // mask HIDES inside the shape => clear circle
+    this.fog.setMask(this.fogMask);
+    if(this.toWorld){ this.toWorld(this.fog); }
   }
   drawVisionFog(){
-    if(!this.fog) return;
-    const cam=this.cameras.main, W=this.scale.width, H=this.scale.height;
+    if(!this.fog||!this.fogMaskG) return;
+    const cam=this.cameras.main;
     const sx=(this.player.s.x-cam.worldView.x)*cam.zoom, sy=(this.player.s.y-cam.worldView.y)*cam.zoom;
     const r=this.visionRadius()*cam.zoom;
-    // fog texture: 512px, clear radius ~0.72*256=184px at scale 1 -> scale so clear radius == r
-    const sc=r/184; this.fog.setPosition(sx,sy).setScale(sc);
-    // dark backdrop covering everything outside the fog texture's reach
-    const g=this.fogBack; g.clear(); g.fillStyle(0x02030a,0.97);
-    const R=256*sc; // texture half-size after scaling
-    // four rects around the fog square to darken the rest of the screen
-    g.fillRect(0,0,W,Math.max(0,sy-R)); g.fillRect(0,sy+R,W,Math.max(0,H-(sy+R)));
-    g.fillRect(0,Math.max(0,sy-R),Math.max(0,sx-R),Math.min(2*R,H)); g.fillRect(sx+R,Math.max(0,sy-R),Math.max(0,W-(sx+R)),Math.min(2*R,H));
+    const g=this.fogMaskG; g.clear(); g.fillStyle(0xffffff,1); g.fillCircle(sx,sy,r);
   }
 
   setHUD(v){ if(this.hudEls) this.hudEls.forEach(o=>o.setVisible(v)); }
@@ -2001,7 +1985,7 @@ class Game extends Phaser.Scene{
       this.portalAiming=true;
       this.cameras.main.stopFollow();
       this.tweens.add({targets:this.cameras.main,zoom:LIVE_ZOOM*0.4,duration:400,ease:'Sine.out'});
-      if(this.fog) this.fog.setVisible(false), this.fogBack.clear();   // see the whole area while aiming
+      if(this.fog) this.fog.setVisible(false);   // see the whole area while aiming
       this.toast('PORTALE · tocca dove andare',C.green);
       // one-shot tap handler
       const handler=(pointer)=>{
@@ -2189,7 +2173,7 @@ class Game extends Phaser.Scene{
   update(time,delta){
     if(this.over) return;
     if(this.phase!=='live') return; // deploy & descent are driven by tweens
-    if(!this.player.alive){ if(this.fog){ this.fog.setVisible(false); this.fogBack.clear(); } this.drawZone(); this.updateZoneState(delta); this.drawSticks(); return; }
+    if(!this.player.alive){ if(this.fog){ this.fog.setVisible(false); } this.drawZone(); this.updateZoneState(delta); this.drawSticks(); return; }
     this.zoneRot+=0.01;
     const P=this.player, spd=210; let mvx=0,mvy=0;
     if(this.isTouch){ mvx=this.moveStick.dx; mvy=this.moveStick.dy; }
@@ -2348,7 +2332,7 @@ class Game extends Phaser.Scene{
   /* ------------- end ------------- */
   endMatch(win){
     if(this.over) return; this.over=true; this.physics.pause(); SFX.music(false);
-    if(this.fog) this.fog.setVisible(false); if(this.fogBack) this.fogBack.clear();
+    if(this.fog) this.fog.setVisible(false);
     this.tweens.killTweensOf(this.cameras.main); this.cameras.main.setZoom(1);
     if(this.swapBtn){ this.swapBtn.setVisible(false); this.swapTxt.setVisible(false); this.swapIcon.setVisible(false); this.swapG.clear(); this.swapG.setVisible(false); } if(this.redvig) this.redvig.setAlpha(0);
     const place=win?1:Math.max(1,this.aliveCount+(this.player.alive?0:1));
