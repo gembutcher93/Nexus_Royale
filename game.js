@@ -650,20 +650,19 @@ class Menu extends Phaser.Scene{
     if(data&&data.openChallenge){ this.time.delayedCall(60,()=>this.openChallenge()); }
     if(!Profile.unlockedOp(GAME.char)) GAME.char='vyre';
 
-    // credits chip (💠)
-    cyberFrame(this,cx-100,H*0.15-18,200,36,C.gold,0);
-    this.credTxt=this.add.text(cx,H*0.15,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(2);
-
     // ---- top 3 player stats ----
     const d=Profile.data, wr=d.matches?Math.round(d.wins/d.matches*100):0;
     const bricks=[['★','VITTORIE',d.wins,C.gold],['✕','KILL',d.kills,C.magenta],['%','WINRATE',wr+'%',C.green]];
-    const bw2=Math.min(104,W*0.28), bgap=bw2+8, bx0=cx-(bricks.length-1)*bgap/2, byy=H*0.225;
+    const bw2=Math.min(104,W*0.28), bgap=bw2+8, bx0=cx-(bricks.length-1)*bgap/2, byy=H*0.2;
     bricks.forEach((b,i)=>{ const x=bx0+i*bgap;
       cyberFrame(this,x-bw2/2,byy-28,bw2,56,0x2a2550,0);
       this.add.text(x-bw2/2+10,byy-13,b[0],{fontFamily:TITLE_FONT,fontSize:'12px',color:hexStr(b[3]),fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
       this.add.text(x+bw2/2-10,byy-13,b[1],{fontFamily:TITLE_FONT,fontSize:'9px',color:'#8a86c8',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
       this.add.text(x,byy+10,''+b[2],{fontFamily:TITLE_FONT,fontSize:'20px',color:'#fff',fontStyle:'900'}).setOrigin(0.5).setDepth(2);
     });
+    // credits chip — BELOW the stats, clear of the title
+    cyberFrame(this,cx-100,H*0.275-18,200,34,C.gold,0);
+    this.credTxt=this.add.text(cx,H*0.275,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(2);
 
     // ---- dropdown: MODALITÀ ----
     this.mkDrop(cx, H*0.34, '◤ MODALITÀ ◢',
@@ -701,7 +700,7 @@ class Menu extends Phaser.Scene{
       ['💠','CREDITI',C.gold,()=>this.openTransfer()],
       ['◈','SFIDE',C.magenta,()=>this.openChallenges()],
       ['⚙','OPZIONI',0xa8b0bd,()=>this.openSettings()],
-      ['❓','GUIDA',0xa8b0bd,()=>this.scene.start('Tutorial')],
+      ['🎭','EROI',0xa8b0bd,()=>this.scene.start('Loadout')],
     ];
     const tw=W/tabs.length;
     tabs.forEach((t,i)=>{ const x=tw*i+tw/2, active=(t[3]===null);
@@ -947,36 +946,62 @@ class Menu extends Phaser.Scene{
     close.on('pointerdown',()=>{ SFX.ui(); maskG.destroy(); els.forEach(o=>o.destroy()); });
   }
 
-  openSettings(){ overlayPanel(this,'OPZIONI',(cx,y,W,add)=>{
-    add(this.add.text(cx,y,'EFFETTI GRAFICI',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5));
-    add(this.add.text(cx,y+18,'i giocatori restano sempre 100',{fontSize:'10px',color:'#8a86c8'}).setOrigin(0.5));
+  openSettings(){
+    const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
+    E(this.add.rectangle(0,0,W,H,0x05040d,0.94).setOrigin(0).setDepth(400).setInteractive());
+    const pw=Math.min(370,W*0.94), py=H*0.06, ph=H*0.88;
+    E(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,401));
+    E(this.add.text(cx,py+26,'OPZIONI',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setDepth(402));
+    E(this.add.rectangle(cx,py+44,pw*0.7,1,C.cyan,0.5).setDepth(402));
+
+    let yy=py+70;
+    // --- EFFETTI GRAFICI ---
+    E(this.add.text(cx,yy,'EFFETTI GRAFICI',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
+    E(this.add.text(cx,yy+16,'i giocatori restano sempre 100',{fontSize:'10px',color:'#8a86c8'}).setOrigin(0.5).setDepth(402));
+    yy+=54;
     const qs=[['low','BASSI','max fluidità'],['med','MEDI','bilanciato'],['high','ALTI','massima resa']], btns=[];
-    qs.forEach((q,i)=>{ const bw=W*0.27, x=cx+(i-1)*(bw+4), yy=y+62;
-      const box=add(this.add.rectangle(x,yy,bw,58,0x0d0b1c).setStrokeStyle(3,GAME.quality===q[0]?C.cyan:0x2a2550).setInteractive({useHandCursor:true}));
-      add(this.add.text(x,yy-10,q[1],{fontFamily:TITLE_FONT,fontSize:'12px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5));
-      add(this.add.text(x,yy+12,q[2],{fontSize:'10px',color:'#a8a4d0'}).setOrigin(0.5));
+    qs.forEach((q,i)=>{ const bw=(pw-52)/3, x=cx+(i-1)*(bw+6);
+      const box=E(this.add.rectangle(x,yy,bw,58,0x0d0b1c).setStrokeStyle(3,GAME.quality===q[0]?C.cyan:0x2a2550).setDepth(402).setInteractive({useHandCursor:true}));
+      E(this.add.text(x,yy-11,q[1],{fontFamily:TITLE_FONT,fontSize:'13px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+      E(this.add.text(x,yy+12,q[2],{fontSize:'9px',color:'#a8a4d0'}).setOrigin(0.5).setDepth(403));
       box.on('pointerdown',()=>{ SFX.ui(); GAME.quality=q[0]; try{localStorage.setItem('nexusQuality',q[0]);}catch(e){}
         btns.forEach((b,j)=>b.setStrokeStyle(3,qs[j][0]===GAME.quality?C.cyan:0x2a2550)); });
       btns.push(box); });
-    add(this.add.text(cx,y+118,'Se il ROYALE a 100 giocatori scatta, scegli EFFETTI BASSI:\nvengono ridotte particelle, bagliori e scosse camera.',
-      {fontSize:'11px',color:'#c9c6ea',align:'center',wordWrap:{width:W*0.84},lineSpacing:3}).setOrigin(0.5));
-    // --- minimap opacity slider ---
-    add(this.add.text(cx,y+150,'OPACITÀ MINIMAPPA',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5));
-    const sw=W*0.62, sx=cx-sw/2, sy=y+180;
-    add(this.add.rectangle(sx,sy,sw,6,0x1a1533).setOrigin(0,0.5));
-    const fill=add(this.add.rectangle(sx,sy,sw*GAME.mmAlpha,6,C.cyan).setOrigin(0,0.5));
-    const knob=add(this.add.circle(sx+sw*GAME.mmAlpha,sy,11,0x0b0918).setStrokeStyle(3,C.cyan));
-    const pct=add(this.add.text(cx,sy+22,Math.round(GAME.mmAlpha*100)+'%',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5));
-    const track=add(this.add.rectangle(cx,sy,sw+40,T.tap,0xffffff,0.001).setInteractive({useHandCursor:true,draggable:true}));
+    yy+=48;
+    // explanatory text in its own boxed area (readable, not overlapping)
+    E(this.add.rectangle(cx,yy+22,pw-40,44,0x0b0918,0.6).setStrokeStyle(1,0x2a2550).setDepth(401));
+    E(this.add.text(cx,yy+22,'Se il ROYALE a 100 scatta, scegli BASSI: riduce particelle, bagliori e scosse camera.',
+      {fontSize:'10px',color:'#c9c6ea',align:'center',wordWrap:{width:pw-56},lineSpacing:3}).setOrigin(0.5).setDepth(402));
+    yy+=64;
+
+    // --- OPACITÀ MINIMAPPA ---
+    E(this.add.text(cx,yy,'OPACITÀ MINIMAPPA',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
+    yy+=30;
+    const sw=pw*0.66, sx=cx-sw/2;
+    E(this.add.rectangle(sx,yy,sw,6,0x1a1533).setOrigin(0,0.5).setDepth(402));
+    const fill=E(this.add.rectangle(sx,yy,sw*GAME.mmAlpha,6,C.cyan).setOrigin(0,0.5).setDepth(402));
+    const knob=E(this.add.circle(sx+sw*GAME.mmAlpha,yy,11,0x0b0918).setStrokeStyle(3,C.cyan).setDepth(403));
+    const pct=E(this.add.text(cx,yy+22,Math.round(GAME.mmAlpha*100)+'%',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
+    const track=E(this.add.rectangle(cx,yy,sw+40,T.tap,0xffffff,0.001).setDepth(404).setInteractive({useHandCursor:true,draggable:true}));
     const setA=(px)=>{ const f=Phaser.Math.Clamp((px-sx)/sw,0.15,1);
       GAME.mmAlpha=f; fill.width=sw*f; knob.x=sx+sw*f; pct.setText(Math.round(f*100)+'%');
       try{ localStorage.setItem('nexusMmAlpha',String(f)); }catch(e){} };
     track.on('pointerdown',p=>setA(p.x)); track.on('drag',(p)=>setA(p.x));
+    yy+=54;
 
-    const aBox=add(this.add.rectangle(cx,y+228,W*0.5,T.tap,0x14102b).setStrokeStyle(2,C.player).setInteractive({useHandCursor:true}));
-    const aTxt=add(this.add.text(cx,y+228,SFX.on?'AUDIO: ON':'AUDIO: OFF',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5));
-    aBox.on('pointerdown',()=>{ const on=SFX.toggle(); aTxt.setText(on?'AUDIO: ON':'AUDIO: OFF'); });
-  }); }
+    // --- AUDIO + GUIDA (side by side) ---
+    const half=(pw-52)/2;
+    const aBox=E(this.add.rectangle(cx-half/2-3,yy,half,T.tap+4,0x14102b).setStrokeStyle(2,C.player).setDepth(402).setInteractive({useHandCursor:true}));
+    const aTxt=E(this.add.text(cx-half/2-3,yy,SFX.on?'🔊 AUDIO ON':'🔇 AUDIO OFF',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+    aBox.on('pointerdown',()=>{ const on=SFX.toggle(); aTxt.setText(on?'🔊 AUDIO ON':'🔇 AUDIO OFF'); });
+    const gBox=E(this.add.rectangle(cx+half/2+3,yy,half,T.tap+4,0x14102b).setStrokeStyle(2,0x8a86c8).setDepth(402).setInteractive({useHandCursor:true}));
+    E(this.add.text(cx+half/2+3,yy,'❓ COME SI GIOCA',{fontFamily:TITLE_FONT,fontSize:'10px',color:'#c9c6ea',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+    gBox.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); this.scene.start('Tutorial'); });
+
+    const close=E(this.add.rectangle(cx,py+ph-30,Math.min(200,W*0.55),44,0x14102b).setStrokeStyle(2,C.player).setDepth(402).setInteractive({useHandCursor:true}));
+    E(this.add.text(cx,py+ph-30,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+    close.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); });
+  }
 }
 
 /* ============================ LOADOUT ============================ */
