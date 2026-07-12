@@ -81,7 +81,18 @@ const OPERATORS=[
 ];
 const OP=id=>OPERATORS.find(o=>o.id===id)||OPERATORS[0];
 
-const STUDIO_REWARD={name:'PREMIO STUDIO',cost:5000};
+const STUDIO_REWARD={name:'BUONO STUDIO',cost:50000};   // 50.000 CR = 5€ di sconto (10.000 CR = 1€)
+function makeVoucherCode(){
+  const p=Profile.data;
+  if((p.studioProgress||0) < STUDIO_REWARD.cost) return null;
+  const euro = Math.floor((p.studioProgress||0)/10000);   // 10.000 CR = 1€
+  const vid=(Date.now().toString(36)+Math.random().toString(36).slice(2,7)).toUpperCase();
+  const payload={ v:2, app:'nexus-royale', kind:'voucher', vid, ts:Date.now(), euro,
+    stats:{ matches:p.matches, wins:p.wins, kills:p.kills } };
+  p.studioProgress = (p.studioProgress||0) - euro*10000;   // consume the converted amount
+  Profile.save();
+  try{ return 'NXB2:'+btoa(JSON.stringify(payload)); }catch(e){ return 'NXB2:'+JSON.stringify(payload); }
+}
 
 // ---- persistent profile + daily challenges (localStorage) ----
 const Profile={
@@ -91,7 +102,21 @@ const Profile={
     unlocked:['vyre','nova'],skins:['base'],daily:null},
   load(){ try{ const s=localStorage.getItem('nexusProfile'); if(s) this.data=Object.assign(this.data,JSON.parse(s)); }catch(e){} this.ensureDaily(); },
   save(){ try{ localStorage.setItem('nexusProfile',JSON.stringify(this.data)); }catch(e){} },
-  ensureDaily(){ const key=new Date().toISOString().slice(0,10); if(!this.data.daily||this.data.daily.key!==key) this.data.daily=this.genDaily(key); },
+  ensureDaily(){ const key=new Date().toISOString().slice(0,10); if(!this.data.daily||this.data.daily.key!==key) this.data.daily=this.genDaily(key);
+    const wk=this.weekKey(); if(!this.data.weekly||this.data.weekly.key!==wk) this.data.weekly=this.genWeekly(wk); },
+  weekKey(){ const d=new Date(); const on=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const day=(on.getUTCDay()+6)%7; on.setUTCDate(on.getUTCDate()-day); return on.toISOString().slice(0,10); },
+  genWeekly(key){ const pool=[
+      {id:'wk_k100',t:'Fai 100 eliminazioni',goal:100,type:'kills',reward:800},
+      {id:'wk_win5',t:'Vinci 5 partite',goal:5,type:'wins',reward:1200},
+      {id:'wk_play20',t:'Gioca 20 partite',goal:20,type:'matches',reward:600},
+      {id:'wk_top10',t:'Arriva 10 volte nei primi 5',goal:10,type:'top5',reward:900},
+      {id:'wk_dmg',t:'Infliggi 15.000 danni',goal:15000,type:'damage',reward:1000},
+      {id:'wk_streak',t:'Serie di 3 vittorie',goal:3,type:'streak',reward:1500},
+    ];
+    let seed=0; for(let i=0;i<key.length;i++) seed=(seed*31+key.charCodeAt(i)+7)>>>0;
+    const p=pool.slice(), out=[]; for(let i=0;i<3&&p.length;i++){ seed=(seed*1103515245+12345)&0x7fffffff; out.push(Object.assign({prog:0,done:false},p.splice(seed%p.length,1)[0])); }
+    return {key,list:out};
+  },
   genDaily(key){ const pool=[
       {id:'k10',t:'Fai 10 eliminazioni',goal:10,type:'kills',reward:120},
       {id:'k25',t:'Fai 25 eliminazioni',goal:25,type:'kills',reward:250},
@@ -120,12 +145,16 @@ const Profile={
     if((res.score||0)>(d.topScore||0)) d.topScore=res.score;
     d.ops=d.ops||{}; d.ops[res.op]=(d.ops[res.op]||0)+1;
     this.ensureDaily(); let bonus=0;
-    this.data.daily.list.forEach(c=>{ if(c.done) return;
+    const bump=(c)=>{ if(c.done) return;
       if(c.type==='kills') c.prog+=res.kills; else if(c.type==='killsManual'&&res.mode==='manual') c.prog+=res.kills;
       else if(c.type==='wins'&&res.win) c.prog+=1; else if(c.type==='matches') c.prog+=1; else if(c.type==='top5'&&res.placement<=5) c.prog+=1;
-      if(c.prog>=c.goal){ c.done=true; bonus+=c.reward; } });
+      else if(c.type==='damage') c.prog+=Math.round(res.damage||0); else if(c.type==='streak') c.prog=Math.max(c.prog,d.streak||0);
+      if(c.prog>=c.goal){ c.done=true; bonus+=c.reward; } };
+    this.data.daily.list.forEach(bump);
+    this.data.weekly.list.forEach(bump);
     const gain=res.credits+bonus;
     this.data.credits+=gain; this.data.lifetime=(this.data.lifetime||0)+gain;
+    this.data.studioProgress=(this.data.studioProgress||0)+gain;   // counts toward the studio voucher
     this.save(); return {earned:res.credits,bonus}; }
 };
 Profile.load();
@@ -703,7 +732,7 @@ class Menu extends Phaser.Scene{
     ];
     const tw=W/tabs.length;
     tabs.forEach((t,i)=>{ const x=tw*i+tw/2, active=(t[3]===null);
-      this.add.text(x,barY-9,t[0],{fontSize:'19px'}).setOrigin(0.5).setDepth(12).setAlpha(active?1:0.85);
+      this.add.text(x,barY-9,t[0],{fontSize:'20px',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(12).setAlpha(active?1:0.85);
       this.add.text(x,barY+14,t[1],{fontFamily:TITLE_FONT,fontSize:'8px',color:active?hexStr(C.cyan):'#8a86c8',fontStyle:'900'}).setOrigin(0.5).setDepth(12);
       if(active) this.add.rectangle(x,H-barH+1,tw*0.6,2,C.cyan,1).setDepth(13);
       this.add.rectangle(x,barY,tw,barH,0xffffff,0.001).setDepth(14).setInteractive({useHandCursor:true})
@@ -860,6 +889,7 @@ class Menu extends Phaser.Scene{
     const amtTxt=E(this.add.text(cx,py+120,'',{fontFamily:TITLE_FONT,fontSize:'30px',color:'#ffd23f',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
     const avail=E(this.add.text(cx,py+150,'',{fontSize:'11px',color:'#8a86c8'}).setOrigin(0.5).setDepth(402));
     const refresh=()=>{ amtTxt.setText('💠 '+amt); avail.setText('disponibili: '+Profile.data.credits); };
+    amtTxt.setPadding(0,6,0,2);
     [['-100',-100],['-10',-10],['+10',10],['+100',100]].forEach((c,i)=>{ const bw=pw*0.20, x=cx+(i-1.5)*(bw+6), yy=py+192;
       E(cyberFrame(this,x-bw/2,yy-22,bw,44,C.cyan,402));
       E(this.add.text(x,yy,c[0],{fontFamily:TITLE_FONT,fontSize:'12px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
@@ -874,20 +904,62 @@ class Menu extends Phaser.Scene{
       SFX.pickup(); out.setText(code).setVisible(true); genT.setText('CODICE PRONTO ✓ (tocca per copiare)'); refresh();
       if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(code).catch(()=>{}); });
     out.setInteractive({useHandCursor:true}).on('pointerdown',()=>{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(out.text).catch(()=>{}); });
-    const close=E(this.add.rectangle(cx,py+ph-34,Math.min(200,W*0.6),46,0x14102b).setStrokeStyle(2,C.player).setDepth(405).setInteractive({useHandCursor:true}));
+
+    // ---- BUONO STUDIO (appears/illuminates when the studio bar is full) ----
+    const sp=Profile.data.studioProgress||0, ready=sp>=STUDIO_REWARD.cost;
+    const vy=py+ph-96;
+    E(this.add.rectangle(cx,vy,pw*0.86,1,ready?C.green:0x2a2550,0.6).setDepth(402));
+    const vBox=E(this.add.rectangle(cx,vy+26,pw*0.82,44,ready?0x10251a:0x14102b).setStrokeStyle(2,ready?C.green:0x3a3470).setDepth(402).setInteractive({useHandCursor:true}));
+    const vTxt=E(this.add.text(cx,vy+26,ready?('🎁 GENERA BUONO '+Math.floor(sp/10000)+'€'):('🎁 Buono studio a '+STUDIO_REWARD.cost+' ('+sp+')'),
+      {fontFamily:TITLE_FONT,fontSize:'12px',color:ready?'#35e06a':'#6a6a88',fontStyle:'900',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(403));
+    if(ready){ this.tweens.add({targets:vBox,alpha:0.6,duration:900,yoyo:true,repeat:-1}); }
+    vBox.on('pointerdown',()=>{ if(!ready){ SFX.ui(); return; } const vc=makeVoucherCode(); if(!vc){ SFX.ui(); return; }
+      SFX.pickup(); out.setText(vc).setVisible(true); vTxt.setText('BUONO PRONTO ✓ (tocca il codice)'); this.tweens.killTweensOf(vBox); vBox.setAlpha(1);
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(vc).catch(()=>{}); });
+
+    const close=E(this.add.rectangle(cx,py+ph-34,Math.min(200,W*0.6),40,0x14102b).setStrokeStyle(2,C.player).setDepth(405).setInteractive({useHandCursor:true}));
     E(this.add.text(cx,py+ph-34,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(406));
     close.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); });
     refresh();
   }
-    openChallenges(){ overlayPanel(this,'SFIDE GIORNALIERE',(cx,y,W,add)=>{
-    Profile.data.daily.list.forEach((c,i)=>{ const yy=y+i*58;
-      add(this.add.text(cx-W*0.4,yy-10,c.t,{fontSize:'14px',color:c.done?'#35e06a':'#e8e6ff',fontStyle:'800'}).setOrigin(0,0.5));
-      add(this.add.text(cx+W*0.4,yy-10,(c.done?'✓ ':'')+'+'+c.reward+'💠',{fontSize:'13px',color:'#ffd23f',fontStyle:'800'}).setOrigin(1,0.5));
-      const bw=W*0.8; add(this.add.rectangle(cx-bw/2,yy+12,bw,8,0x1a1533).setOrigin(0,0.5));
-      add(this.add.rectangle(cx-bw/2,yy+12,Math.max(1,bw*Phaser.Math.Clamp(c.prog/c.goal,0,1)),8,c.done?C.green:C.cyan).setOrigin(0,0.5));
-      add(this.add.text(cx,yy+12,Math.min(c.prog,c.goal)+' / '+c.goal,{fontSize:'9px',color:'#c9c6ea',fontStyle:'800'}).setOrigin(0.5));
-    });
-  }); }
+    openChallenges(){
+    const W=this.scale.width,H=this.scale.height,cx=W/2, d=Profile.data;
+    const els=[]; const E=o=>{els.push(o);return o;};
+    E(this.add.rectangle(0,0,W,H,0x05040d,0.95).setOrigin(0).setDepth(400).setInteractive());
+    const pw=Math.min(370,W*0.94), py=H*0.05, ph=H*0.9;
+    E(cyberFrame(this,cx-pw/2,py,pw,ph,C.magenta,401));
+    E(this.add.text(cx,py+26,'SFIDE',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'900',color:'#ff2ea6'}).setOrigin(0.5).setDepth(402));
+    E(this.add.rectangle(cx,py+44,pw*0.7,1,C.magenta,0.5).setDepth(402));
+
+    const drawList=(title,list,col,yStart)=>{
+      E(this.add.text(cx-pw/2+20,yStart,title,{fontFamily:TITLE_FONT,fontSize:'11px',color:hexStr(col),fontStyle:'900'}).setOrigin(0,0.5).setDepth(402));
+      let yy=yStart+22;
+      list.forEach(c=>{
+        E(this.add.text(cx-pw/2+20,yy,c.t,{fontSize:'12px',color:c.done?'#35e06a':'#e8e6ff',fontStyle:'800'}).setOrigin(0,0.5).setDepth(402));
+        E(this.add.text(cx+pw/2-20,yy,(c.done?'✓ ':'')+'+'+c.reward,{fontFamily:TITLE_FONT,fontSize:'12px',color:'#ffd23f',fontStyle:'900',padding:{top:6,bottom:2}}).setOrigin(1,0.5).setDepth(402));
+        const bw=pw-40; E(this.add.rectangle(cx-bw/2,yy+15,bw,7,0x1a1533).setOrigin(0,0.5).setDepth(402));
+        E(this.add.rectangle(cx-bw/2,yy+15,Math.max(1,bw*Phaser.Math.Clamp(c.prog/c.goal,0,1)),7,c.done?C.green:col).setOrigin(0,0.5).setDepth(402));
+        E(this.add.text(cx,yy+15,Math.min(c.prog,c.goal)+' / '+c.goal,{fontSize:'8px',color:'#c9c6ea',fontStyle:'800'}).setOrigin(0.5).setDepth(403));
+        yy+=42;
+      });
+      return yy;
+    };
+    let y=py+64;
+    y=drawList('◆ GIORNALIERE  (reset a mezzanotte)', d.daily.list, C.cyan, y)+8;
+    y=drawList('★ SETTIMANALI  (reset lunedì)', d.weekly.list, C.gold, y)+10;
+
+    // ---- STUDIO BONUS bar ----
+    const goal=STUDIO_REWARD.cost, prog=d.studioProgress||0, ready=prog>=goal;
+    E(this.add.rectangle(cx,y+30,pw-32,58,0x140a1e,0.8).setStrokeStyle(2,ready?C.green:C.magenta).setDepth(402));
+    E(this.add.text(cx,y+14,'🎁 BUONO STUDIO',{fontFamily:TITLE_FONT,fontSize:'12px',color:ready?'#35e06a':'#ff2ea6',fontStyle:'900',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(403));
+    const bw=pw-60; E(this.add.rectangle(cx-bw/2,y+34,bw,10,0x1a1533).setOrigin(0,0.5).setDepth(403));
+    E(this.add.rectangle(cx-bw/2,y+34,Math.max(1,bw*Phaser.Math.Clamp(prog/goal,0,1)),10,ready?C.green:C.magenta).setOrigin(0,0.5).setDepth(403));
+    E(this.add.text(cx,y+50,ready?('PRONTO! vai su CREDITI per generare il buono'):(prog+' / '+goal+'  →  '+(goal/10000)+'€ di sconto'),{fontSize:'9px',color:ready?'#35e06a':'#c9c6ea',fontStyle:'800'}).setOrigin(0.5).setDepth(403));
+
+    const close=E(this.add.rectangle(cx,py+ph-30,Math.min(200,W*0.55),44,0x14102b).setStrokeStyle(2,C.player).setDepth(402).setInteractive({useHandCursor:true}));
+    E(this.add.text(cx,py+ph-30,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+    close.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); });
+  }
   openProfile(){
     const W=this.scale.width,H=this.scale.height,cx=W/2, d=Profile.data;
     const els=[]; const E=o=>{els.push(o);return o;};
@@ -1060,8 +1132,8 @@ class Loadout extends Phaser.Scene{
     this.add.rectangle(rx+rw/2,abY+65,rw,38,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
       .on('pointerdown',()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup(o.abName.toUpperCase()+'  '+o.icon, o.desc||'', o.col); });
     // unlock button (shown when locked)
-    this.unlockBtn=this.add.rectangle(lx,cardY+cardH-24,cardW*0.42,40,0x241a00).setStrokeStyle(2,C.gold).setDepth(3).setInteractive({useHandCursor:true}).setVisible(false);
-    this.unlockTxt=this.add.text(lx,cardY+cardH-24,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(4).setVisible(false);
+    this.unlockBtn=this.add.rectangle(lx,cardY+cardH-24,cardW*0.46,42,0x241a00).setStrokeStyle(2,C.gold).setDepth(3).setInteractive({useHandCursor:true}).setVisible(false);
+    this.unlockTxt=this.add.text(lx,cardY+cardH-24,'',{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'900',color:'#ffd23f',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(4).setVisible(false);
     this.unlockBtn.on('pointerdown',()=>{ const o=OP(GAME.char); if(Profile.unlock(o.id,o.cost)) SFX.pickup(); else { SFX.ui(); this.flash('SERVONO '+o.cost+' CREDITI'); } this.refresh(); });
 
     // ===== SKIN ROW (inside selection screen) =====
@@ -1110,7 +1182,8 @@ class Loadout extends Phaser.Scene{
     this.cRole.setText(o.role||'');
     this.cAbIcon.setText(o.icon).setColor(colStr);
     this.cAbName.setText(o.abName.toUpperCase());
-    if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' 💠'); }
+    if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' 💠');
+      this.unlockBtn.width=Math.max(this.scale.width*0.42*0.9, this.unlockTxt.width+28); }
     else { this.unlockBtn.setVisible(false); this.unlockTxt.setVisible(false); }
     this.skinBtns.forEach(b=>{ const u=Profile.unlockedSkin(b.sk.id); b.selG.clear();
       if(GAME.skin===b.sk.id){ b.selG.lineStyle(2,C.cyan,1); b.selG.strokeRect(b.x-(Math.min(84,this.scale.width*0.22)-10)/2,b.sy-4,Math.min(84,this.scale.width*0.22)-10,44); }
