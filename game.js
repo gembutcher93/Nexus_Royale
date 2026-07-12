@@ -4,7 +4,7 @@
 let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
-const VISION_R=240;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
+const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 const VISION_MULT={base:1, rifle:1.5, oracle:2.0};
 const TITLE_FONT='Orbitron, "Segoe UI", system-ui, sans-serif';
 // design tokens (touch>=44px, type scale, 8pt spacing, 150-300ms motion)
