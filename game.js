@@ -1345,16 +1345,10 @@ class Game extends Phaser.Scene{
     if(this.landMarker){ this.landMarker.destroy(); this.markerRing.destroy(); this.landMarker=null; this.markerRing=null; }
 
     const DROP=760;
-    // 1) camera snaps to the chosen landing spot and holds a beat (no flicker)
-    this.cameras.main.stopFollow();
-    this.cameras.main.pan(this.player.landing.x,this.player.landing.y,450,'Sine.inOut');
-    this.cameras.main.zoomTo(LIVE_ZOOM,600,'Sine.inOut');
-    // hide units until the drop actually begins
-    this.units.forEach(u=>{ if(u.s) u.s.setVisible(false); });
-    // 2) after the camera has settled, start the parachute drop for everyone
-    this.time.delayedCall(520,()=>{ this.cameras.main.startFollow(this.player.s,true,0.12,0.12); this._beginDrop(DROP); });
-  }
-  _beginDrop(DROP){
+    // camera: set zoom + center instantly on the landing spot (no pan/tween that can stall)
+    this.cameras.main.setZoom(LIVE_ZOOM);
+    this.cameras.main.centerOn(this.player.landing.x,this.player.landing.y);
+
     this.units.forEach(u=>{ const L=u.landing;
       u.s.setVisible(true).setPosition(L.x,L.y-DROP).setScale(0.4);
       // target ring
@@ -1362,15 +1356,16 @@ class Game extends Phaser.Scene{
       this.tweens.add({targets:ring,alpha:0,scale:1.4,duration:1200,onComplete:()=>ring.destroy()});
       // parachute
       const chute=this.add.image(L.x,L.y-DROP-30,'chute').setDepth(9).setTint(u.isPlayer?C.player:C.enemy); if(this.toWorld) this.toWorld(chute);
-      // PLAYER descends slower and more controlled (softer landing, less chaos)
       const dur = u.isPlayer ? 2100 : (1050+Phaser.Math.Between(-120,220));
       const ease = u.isPlayer ? 'Sine.out' : 'Sine.in';
       this.tweens.add({targets:chute,y:L.y-34,duration:dur,ease});
       this.tweens.add({targets:chute,alpha:0,duration:200,delay:dur-160,onComplete:()=>chute.destroy()});
       this.tweens.add({targets:u.s,y:L.y,scale:1,duration:dur,ease,
         onComplete:()=>{ if(u.s.body){ u.s.body.enable=true; u.s.body.reset(L.x,L.y); }
-          if(u.isPlayer) this.goLive(); }});
+          if(u.isPlayer){ this.cameras.main.startFollow(this.player.s,true,0.12,0.12); this.goLive(); } }});
     });
+    // safety net: if for any reason the player tween didn't fire goLive, force it
+    this.time.delayedCall(2600,()=>{ if(this.phase==='descent'){ this.cameras.main.startFollow(this.player.s,true,0.12,0.12); this.goLive(); } });
   }
 
   goLive(){
