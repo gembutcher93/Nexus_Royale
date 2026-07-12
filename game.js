@@ -660,17 +660,16 @@ class Menu extends Phaser.Scene{
       this.add.text(x+bw2/2-10,byy-13,b[1],{fontFamily:TITLE_FONT,fontSize:'9px',color:'#8a86c8',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
       this.add.text(x,byy+10,''+b[2],{fontFamily:TITLE_FONT,fontSize:'20px',color:'#fff',fontStyle:'900'}).setOrigin(0.5).setDepth(2);
     });
-    // credits chip — BELOW the stats, clear of the title
-    cyberFrame(this,cx-100,H*0.275-18,200,34,C.gold,0);
-    this.credTxt=this.add.text(cx,H*0.275,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(2);
+    // credits — minimal chip top-right (like Loadout), clean & clear of the title
+    this.credTxt=this.add.text(W-16,26,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#ffd23f',padding:{top:4,bottom:2}}).setOrigin(1,0.5).setDepth(5);
 
     // ---- dropdown: MODALITÀ ----
-    this.mkDrop(cx, H*0.34, '◤ MODALITÀ ◢',
+    this.mkDrop(cx, H*0.30, '◤ MODALITÀ ◢',
       [{k:'royale',t:'ROYALE',s:'100 giocatori · lungo'},{k:'blitz',t:'BLITZ',s:'30 giocatori · veloce'}],
       ()=>GAME.match, (k)=>{ GAME.match=k; });
 
     // ---- dropdown: MIRA ----
-    this.mkDrop(cx, H*0.45, '◤ MIRA ◢',
+    this.mkDrop(cx, H*0.41, '◤ MIRA ◢',
       [{k:'auto',t:'ASSISTITA',s:'auto-aim · punti ×1.0'},{k:'manual',t:'MANUALE',s:'skill · punti ×1.5'}],
       ()=>GAME.mode, (k)=>{ GAME.mode=k; });
 
@@ -698,9 +697,9 @@ class Menu extends Phaser.Scene{
       ['🎮','GIOCA',C.cyan,null],                       // current screen
       ['👤','PROFILO',0xa8b0bd,()=>this.openProfile()],
       ['💠','CREDITI',C.gold,()=>this.openTransfer()],
-      ['◈','SFIDE',C.magenta,()=>this.openChallenges()],
+      ['📡','SFIDE',C.magenta,()=>this.openChallenges()],
       ['⚙','OPZIONI',0xa8b0bd,()=>this.openSettings()],
-      ['🎭','EROI',0xa8b0bd,()=>this.scene.start('Loadout')],
+      ['🦹','EROI',0xa8b0bd,()=>this.scene.start('Loadout')],
     ];
     const tw=W/tabs.length;
     tabs.forEach((t,i)=>{ const x=tw*i+tw/2, active=(t[3]===null);
@@ -764,7 +763,7 @@ class Menu extends Phaser.Scene{
     });
   }
 
-  refresh(){ this.credTxt.setText('💠 '+Profile.data.credits+' CREDITI'); }
+  refresh(){ this.credTxt.setText('💠 '+Profile.data.credits); }
   openChallenge(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
     E(this.add.rectangle(0,0,W,H,0x05040d,0.95).setOrigin(0).setDepth(400).setInteractive());
     const pw=Math.min(360,W*0.92), py=H*0.07, ph=H*0.86;
@@ -1012,7 +1011,7 @@ class Loadout extends Phaser.Scene{
     menuBg(this);
     // top bar
     this.add.text(14,24,'‹ INDIETRO',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#c9c6ea',fontStyle:'900',backgroundColor:'#0b0918',padding:{x:12,y:10}}).setOrigin(0,0.5).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.scene.start('Menu'); });
-    this.add.text(W-16,24,'💠 '+Profile.data.credits,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#ffd23f',fontStyle:'900'}).setOrigin(1,0.5);
+    this.add.text(W-16,24,'💠 '+Profile.data.credits,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#ffd23f',fontStyle:'900',padding:{top:4,bottom:2}}).setOrigin(1,0.5);
     this.add.text(cx,H*0.072,'SCEGLI OPERATORE',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5);
     // SFIDA UN AMICO (here in Deploy, next to mode choice)
 
@@ -2101,8 +2100,11 @@ class Game extends Phaser.Scene{
     this.add.text(cx,H*0.50,r.score.toLocaleString('it')+' PUNTI',{fontFamily:TITLE_FONT,fontSize:Math.min(26,W*0.064)+'px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
     this.add.text(cx,H*0.55,'+'+r.earned+' CREDITI',{fontSize:'16px',fontStyle:'800',color:'#35e06a'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
     if(r.bonus>0) this.add.text(cx,H*0.585,'+'+r.bonus+' bonus sfide!',{fontSize:'14px',fontStyle:'800',color:'#ffd23f'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
-    this.add.text(cx,H*0.615,'totale 💠 '+r.total,{fontSize:'12px',color:'#a8a4d0',fontStyle:'700'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
-    this.add.text(cx,H*0.625,'crediti accumulati nel profilo\nusali per skin/operatori oppure inviali a InkAnimus',{fontSize:'10px',color:'#8a86c8',align:'center',lineSpacing:3}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
+    // total + hint in their own boxed area (no overlap)
+    const boxY=H*0.635, boxW=Math.min(340,W*0.86);
+    this.add.rectangle(cx,boxY,boxW,46,0x0b0918,0.7).setStrokeStyle(1,0x2a2550).setScrollFactor(0).setDepth(300);
+    this.add.text(cx,boxY-10,'totale profilo:  💠 '+r.total,{fontFamily:TITLE_FONT,fontSize:'13px',color:'#ffd23f',fontStyle:'900',padding:{top:4,bottom:2}}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
+    this.add.text(cx,boxY+11,'usali per skin/operatori o inviali a InkAnimus',{fontSize:'9px',color:'#8a86c8',align:'center'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
     const copy=this.add.rectangle(cx,H*0.78,Math.min(300,W*0.7),46,0x14102b).setStrokeStyle(2,r.wasChallenge?C.magenta:C.gold).setScrollFactor(0).setDepth(301).setInteractive({useHandCursor:true});
     const copyT=this.add.text(cx,H*0.78,r.wasChallenge?'⚔  COPIA RISULTATO SFIDA':'⧉  COPIA CODICE',{fontSize:'15px',color:r.wasChallenge?'#ff2ea6':'#ffd23f',fontStyle:'800'}).setOrigin(0.5).setScrollFactor(0).setDepth(302);
     if(r.wasChallenge && Profile.data._lastResult){
