@@ -2031,7 +2031,7 @@ class Game extends Phaser.Scene{
 
   /* ------------- input ------------- */
   setupInput(){
-    this.keys=this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,F,Q');
+    this.keys=this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,F,Q,E');
     this.pointerAim={x:0,y:0,down:false};
     this.input.on('pointermove',p=>{ this.pointerAim.x=p.worldX; this.pointerAim.y=p.worldY; });
     this.input.on('pointerdown',p=>{ if(!this.isTouch) this.pointerAim.down=true; });
@@ -2046,6 +2046,7 @@ class Game extends Phaser.Scene{
       this.input.on('pointerup',p=>this.onTouchUp(p)); }
   }
   onTouchDown(p){ if(this.phase!=='live') return;
+    if(this.ultBtn && Math.hypot(p.x-this.ultBtn.x,p.y-this.ultBtn.y)<this.ultBtn.r+12){ this.activateUltimate(); return; }
     if(this.abBtn && Math.hypot(p.x-this.abBtn.x,p.y-this.abBtn.y)<this.abBtn.r+10){ this.activateAbility(); return; }
     if(this.swapBtn&&this.swapBtn.visible && Math.hypot(p.x-this.swapPos.x,p.y-this.swapPos.y)<this.swapPos.r+12){ this.doSwap(); return; }
     const W=this.scale.width;
@@ -2097,8 +2098,7 @@ class Game extends Phaser.Scene{
     this.ultG=this.add.graphics().setScrollFactor(0).setDepth(182);
     this.ultIcon=this.add.text(ux,uy,'★',{fontSize:'26px',fontStyle:'900',color:'#fff'}).setOrigin(0.5).setScrollFactor(0).setDepth(183);
     this.ultLbl=this.add.text(ux,uy+46,(OP(GAME.char).ultName||'').toUpperCase(),{fontSize:'9px',fontStyle:'800',color:'#ffd23f'}).setOrigin(0.5).setScrollFactor(0).setDepth(183);
-    this.ultZone=this.add.zone(ux,uy,88,88).setOrigin(0.5).setScrollFactor(0).setDepth(184).setInteractive({useHandCursor:true});
-    this.ultZone.on('pointerdown',()=>this.activateUltimate());
+    // ultimate button is handled inside onTouchDown (like the ability button), so no separate zone needed
     this.hud.toast=this.add.text(W/2,this.scale.height*0.34,'',{fontSize:'22px',fontStyle:'900',color:'#fff'}).setOrigin(0.5).setScrollFactor(0).setDepth(160).setAlpha(0);
     this.hud.killfeed=this.add.text(W/2,this.scale.height*0.42,'',{fontSize:'26px',fontStyle:'900',color:'#ff3b6b'}).setOrigin(0.5).setScrollFactor(0).setDepth(160).setAlpha(0);
     this.hudEls=[this.hud.bars,this.hud.hpTxt,this.hud.shTxt,this.hud.wpn,this.hud.alive,this.hud.kills,this.hud.zone,this.mmGfx,this.mmImg,this.muteBtn,this.abG,this.abIcon,this.abLbl,this.ultG,this.ultIcon,this.ultLbl];
@@ -2258,6 +2258,7 @@ class Game extends Phaser.Scene{
     } else if(this.swapBtn.visible){ this.swapG.clear(); this.swapG.setVisible(false); this.swapIcon.setVisible(false); this.swapTxt.setVisible(false); this.swapBtn.setVisible(false); this._wprompt=null; }
     if(Phaser.Input.Keyboard.JustDown(this.keys.F)) this.doSwap();
     if(Phaser.Input.Keyboard.JustDown(this.keys.Q)) this.activateAbility();
+    if(Phaser.Input.Keyboard.JustDown(this.keys.E)) this.activateUltimate();
     this.drawZone(); this.updateZoneState(delta); this.updateHUD(); this.drawSticks();
   }
 
