@@ -650,33 +650,33 @@ class Menu extends Phaser.Scene{
     if(data&&data.openChallenge){ this.time.delayedCall(60,()=>this.openChallenge()); }
     if(!Profile.unlockedOp(GAME.char)) GAME.char='vyre';
 
-    // credits chip
-    cyberFrame(this,cx-100,H*0.175-18,200,36,C.gold,0);
-    this.credTxt=this.add.text(cx,H*0.175,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(2);
+    // credits chip (💠)
+    cyberFrame(this,cx-100,H*0.15-18,200,36,C.gold,0);
+    this.credTxt=this.add.text(cx,H*0.15,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0.5).setDepth(2);
 
-    // ---- stat bricks (Emergent-style) ----
+    // ---- top 3 player stats ----
     const d=Profile.data, wr=d.matches?Math.round(d.wins/d.matches*100):0;
-    const bricks=[['◈','PARTITE',d.matches,C.cyan],['★','VITTORIE',d.wins,C.gold],['✕','KILL',d.kills,C.magenta],['%','WINRATE',wr+'%',C.green]];
-    const bw2=Math.min(78,W*0.205), bgap=bw2+6, bx0=cx-(bricks.length-1)*bgap/2, byy=H*0.245;
+    const bricks=[['★','VITTORIE',d.wins,C.gold],['✕','KILL',d.kills,C.magenta],['%','WINRATE',wr+'%',C.green]];
+    const bw2=Math.min(104,W*0.28), bgap=bw2+8, bx0=cx-(bricks.length-1)*bgap/2, byy=H*0.225;
     bricks.forEach((b,i)=>{ const x=bx0+i*bgap;
-      cyberFrame(this,x-bw2/2,byy-26,bw2,52,0x2a2550,0);
-      this.add.text(x-bw2/2+8,byy-12,b[0],{fontFamily:TITLE_FONT,fontSize:'11px',color:hexStr(b[3]),fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-      this.add.text(x+bw2/2-8,byy-12,b[1],{fontFamily:TITLE_FONT,fontSize:'8px',color:'#8a86c8',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
-      this.add.text(x,byy+8,''+b[2],{fontFamily:TITLE_FONT,fontSize:'17px',color:'#fff',fontStyle:'900'}).setOrigin(0.5).setDepth(2);
+      cyberFrame(this,x-bw2/2,byy-28,bw2,56,0x2a2550,0);
+      this.add.text(x-bw2/2+10,byy-13,b[0],{fontFamily:TITLE_FONT,fontSize:'12px',color:hexStr(b[3]),fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+      this.add.text(x+bw2/2-10,byy-13,b[1],{fontFamily:TITLE_FONT,fontSize:'9px',color:'#8a86c8',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
+      this.add.text(x,byy+10,''+b[2],{fontFamily:TITLE_FONT,fontSize:'20px',color:'#fff',fontStyle:'900'}).setOrigin(0.5).setDepth(2);
     });
 
     // ---- dropdown: MODALITÀ ----
-    this.mkDrop(cx, H*0.36, '◤ MODALITÀ ◢',
+    this.mkDrop(cx, H*0.34, '◤ MODALITÀ ◢',
       [{k:'royale',t:'ROYALE',s:'100 giocatori · lungo'},{k:'blitz',t:'BLITZ',s:'30 giocatori · veloce'}],
       ()=>GAME.match, (k)=>{ GAME.match=k; });
 
     // ---- dropdown: MIRA ----
-    this.mkDrop(cx, H*0.47, '◤ MIRA ◢',
+    this.mkDrop(cx, H*0.45, '◤ MIRA ◢',
       [{k:'auto',t:'ASSISTITA',s:'auto-aim · punti ×1.0'},{k:'manual',t:'MANUALE',s:'skill · punti ×1.5'}],
       ()=>GAME.mode, (k)=>{ GAME.mode=k; });
 
     // ---- big START ----
-    const sy=H*0.56, sbw=Math.min(340,W*0.86);
+    const sy=H*0.565, sbw=Math.min(340,W*0.86);
     cyberFrame(this,cx-sbw/2,sy-34,sbw,68,C.player,0);
     const sg=this.add.image(cx,sy,'glow').setTint(C.cyan).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(sbw,120).setAlpha(0.12).setDepth(1);
     this.tweens.add({targets:sg,alpha:0.24,duration:1200,yoyo:true,repeat:-1});
@@ -684,20 +684,33 @@ class Menu extends Phaser.Scene{
     this.add.rectangle(cx,sy,sbw,68,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
       .on('pointerdown',()=>{ SFX.resume(); SFX.ui(); this.scene.start('Loadout'); });
 
-    // ---- SFIDA UN AMICO (big, spaced under START) ----
-    const fy=H*0.685, fbw=Math.min(340,W*0.86);
+    // ---- SFIDA UN AMICO (under START) ----
+    const fy=H*0.675, fbw=Math.min(340,W*0.86);
     cyberFrame(this,cx-fbw/2,fy-26,fbw,52,C.magenta,0);
     this.add.text(cx,fy,'⚔  SFIDA UN AMICO',{fontFamily:TITLE_FONT,fontSize:'16px',color:'#ff2ea6',fontStyle:'900'}).setOrigin(0.5).setDepth(2);
     this.add.rectangle(cx,fy,fbw,52,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
       .on('pointerdown',()=>{ SFX.ui(); this.openChallenge(); });
 
-    // ---- bottom row: PROFILO + ALTRO (spaced) ----
-    const my=H*0.79, half=Math.min(164,W*0.41);
-    const homeBtn=(x,label,col,cb)=>{ cyberFrame(this,x-half/2,my-26,half,52,col,0);
-      this.add.text(x,my,label,{fontFamily:TITLE_FONT,fontSize:'15px',color:hexStr(col),fontStyle:'900'}).setOrigin(0.5).setDepth(2);
-      this.add.rectangle(x,my,half,52,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); cb(); }); };
-    homeBtn(cx-half/2-8, '👤 PROFILO', C.cyan, ()=>this.openProfile());
-    homeBtn(cx+half/2+8, '⚙ ALTRO',   0x8a86c8, ()=>this.openMenuList());
+    // ================= BOTTOM ICON BAR (6 sezioni) =================
+    const barH=64, barY=H-barH/2;
+    this.add.rectangle(0,H-barH,W,barH,0x0b0918,0.96).setOrigin(0).setDepth(10);
+    this.add.rectangle(0,H-barH,W,2,C.cyan,0.5).setOrigin(0).setDepth(11);
+    const tabs=[
+      ['🎮','GIOCA',C.cyan,null],                       // current screen
+      ['👤','PROFILO',0xa8b0bd,()=>this.openProfile()],
+      ['💠','CREDITI',C.gold,()=>this.openTransfer()],
+      ['◈','SFIDE',C.magenta,()=>this.openChallenges()],
+      ['⚙','OPZIONI',0xa8b0bd,()=>this.openSettings()],
+      ['❓','GUIDA',0xa8b0bd,()=>this.scene.start('Tutorial')],
+    ];
+    const tw=W/tabs.length;
+    tabs.forEach((t,i)=>{ const x=tw*i+tw/2, active=(t[3]===null);
+      this.add.text(x,barY-9,t[0],{fontSize:'19px'}).setOrigin(0.5).setDepth(12).setAlpha(active?1:0.85);
+      this.add.text(x,barY+14,t[1],{fontFamily:TITLE_FONT,fontSize:'8px',color:active?hexStr(C.cyan):'#8a86c8',fontStyle:'900'}).setOrigin(0.5).setDepth(12);
+      if(active) this.add.rectangle(x,H-barH+1,tw*0.6,2,C.cyan,1).setDepth(13);
+      this.add.rectangle(x,barY,tw,barH,0xffffff,0.001).setDepth(14).setInteractive({useHandCursor:true})
+        .on('pointerdown',()=>{ if(t[3]){ SFX.ui(); t[3](); } });
+    });
 
     this.refresh();
     try{ if(!localStorage.getItem('nexusQualitySet')) this.time.delayedCall(200,()=>this.askQuality()); }catch(e){}
@@ -740,7 +753,7 @@ class Menu extends Phaser.Scene{
     const close=()=>{ SFX.ui(); els.forEach(o=>o.destroy()); };
     els.push(this.add.rectangle(0,0,W,H,0x05040d,0.92).setOrigin(0).setDepth(400).setInteractive().on('pointerdown',()=>close()));
     const items=[['◈  SFIDE GIORNALIERE',()=>this.openChallenges()],['👤  PROFILO',()=>this.openProfile()],
-      ['◆  INVIA CREDITI A INKANIMUS',()=>this.openTransfer()],['⚙  OPZIONI',()=>this.openSettings()],
+      ['💠  INVIA CREDITI A INKANIMUS',()=>this.openTransfer()],['⚙  OPZIONI',()=>this.openSettings()],
       ['?  COME SI GIOCA',()=>this.scene.start('Tutorial')]];
     const pw=Math.min(360,W*0.9), ph=items.length*62+76, py=H*0.5-ph/2;
     els.push(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,401));
@@ -752,27 +765,28 @@ class Menu extends Phaser.Scene{
     });
   }
 
-  refresh(){ this.credTxt.setText('◆ '+Profile.data.credits+' CREDITI'); }
+  refresh(){ this.credTxt.setText('💠 '+Profile.data.credits+' CREDITI'); }
   openChallenge(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
     E(this.add.rectangle(0,0,W,H,0x05040d,0.95).setOrigin(0).setDepth(400).setInteractive());
     const pw=Math.min(360,W*0.92), py=H*0.07, ph=H*0.86;
     E(cyberFrame(this,cx-pw/2,py,pw,ph,C.magenta,401));
     E(this.add.text(cx,py+26,'SFIDA UN AMICO',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#ff2ea6'}).setOrigin(0.5).setDepth(402));
-    E(this.add.text(cx,py+50,'stessa mappa, stessi bot, stessa zona.\nGiocate separati, poi confrontate i risultati.',{fontSize:'11px',color:'#c9c6ea',align:'center',lineSpacing:3}).setOrigin(0.5).setDepth(402));
+    E(this.add.text(cx,py+52,'stessa mappa, stessi bot, stessa zona.\nGiocate separati, poi confrontate i risultati.',{fontSize:'11px',color:'#c9c6ea',align:'center',lineSpacing:3,wordWrap:{width:pw-40}}).setOrigin(0.5).setDepth(402));
 
-    let yb=py+84;
+    let yb=py+98;
     const bigBtn=(label,col,cb)=>{ const b=E(this.add.rectangle(cx,yb,pw*0.84,46,0x14102b).setStrokeStyle(2,col).setDepth(402).setInteractive({useHandCursor:true}));
-      E(this.add.text(cx,yb,label,{fontFamily:TITLE_FONT,fontSize:'13px',color:hexStr(col),fontStyle:'900'}).setOrigin(0.5).setDepth(403));
-      b.on('pointerdown',()=>{ SFX.ui(); cb(); }); yb+=58; };
-    const out=E(this.add.text(cx,0,'',{fontSize:'9px',color:'#ffd23f',fontFamily:'monospace',align:'center',wordWrap:{width:pw*0.82},backgroundColor:'#0b0918',padding:{x:8,y:6}}).setOrigin(0.5,0).setDepth(403).setVisible(false));
-    const showCode=(txt,y)=>{ out.setText(txt).setPosition(cx,y).setVisible(true);
+      E(this.add.text(cx,yb,label,{fontFamily:TITLE_FONT,fontSize:'12px',color:hexStr(col),fontStyle:'900',wordWrap:{width:pw*0.78}}).setOrigin(0.5).setDepth(403));
+      b.on('pointerdown',()=>{ SFX.ui(); cb(); }); yb+=60; };
+    // code output box (appears at the bottom, wraps inside the panel width)
+    const out=E(this.add.text(cx,0,'',{fontSize:'9px',color:'#ffd23f',fontFamily:'monospace',align:'center',wordWrap:{width:pw-56},backgroundColor:'#0b0918',padding:{x:10,y:8}}).setOrigin(0.5,0).setDepth(403).setVisible(false));
+    const showCode=(txt)=>{ out.setText('CODICE SFIDA (copiato):\n'+txt).setPosition(cx,yb+4).setVisible(true);
       if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).catch(()=>{}); };
 
     // 1) create a challenge
     bigBtn('① CREA SFIDA (copia codice)',C.cyan,()=>{ const code=makeChallengeCode();
       const d=parseChallengeCode(code); Profile.data.pendingChal={cid:d.cid,seed:d.seed,mode:d.mode,role:'sfidante'}; Profile.save();
       GAME.match=d.mode; CHALLENGE={seed:d.seed,mode:d.mode,cid:d.cid,from:d.from};
-      showCode(code, yb); });
+      showCode(code); });
 
     // 2) accept a challenge (paste code)
     bigBtn('② ACCETTA SFIDA (incolla codice)',C.magenta,()=>{
@@ -847,7 +861,7 @@ class Menu extends Phaser.Scene{
     let amt=Math.min(100,Profile.data.credits);
     const amtTxt=E(this.add.text(cx,py+120,'',{fontFamily:TITLE_FONT,fontSize:'30px',color:'#ffd23f',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
     const avail=E(this.add.text(cx,py+150,'',{fontSize:'11px',color:'#8a86c8'}).setOrigin(0.5).setDepth(402));
-    const refresh=()=>{ amtTxt.setText('◆ '+amt); avail.setText('disponibili: '+Profile.data.credits); };
+    const refresh=()=>{ amtTxt.setText('💠 '+amt); avail.setText('disponibili: '+Profile.data.credits); };
     [['-100',-100],['-10',-10],['+10',10],['+100',100]].forEach((c,i)=>{ const bw=pw*0.20, x=cx+(i-1.5)*(bw+6), yy=py+192;
       E(cyberFrame(this,x-bw/2,yy-22,bw,44,C.cyan,402));
       E(this.add.text(x,yy,c[0],{fontFamily:TITLE_FONT,fontSize:'12px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
@@ -870,7 +884,7 @@ class Menu extends Phaser.Scene{
     openChallenges(){ overlayPanel(this,'SFIDE GIORNALIERE',(cx,y,W,add)=>{
     Profile.data.daily.list.forEach((c,i)=>{ const yy=y+i*58;
       add(this.add.text(cx-W*0.4,yy-10,c.t,{fontSize:'14px',color:c.done?'#35e06a':'#e8e6ff',fontStyle:'800'}).setOrigin(0,0.5));
-      add(this.add.text(cx+W*0.4,yy-10,(c.done?'✓ ':'')+'+'+c.reward+'◆',{fontSize:'13px',color:'#ffd23f',fontStyle:'800'}).setOrigin(1,0.5));
+      add(this.add.text(cx+W*0.4,yy-10,(c.done?'✓ ':'')+'+'+c.reward+'💠',{fontSize:'13px',color:'#ffd23f',fontStyle:'800'}).setOrigin(1,0.5));
       const bw=W*0.8; add(this.add.rectangle(cx-bw/2,yy+12,bw,8,0x1a1533).setOrigin(0,0.5));
       add(this.add.rectangle(cx-bw/2,yy+12,Math.max(1,bw*Phaser.Math.Clamp(c.prog/c.goal,0,1)),8,c.done?C.green:C.cyan).setOrigin(0,0.5));
       add(this.add.text(cx,yy+12,Math.min(c.prog,c.goal)+' / '+c.goal,{fontSize:'9px',color:'#c9c6ea',fontStyle:'800'}).setOrigin(0.5));
@@ -893,7 +907,7 @@ class Menu extends Phaser.Scene{
     const wchips=[['CR ATTUALI',d.credits,C.gold],['LIFETIME',d.lifetime||0,C.cyan],['TRASFERITI',d.transferred||0,C.magenta]];
     const wcw=(pw-40)/3;
     wchips.forEach((c,i)=>{ const x=cx-pw/2+20+i*wcw+wcw/2, yy=py+104;
-      cyberFrame(this,x-wcw/2+3,yy-16,wcw-6,34,c[2],401);
+      E(cyberFrame(this,x-wcw/2+3,yy-16,wcw-6,34,c[2],401));
       E(this.add.text(x,yy-6,c[0],{fontFamily:TITLE_FONT,fontSize:'8px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
       E(this.add.text(x,yy+8,''+c[1],{fontFamily:TITLE_FONT,fontSize:'14px',color:hexStr(c[2]),fontStyle:'900'}).setOrigin(0.5).setDepth(402));
     });
@@ -973,7 +987,7 @@ class Loadout extends Phaser.Scene{
     menuBg(this);
     // top bar
     this.add.text(14,24,'‹ INDIETRO',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#c9c6ea',fontStyle:'900',backgroundColor:'#0b0918',padding:{x:12,y:10}}).setOrigin(0,0.5).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.scene.start('Menu'); });
-    this.add.text(W-16,24,'◆ '+Profile.data.credits,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#ffd23f',fontStyle:'900'}).setOrigin(1,0.5);
+    this.add.text(W-16,24,'💠 '+Profile.data.credits,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#ffd23f',fontStyle:'900'}).setOrigin(1,0.5);
     this.add.text(cx,H*0.072,'SCEGLI OPERATORE',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5);
     // SFIDA UN AMICO (here in Deploy, next to mode choice)
 
@@ -1072,11 +1086,11 @@ class Loadout extends Phaser.Scene{
     this.cRole.setText(o.role||'');
     this.cAbIcon.setText(o.icon).setColor(colStr);
     this.cAbName.setText(o.abName.toUpperCase());
-    if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' ◆'); }
+    if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' 💠'); }
     else { this.unlockBtn.setVisible(false); this.unlockTxt.setVisible(false); }
     this.skinBtns.forEach(b=>{ const u=Profile.unlockedSkin(b.sk.id); b.selG.clear();
       if(GAME.skin===b.sk.id){ b.selG.lineStyle(2,C.cyan,1); b.selG.strokeRect(b.x-(Math.min(84,this.scale.width*0.22)-10)/2,b.sy-4,Math.min(84,this.scale.width*0.22)-10,44); }
-      b.sub.setText(u?(GAME.skin===b.sk.id?'attiva':'ok'):(b.sk.cost+'◆')).setColor(u?'#8a86c8':'#ffd23f'); });
+      b.sub.setText(u?(GAME.skin===b.sk.id?'attiva':'ok'):(b.sk.cost+'💠')).setColor(u?'#8a86c8':'#ffd23f'); });
     this.startTxt.setText(unlocked?'▶  ENTRA IN PARTITA':'🔒  BLOCCATO').setColor(unlocked?'#33e1ff':'#8a86c8');
   }
 }
@@ -2055,13 +2069,14 @@ class Game extends Phaser.Scene{
     this.add.rectangle(0,0,W,H,0x05040d,0.88).setOrigin(0).setScrollFactor(0).setDepth(300);
     this.add.text(cx,H*0.12,win?'#1 · VITTORIA':'ELIMINATO',{fontFamily:TITLE_FONT,fontSize:Math.min(34,W*0.08)+'px',fontStyle:'900',color:win?'#ffd23f':'#ff3b6b'}).setOrigin(0.5).setScrollFactor(0).setDepth(301).setShadow(0,0,win?'#ff2ea6':'#000',20);
     const rows=[['Piazzamento','#'+r.place+' / '+TOTAL_PLAYERS],['Eliminazioni',r.kills],['Punti piazzamento',r.placePts],['Punti uccisioni',r.killPts],['Moltiplicatore','×'+r.mult+(GAME.mode==='manual'?' (manuale)':' (auto)')]];
-    rows.forEach((row,i)=>{ const y=H*0.25+i*30;
-      this.add.text(cx-Math.min(150,W*0.4),y,row[0],{fontSize:'16px',color:'#8a86c8'}).setOrigin(0,0.5).setScrollFactor(0).setDepth(301);
-      this.add.text(cx+Math.min(150,W*0.4),y,''+row[1],{fontSize:'16px',color:'#e8e6ff',fontStyle:'800'}).setOrigin(1,0.5).setScrollFactor(0).setDepth(301); });
-    this.add.text(cx,H*0.45,r.score.toLocaleString('it')+' PUNTI',{fontFamily:TITLE_FONT,fontSize:Math.min(26,W*0.064)+'px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
-    this.add.text(cx,H*0.505,'+'+r.earned+' CREDITI',{fontSize:'16px',fontStyle:'800',color:'#35e06a'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
-    if(r.bonus>0) this.add.text(cx,H*0.54,'+'+r.bonus+' bonus sfide!',{fontSize:'14px',fontStyle:'800',color:'#ffd23f'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
-    this.add.text(cx,H*0.57,'totale ◆ '+r.total,{fontSize:'12px',color:'#a8a4d0',fontStyle:'700'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
+    rows.forEach((row,i)=>{ const y=H*0.24+i*32;
+      this.add.text(cx-Math.min(150,W*0.4),y,row[0],{fontSize:'15px',color:'#8a86c8'}).setOrigin(0,0.5).setScrollFactor(0).setDepth(301);
+      this.add.text(cx+Math.min(150,W*0.4),y,''+row[1],{fontSize:'15px',color:'#e8e6ff',fontStyle:'800'}).setOrigin(1,0.5).setScrollFactor(0).setDepth(301); });
+    this.add.rectangle(cx,H*0.455,Math.min(300,W*0.72),1,C.cyan,0.3).setScrollFactor(0).setDepth(301);
+    this.add.text(cx,H*0.50,r.score.toLocaleString('it')+' PUNTI',{fontFamily:TITLE_FONT,fontSize:Math.min(26,W*0.064)+'px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
+    this.add.text(cx,H*0.55,'+'+r.earned+' CREDITI',{fontSize:'16px',fontStyle:'800',color:'#35e06a'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
+    if(r.bonus>0) this.add.text(cx,H*0.585,'+'+r.bonus+' bonus sfide!',{fontSize:'14px',fontStyle:'800',color:'#ffd23f'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
+    this.add.text(cx,H*0.615,'totale 💠 '+r.total,{fontSize:'12px',color:'#a8a4d0',fontStyle:'700'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
     this.add.text(cx,H*0.625,'crediti accumulati nel profilo\nusali per skin/operatori oppure inviali a InkAnimus',{fontSize:'10px',color:'#8a86c8',align:'center',lineSpacing:3}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
     const copy=this.add.rectangle(cx,H*0.78,Math.min(300,W*0.7),46,0x14102b).setStrokeStyle(2,r.wasChallenge?C.magenta:C.gold).setScrollFactor(0).setDepth(301).setInteractive({useHandCursor:true});
     const copyT=this.add.text(cx,H*0.78,r.wasChallenge?'⚔  COPIA RISULTATO SFIDA':'⧉  COPIA CODICE',{fontSize:'15px',color:r.wasChallenge?'#ff2ea6':'#ffd23f',fontStyle:'800'}).setOrigin(0.5).setScrollFactor(0).setDepth(302);
