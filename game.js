@@ -4,7 +4,7 @@
 let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
-const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
+const VISION_R=340;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 const VISION_MULT={base:1, rifle:1.5, oracle:2.0};
 const TITLE_FONT='Orbitron, "Segoe UI", system-ui, sans-serif';
 // design tokens (touch>=44px, type scale, 8pt spacing, 150-300ms motion)
@@ -1402,7 +1402,8 @@ class Game extends Phaser.Scene{
     // a solid dark backdrop behind the fog fills the corners beyond the gradient
     this.fogBack=this.add.graphics().setDepth(39).setScrollFactor(0);
     // keep these on the uiCam (HUD) layer so they render above the world, undistorted
-    if(this.mainCamIgnore) this.mainCamIgnore(this.fog), this.mainCamIgnore(this.fogBack);
+    // fog rides the WORLD camera (scrollFactor 0 keeps it screen-fixed); uiCam HUD draws above it
+    if(this.toWorld){ this.toWorld(this.fog); this.toWorld(this.fogBack); }
   }
   drawVisionFog(){
     if(!this.fog) return;
@@ -1460,6 +1461,7 @@ class Game extends Phaser.Scene{
     if(this.stickG) ui.push(this.stickG);
     this.uiCam=this.cameras.add(0,0,this.scale.width,this.scale.height);
     this.cameras.main.ignore(ui);
+    if(this.ultG) this.cameras.main.ignore([this.ultG,this.ultIcon,this.ultLbl]);
     this.uiCam.ignore(this.children.list.filter(o=>ui.indexOf(o)<0));
     this.toWorld=(o)=>{ if(this.uiCam) this.uiCam.ignore(o); return o; };
     this.mainCamIgnore=(o)=>{ if(this.cameras&&this.cameras.main) this.cameras.main.ignore(o); return o; };
