@@ -4,7 +4,7 @@
 let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
-const VISION_R=340;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
+const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 const VISION_MULT={base:1, rifle:1.5, oracle:2.0};
 const TITLE_FONT='Orbitron, "Segoe UI", system-ui, sans-serif';
 // design tokens (touch>=44px, type scale, 8pt spacing, 150-300ms motion)
@@ -83,6 +83,13 @@ const OPERATORS=[
 ];
 const OP=id=>OPERATORS.find(o=>o.id===id)||OPERATORS[0];
 
+const ULT_DESC={
+  SENTENCE:'Marchia il nemico più vicino: per ~5s infliggi danno bonus contro di lui e i tuoi scatti si ricaricano subito. Il finisher perfetto per l\u2019uno-contro-uno.',
+  SATURATE:'Segna una zona a terra davanti a te, poi scatena una pioggia di colpi esplosivi sull\u2019area. Stana i nemici in copertura con alto danno ad area.',
+  PORTAL:'Apri la mappa con uno zoom: tocca un punto e ti teletrasporti lì all\u2019istante. Fuga, riposizionamento o anticipo sulla zona che si chiude.',
+  BASTION:'Erigi una fortezza: una cupola potenziata che blocca i proiettili e ti rigenera scudo e vita mentre sei dentro. Per sopravvivere ai momenti caldi.',
+  SWARM:'Genera esche che distraggono, entri in invisibilità totale e il primo colpo all\u2019uscita è potenziato. Ribaltamento e caos puro.',
+};
 const STUDIO_REWARD={name:'BUONO STUDIO',cost:50000};   // 50.000 CR = 5€ di sconto (10.000 CR = 1€)
 function makeVoucherCode(){
   const p=Profile.data;
@@ -1114,25 +1121,37 @@ class Loadout extends Phaser.Scene{
     this.cName=this.add.text(rx,cardY+30,'',{fontFamily:TITLE_FONT,fontSize:'22px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
     this.cRole=this.add.text(rx,cardY+56,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'900',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
 
-    // STORIA button
-    const storyY=cardY+cardH*0.42;
-    const storyBox=cyberFrame(this,rx,storyY-20,rw,40,0x3a3470,0);
+    // STORIA button (higher, tighter)
+    const storyY=cardY+cardH*0.30;
+    const storyBox=cyberFrame(this,rx,storyY-18,rw,36,0x3a3470,0);
     this.add.text(rx+14,storyY,'📖 STORIA',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#c9c6ea',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
     this.add.text(rx+rw-14,storyY,'›',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#8a86c8',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
-    this.add.rectangle(rx+rw/2,storyY,rw,40,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
+    this.add.rectangle(rx+rw/2,storyY,rw,36,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
       .on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
 
-    // ABILITÀ block: name + tappable "come funziona"
-    const abY=cardY+cardH*0.62;
+    // ABILITÀ block (moved up)
+    const abY=cardY+cardH*0.46;
     this.add.rectangle(rx,abY-14,rw,1,C.cyan,0.35).setOrigin(0,0.5).setDepth(2);
     this.add.text(rx,abY,'ABILITÀ',{fontFamily:TITLE_FONT,fontSize:'9px',color:'#5f7a8a',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.cAbIcon=this.add.text(rx,abY+26,'',{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.cAbName=this.add.text(rx+32,abY+26,'',{fontFamily:TITLE_FONT,fontSize:'16px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
-    const abInfo=cyberFrame(this,rx,abY+46,rw,38,C.cyan,0);
-    this.add.text(rx+14,abY+65,'ℹ  come funziona',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.add.text(rx+rw-14,abY+65,'›',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#33e1ff',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
-    this.add.rectangle(rx+rw/2,abY+65,rw,38,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
+    this.cAbIcon=this.add.text(rx,abY+24,'',{fontFamily:TITLE_FONT,fontSize:'19px',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.cAbName=this.add.text(rx+30,abY+24,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
+    const abInfo=cyberFrame(this,rx,abY+40,rw,32,C.cyan,0);
+    this.add.text(rx+14,abY+56,'ℹ  come funziona',{fontFamily:TITLE_FONT,fontSize:'10px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.add.text(rx+rw-14,abY+56,'›',{fontFamily:TITLE_FONT,fontSize:'16px',color:'#33e1ff',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
+    this.add.rectangle(rx+rw/2,abY+56,rw,32,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
       .on('pointerdown',()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup(o.abName.toUpperCase()+'  '+o.icon, o.desc||'', o.col); });
+
+    // ULTIMATE block (golden)
+    const ultY=cardY+cardH*0.72;
+    this.add.rectangle(rx,ultY-14,rw,1,C.gold,0.4).setOrigin(0,0.5).setDepth(2);
+    this.add.text(rx,ultY,'ULTIMATE',{fontFamily:TITLE_FONT,fontSize:'9px',color:'#8a7a3a',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.add.text(rx,ultY+24,'★',{fontFamily:TITLE_FONT,fontSize:'19px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0,0.5).setDepth(2);
+    this.cUltName=this.add.text(rx+30,ultY+24,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0,0.5).setDepth(2);
+    cyberFrame(this,rx,ultY+40,rw,32,C.gold,0);
+    this.add.text(rx+14,ultY+56,'ℹ  come funziona',{fontFamily:TITLE_FONT,fontSize:'10px',color:'#ffd23f',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
+    this.add.text(rx+rw-14,ultY+56,'›',{fontFamily:TITLE_FONT,fontSize:'16px',color:'#ffd23f',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
+    this.add.rectangle(rx+rw/2,ultY+56,rw,32,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
+      .on('pointerdown',()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup('ULTIMATE · '+(o.ultName||''), ULT_DESC[o.ult]||'In arrivo.', C.gold); });
     // unlock button (shown when locked)
     this.unlockBtn=this.add.rectangle(lx,cardY+cardH-24,cardW*0.46,42,0x241a00).setStrokeStyle(2,C.gold).setDepth(3).setInteractive({useHandCursor:true}).setVisible(false);
     this.unlockTxt=this.add.text(lx,cardY+cardH-24,'',{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'900',color:'#ffd23f',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(4).setVisible(false);
@@ -1184,6 +1203,7 @@ class Loadout extends Phaser.Scene{
     this.cRole.setText(o.role||'');
     this.cAbIcon.setText(o.icon).setColor(colStr);
     this.cAbName.setText(o.abName.toUpperCase());
+    if(this.cUltName) this.cUltName.setText((o.ultName||'').toUpperCase());
     if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' 💠');
       const uw=Math.max(this.scale.width*0.42*0.9, this.unlockTxt.width+30); this.unlockBtn.setSize(uw,42); this.unlockBtn.setStrokeStyle(2,C.gold); }
     else { this.unlockBtn.setVisible(false); this.unlockTxt.setVisible(false); }
@@ -1457,11 +1477,10 @@ class Game extends Phaser.Scene{
 
   setupCameras(){
     const ui=[this.vig,this.redvig,this.hud.bars,this.hud.hpTxt,this.hud.shTxt,this.hud.wpn,this.hud.alive,this.hud.kills,this.hud.zone,this.hud.toast,this.hud.killfeed,
-      this.mmImg,this.mmGfx,this.muteBtn,this.swapG,this.swapIcon,this.swapTxt,this.abG,this.abIcon,this.abLbl];
+      this.mmImg,this.mmGfx,this.muteBtn,this.swapG,this.swapIcon,this.swapTxt,this.abG,this.abIcon,this.abLbl,this.ultG,this.ultIcon,this.ultLbl];
     if(this.stickG) ui.push(this.stickG);
     this.uiCam=this.cameras.add(0,0,this.scale.width,this.scale.height);
     this.cameras.main.ignore(ui);
-    if(this.ultG) this.cameras.main.ignore([this.ultG,this.ultIcon,this.ultLbl]);
     this.uiCam.ignore(this.children.list.filter(o=>ui.indexOf(o)<0));
     this.toWorld=(o)=>{ if(this.uiCam) this.uiCam.ignore(o); return o; };
     this.mainCamIgnore=(o)=>{ if(this.cameras&&this.cameras.main) this.cameras.main.ignore(o); return o; };
