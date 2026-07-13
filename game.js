@@ -1031,7 +1031,7 @@ class Menu extends Phaser.Scene{
 
     // ---- BUONO STUDIO (appears/illuminates when the studio bar is full) ----
     const sp=Profile.data.studioProgress||0, ready=sp>=STUDIO_REWARD.cost;
-    const vy=py+ph-112;
+    const vy=py+ph-150;
     E(this.add.rectangle(cx,vy,pw*0.86,1,ready?C.green:0x2a2550,0.6).setDepth(402));
     const vBox=E(this.add.rectangle(cx,vy+24,pw*0.82,42,ready?0x10251a:0x14102b).setStrokeStyle(2,ready?C.green:0x3a3470).setDepth(402).setInteractive({useHandCursor:true}));
     const vTxt=E(this.add.text(cx,vy+24,ready?('🎁 GENERA BUONO '+Math.floor(sp/10000)+'€'):('🎁 Buono studio a '+STUDIO_REWARD.cost+' ('+sp+')'),
@@ -1047,7 +1047,7 @@ class Menu extends Phaser.Scene{
     saveB.on('pointerdown',()=>{ SFX.ui(); const bc=makeBackupCode();
       showCopyableCode(bc,'BACKUP — incollalo/scansiona in InkAnimus per salvare progressi e statistiche',true); });
     const restB=E(this.add.rectangle(cx,py+ph-136,pw*0.82,34,0x14102b).setStrokeStyle(2,0x8a86c8).setDepth(402).setInteractive({useHandCursor:true}));
-    E(this.add.text(cx,py+ph-136,'♻ RIPRISTINA DA CODICE (NXS1:...)',{fontFamily:TITLE_FONT,fontSize:'10px',color:'#c9c6ea',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+    E(this.add.text(cx,py+ph-190,'♻ RIPRISTINA DA CODICE (NXS1:...)',{fontFamily:TITLE_FONT,fontSize:'10px',color:'#c9c6ea',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
     restB.on('pointerdown',()=>{ SFX.ui(); const raw=prompt('Incolla il codice di salvataggio (NXS1:...)'); if(!raw) return;
       const snap=parseBackupCode(raw); if(!snap){ this.toastC&&this.toastC('Codice non valido'); return; }
       if(restoreBackup(snap,{force:true})){ els.forEach(o=>o.destroy()); this.scene.restart(); } });
