@@ -167,6 +167,7 @@ const Profile={
     this.save(); return {earned:res.credits,bonus}; }
 };
 Profile.load();
+checkUrlBackup();
 try{ const q=localStorage.getItem('nexusQuality'); if(q) GAME.quality=q;
      const a=localStorage.getItem('nexusMmAlpha'); if(a!==null) GAME.mmAlpha=Math.max(0.15,Math.min(1,parseFloat(a)||1)); }catch(e){}
 
@@ -196,6 +197,32 @@ function showQR(text,title){
   catch(e){ box.textContent='QR non disponibile'; }
 }
 function closeQR(){ const o=document.getElementById('qrOverlay'); if(o) o.remove(); }
+
+// iOS-friendly: show the code in a REAL, selectable HTML field with a working Copy button
+function showCopyableCode(text,title,qr){
+  closeQR();
+  const ov=document.createElement('div'); ov.id='qrOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(4,3,12,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-family:sans-serif;padding:20px;box-sizing:border-box';
+  const t=document.createElement('div'); t.textContent=title||'CODICE'; t.style.cssText='color:#33e1ff;font-weight:900;font-size:15px;text-align:center';
+  // selectable textarea (user can long-press > select all > copy on iOS)
+  const ta=document.createElement('textarea'); ta.value=text; ta.readOnly=true;
+  ta.style.cssText='width:100%;max-width:340px;height:90px;background:#0b0918;color:#35e06a;border:2px solid #33e1ff;border-radius:8px;padding:10px;font-family:monospace;font-size:12px;resize:none;-webkit-user-select:text;user-select:text';
+  const copyBtn=document.createElement('button'); copyBtn.textContent='📋 COPIA CODICE'; copyBtn.style.cssText='background:#14102b;color:#ffd23f;border:2px solid #ffd23f;border-radius:8px;padding:12px 26px;font-weight:900;font-size:14px';
+  copyBtn.onclick=()=>{
+    ta.focus(); ta.select(); ta.setSelectionRange(0,ta.value.length);
+    let ok=false; try{ ok=document.execCommand('copy'); }catch(e){}
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(()=>{}).catch(()=>{}); }
+    copyBtn.textContent= ok||navigator.clipboard ? '✓ COPIATO!' : '✓ selezionato — tieni premuto e Copia';
+  };
+  const hint=document.createElement('div'); hint.textContent='Se "Copia" non basta: tieni premuto sul testo, "Seleziona tutto" › "Copia".'; hint.style.cssText='color:#8a86c8;font-size:11px;text-align:center;max-width:340px';
+  const closeBtn=document.createElement('button'); closeBtn.textContent='CHIUDI'; closeBtn.style.cssText='background:#14102b;color:#33e1ff;border:2px solid #33e1ff;border-radius:8px;padding:10px 26px;font-weight:900;font-size:13px';
+  closeBtn.onclick=closeQR;
+  ov.appendChild(t); ov.appendChild(ta); ov.appendChild(copyBtn);
+  if(qr){ const box=document.createElement('div'); box.style.cssText='background:#fff;padding:10px;border-radius:10px';
+    try{ new QRCode(box,{text:text,width:180,height:180,correctLevel:QRCode.CorrectLevel.M}); ov.appendChild(box); }catch(e){} }
+  ov.appendChild(hint); ov.appendChild(closeBtn);
+  document.body.appendChild(ov);
+}
 
 function scanQR(onResult){
   closeQR();
@@ -261,6 +288,43 @@ function judgeChallenge(mine,theirs){
     return 0;
   };
   const r=cmp(mine,theirs); return r<0?'io':(r>0?'avversario':'pari');
+}
+
+// ---- BACKUP COMPLETO del profilo (salva/ripristina tutto su InkAnimus) ----
+function makeBackupCode(){
+  const d=Profile.data;
+  const snap={ v:1, kind:'nexusSave', ts:Date.now(),
+    credits:d.credits, lifetime:d.lifetime, transferred:d.transferred, studioProgress:d.studioProgress||0,
+    matches:d.matches, wins:d.wins, kills:d.kills, best:d.best, bestKills:d.bestKills, maxDmg:d.maxDmg,
+    totalDmg:d.totalDmg, bestTime:d.bestTime, totalTime:d.totalTime, placeSum:d.placeSum,
+    streak:d.streak, bestStreak:d.bestStreak, topScore:d.topScore, ops:d.ops,
+    unlocked:d.unlocked, skins:d.skins };
+  try{ return 'NXS1:'+btoa(unescape(encodeURIComponent(JSON.stringify(snap)))); }
+  catch(e){ return 'NXS1:'+JSON.stringify(snap); }
+}
+function parseBackupCode(raw){
+  const txt=(raw||'').trim(); if(txt.indexOf('NXS1:')!==0) return null;
+  try{ return JSON.parse(decodeURIComponent(escape(atob(txt.slice(5))))); }
+  catch(e){ try{ return JSON.parse(txt.slice(5)); }catch(e2){ return null; } }
+}
+// restore a backup ONLY if it's better/newer (never wipe a more-advanced local save)
+function restoreBackup(snap,{force}={}){
+  if(!snap||snap.kind!=='nexusSave') return false;
+  const d=Profile.data;
+  // guard: if local already has MORE lifetime credits, keep local unless forced
+  if(!force && (d.lifetime||0) > (snap.lifetime||0)) return false;
+  ['credits','lifetime','transferred','studioProgress','matches','wins','kills','best','bestKills',
+   'maxDmg','totalDmg','bestTime','totalTime','placeSum','streak','bestStreak','topScore']
+   .forEach(k=>{ if(snap[k]!==undefined) d[k]=snap[k]; });
+  if(snap.ops) d.ops=snap.ops;
+  if(Array.isArray(snap.unlocked)) d.unlocked=Array.from(new Set([...(d.unlocked||[]),...snap.unlocked]));
+  if(Array.isArray(snap.skins)) d.skins=Array.from(new Set([...(d.skins||[]),...snap.skins]));
+  Profile.save(); return true;
+}
+// on boot, if InkAnimus passed a backup via the URL (?save=NXS1:...), restore it automatically
+function checkUrlBackup(){
+  try{ const u=new URL(window.location.href); const s=u.searchParams.get('save');
+    if(s){ const snap=parseBackupCode(decodeURIComponent(s)); if(snap) restoreBackup(snap); } }catch(e){}
 }
 
 function makeTransferCode(amount){
@@ -962,9 +1026,8 @@ class Menu extends Phaser.Scene{
     const genB=E(this.add.rectangle(cx,py+308,pw*0.72,48,0x14102b).setStrokeStyle(3,C.player).setDepth(402).setInteractive({useHandCursor:true}));
     const genT=E(this.add.text(cx,py+308,'GENERA CODICE',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
     genB.on('pointerdown',()=>{ if(amt<=0||amt>Profile.data.credits){ SFX.ui(); return; } const code=makeTransferCode(amt); if(!code){ SFX.ui(); return; }
-      SFX.pickup(); out.setText(code).setVisible(true); genT.setText('CODICE PRONTO ✓ (tocca per copiare)'); refresh();
-      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(code).catch(()=>{}); });
-    out.setInteractive({useHandCursor:true}).on('pointerdown',()=>{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(out.text).catch(()=>{}); });
+      SFX.pickup(); genT.setText('CODICE PRONTO ✓'); refresh();
+      showCopyableCode(code,'CODICE CREDITI — incollalo in InkAnimus',true); });
 
     // ---- BUONO STUDIO (appears/illuminates when the studio bar is full) ----
     const sp=Profile.data.studioProgress||0, ready=sp>=STUDIO_REWARD.cost;
@@ -975,8 +1038,19 @@ class Menu extends Phaser.Scene{
       {fontFamily:TITLE_FONT,fontSize:'12px',color:ready?'#35e06a':'#6a6a88',fontStyle:'900',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(403));
     if(ready){ this.tweens.add({targets:vBox,alpha:0.6,duration:900,yoyo:true,repeat:-1}); }
     vBox.on('pointerdown',()=>{ if(!ready){ SFX.ui(); return; } const vc=makeVoucherCode(); if(!vc){ SFX.ui(); return; }
-      SFX.pickup(); out.setText(vc).setVisible(true); vTxt.setText('BUONO PRONTO ✓ (tocca il codice)'); this.tweens.killTweensOf(vBox); vBox.setAlpha(1);
-      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(vc).catch(()=>{}); });
+      SFX.pickup(); vTxt.setText('BUONO PRONTO ✓'); this.tweens.killTweensOf(vBox); vBox.setAlpha(1);
+      showCopyableCode(vc,'BUONO STUDIO — incollalo in InkAnimus',true); });
+
+    // ---- SALVA SU INKANIMUS (full backup: progressi + statistiche) ----
+    const saveB=E(this.add.rectangle(cx,py+ph-84,pw*0.82,42,0x0a1f14).setStrokeStyle(2,C.green).setDepth(402).setInteractive({useHandCursor:true}));
+    E(this.add.text(cx,py+ph-84,'💾 SALVA PROGRESSI SU INKANIMUS',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#35e06a',fontStyle:'900',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(403));
+    saveB.on('pointerdown',()=>{ SFX.ui(); const bc=makeBackupCode();
+      showCopyableCode(bc,'BACKUP — incollalo/scansiona in InkAnimus per salvare progressi e statistiche',true); });
+    const restB=E(this.add.rectangle(cx,py+ph-136,pw*0.82,34,0x14102b).setStrokeStyle(2,0x8a86c8).setDepth(402).setInteractive({useHandCursor:true}));
+    E(this.add.text(cx,py+ph-136,'♻ RIPRISTINA DA CODICE (NXS1:...)',{fontFamily:TITLE_FONT,fontSize:'10px',color:'#c9c6ea',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+    restB.on('pointerdown',()=>{ SFX.ui(); const raw=prompt('Incolla il codice di salvataggio (NXS1:...)'); if(!raw) return;
+      const snap=parseBackupCode(raw); if(!snap){ this.toastC&&this.toastC('Codice non valido'); return; }
+      if(restoreBackup(snap,{force:true})){ els.forEach(o=>o.destroy()); this.scene.restart(); } });
 
     const close=E(this.add.rectangle(cx,py+ph-34,Math.min(200,W*0.6),40,0x14102b).setStrokeStyle(2,C.player).setDepth(405).setInteractive({useHandCursor:true}));
     E(this.add.text(cx,py+ph-34,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0.5).setDepth(406));
