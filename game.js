@@ -1031,8 +1031,8 @@ class Menu extends Phaser.Scene{
 
     // ---- BUONO STUDIO (appears/illuminates when the studio bar is full) ----
     const sp=Profile.data.studioProgress||0, ready=sp>=STUDIO_REWARD.cost;
-    const vy=py+ph-190;
-    E(this.add.rectangle(cx,vy,pw*0.86,1,ready?C.green:0x2a2550,0.6).setDepth(402));
+    const vy=py+ph-200;
+    E(this.add.rectangle(cx,vy,pw*0.80,1,ready?C.green:0x2a2550,0.6).setDepth(402));
     const vBox=E(this.add.rectangle(cx,vy+24,pw*0.82,42,ready?0x10251a:0x14102b).setStrokeStyle(2,ready?C.green:0x3a3470).setDepth(402).setInteractive({useHandCursor:true}));
     const vTxt=E(this.add.text(cx,vy+24,ready?('🎁 GENERA BUONO '+Math.floor(sp/10000)+'€'):('🎁 Buono studio a '+STUDIO_REWARD.cost+' ('+sp+')'),
       {fontFamily:TITLE_FONT,fontSize:'12px',color:ready?'#35e06a':'#6a6a88',fontStyle:'900',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(403));
