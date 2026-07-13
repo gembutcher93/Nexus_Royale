@@ -180,6 +180,50 @@ function unseedRandom(){ Math.random=_realRandom; }
 function seedFromStr(str){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
 
 // crea un codice SFIDA: fissa seed+modalità, l'amico giochera' la stessa identica partita
+// ---- QR helpers (DOM overlay, outside Phaser) ----
+function showQR(text,title){
+  closeQR();
+  const ov=document.createElement('div'); ov.id='qrOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(4,3,12,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-family:sans-serif';
+  const box=document.createElement('div'); box.style.cssText='background:#fff;padding:14px;border-radius:12px';
+  const t=document.createElement('div'); t.textContent=title||'INQUADRA QUESTO QR'; t.style.cssText='color:#33e1ff;font-weight:900;letter-spacing:1px;font-size:15px';
+  const hint=document.createElement('div'); hint.textContent="l'altro giocatore lo scansiona da ▸ ACCETTA/CONFRONTA"; hint.style.cssText='color:#c9c6ea;font-size:12px;text-align:center;max-width:80%';
+  const btn=document.createElement('button'); btn.textContent='CHIUDI'; btn.style.cssText='margin-top:6px;background:#14102b;color:#33e1ff;border:2px solid #33e1ff;border-radius:8px;padding:10px 26px;font-weight:900;font-size:14px';
+  btn.onclick=closeQR;
+  ov.appendChild(t); ov.appendChild(box); ov.appendChild(hint); ov.appendChild(btn);
+  document.body.appendChild(ov);
+  try{ new QRCode(box,{text:text,width:240,height:240,correctLevel:QRCode.CorrectLevel.L}); }
+  catch(e){ box.textContent='QR non disponibile'; }
+}
+function closeQR(){ const o=document.getElementById('qrOverlay'); if(o) o.remove(); }
+
+function scanQR(onResult){
+  closeQR();
+  const ov=document.createElement('div'); ov.id='qrOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(4,3,12,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-family:sans-serif';
+  const t=document.createElement('div'); t.textContent='INQUADRA IL QR DELL\u2019AMICO'; t.style.cssText='color:#33e1ff;font-weight:900;font-size:15px';
+  const video=document.createElement('video'); video.setAttribute('playsinline','true'); video.style.cssText='width:78%;max-width:320px;border:3px solid #33e1ff;border-radius:12px;background:#000';
+  const btn=document.createElement('button'); btn.textContent='ANNULLA'; btn.style.cssText='background:#14102b;color:#ff2ea6;border:2px solid #ff2ea6;border-radius:8px;padding:10px 26px;font-weight:900;font-size:14px';
+  ov.appendChild(t); ov.appendChild(video); ov.appendChild(btn); document.body.appendChild(ov);
+  const canvas=document.createElement('canvas'); const ctx=canvas.getContext('2d');
+  let stream=null, raf=null, done=false;
+  const stop=()=>{ done=true; if(raf) cancelAnimationFrame(raf); if(stream) stream.getTracks().forEach(t=>t.stop()); closeQR(); };
+  btn.onclick=stop;
+  const tick=()=>{ if(done) return;
+    if(video.readyState===video.HAVE_ENOUGH_DATA){
+      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const code=(typeof jsQR!=='undefined')?jsQR(img.data,img.width,img.height):null;
+      if(code&&code.data){ const val=code.data; stop(); onResult(val); return; }
+    }
+    raf=requestAnimationFrame(tick);
+  };
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(s=>{
+    stream=s; video.srcObject=s; video.play(); raf=requestAnimationFrame(tick);
+  }).catch(e=>{ t.textContent='Fotocamera non disponibile — usa il codice testuale'; t.style.color='#ff2ea6'; });
+}
+
 function makeChallengeCode(){
   const seed=(Date.now()>>>0)^Math.floor(_realRandom()*0xffffffff);
   const cid=(Date.now().toString(36)+_realRandom().toString(36).slice(2,6)).toUpperCase();
@@ -809,49 +853,50 @@ class Menu extends Phaser.Scene{
     E(this.add.text(cx,py+26,'SFIDA UN AMICO',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#ff2ea6'}).setOrigin(0.5).setDepth(402));
     E(this.add.text(cx,py+52,'stessa mappa, stessi bot, stessa zona.\nGiocate separati, poi confrontate i risultati.',{fontSize:'11px',color:'#c9c6ea',align:'center',lineSpacing:3,wordWrap:{width:pw-40}}).setOrigin(0.5).setDepth(402));
 
-    let yb=py+98;
-    const bigBtn=(label,col,cb)=>{ const b=E(this.add.rectangle(cx,yb,pw*0.84,46,0x14102b).setStrokeStyle(2,col).setDepth(402).setInteractive({useHandCursor:true}));
-      E(this.add.text(cx,yb,label,{fontFamily:TITLE_FONT,fontSize:'12px',color:hexStr(col),fontStyle:'900',wordWrap:{width:pw*0.78}}).setOrigin(0.5).setDepth(403));
-      b.on('pointerdown',()=>{ SFX.ui(); cb(); }); yb+=60; };
+    let yb=py+92;
+    const bigBtn=(label,col,cb,small)=>{ const h=small?36:50; const b=E(this.add.rectangle(cx,yb,pw*0.84,h,0x14102b).setStrokeStyle(2,col).setDepth(402).setInteractive({useHandCursor:true}));
+      E(this.add.text(cx,yb,label,{fontFamily:TITLE_FONT,fontSize:small?'10px':'12px',color:hexStr(col),fontStyle:'900',wordWrap:{width:pw*0.78}}).setOrigin(0.5).setDepth(403));
+      b.on('pointerdown',()=>{ SFX.ui(); cb(); }); yb+=h+8; };
     // code output box (appears at the bottom, wraps inside the panel width)
     const out=E(this.add.text(cx,0,'',{fontSize:'9px',color:'#ffd23f',fontFamily:'monospace',align:'center',wordWrap:{width:pw-56},backgroundColor:'#0b0918',padding:{x:10,y:8}}).setOrigin(0.5,0).setDepth(403).setVisible(false));
     const showCode=(txt)=>{ out.setText('CODICE SFIDA (copiato):\n'+txt).setPosition(cx,yb+4).setVisible(true);
       if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).catch(()=>{}); };
 
     // 1) create a challenge
-    bigBtn('① CREA SFIDA (copia codice)',C.cyan,()=>{ const code=makeChallengeCode();
+    bigBtn('① CREA SFIDA (codice + QR)',C.cyan,()=>{ const code=makeChallengeCode();
       const d=parseChallengeCode(code); Profile.data.pendingChal={cid:d.cid,seed:d.seed,mode:d.mode,role:'sfidante'}; Profile.save();
       GAME.match=d.mode; CHALLENGE={seed:d.seed,mode:d.mode,cid:d.cid,from:d.from};
-      showCode(code); });
+      showCode(code); showQR(code,'SFIDA \u2014 fai scansionare questo QR'); });
 
-    // 2) accept a challenge (paste code)
-    bigBtn('② ACCETTA SFIDA (incolla codice)',C.magenta,()=>{
-      const raw=prompt('Incolla il codice SFIDA (NXC1:...)'); if(!raw) return;
+    const doAccept=(raw)=>{
       const d=parseChallengeCode(raw); if(!d||d.t!=='chal'){ this.toastC('Codice sfida non valido'); return; }
       GAME.match=d.mode||'royale'; CHALLENGE={seed:d.seed,mode:GAME.match,cid:d.cid,from:d.from||'SFIDANTE'};
       Profile.data.pendingChal={cid:d.cid,seed:d.seed,mode:GAME.match,role:'avversario',from:d.from}; Profile.save();
-      close(); this.scene.start('Loadout'); });
+      close(); this.scene.start('Loadout');
+    };
+    bigBtn('② ACCETTA \u2014 scansiona QR',C.magenta,()=>{ scanQR((val)=>doAccept(val)); });
+    bigBtn('...oppure incolla codice',0x8a86c8,()=>{ const raw=prompt('Incolla il codice SFIDA (NXC1:...)'); if(raw) doAccept(raw); },true);
 
-    // 3) compare a result
-    bigBtn('③ CONFRONTA RISULTATO',C.gold,()=>{
-      const mine=Profile.data._lastResult;
-      if(!mine){ this.toastC('Prima gioca una sfida'); return; }
-      const raw=prompt('Incolla il codice RISULTATO dell\'avversario (NXV1:...)'); if(!raw) return;
-      const their=parseResultCode(raw); if(!their||their.cid!==mine.cid){ this.toastC('Risultato di un\'altra sfida'); return; }
+    const doCompare=(raw)=>{
+      const raw0=Profile.data._lastResult;
+      if(!raw0){ this.toastC('Prima gioca una sfida'); return; }
+      const mine={ cid:raw0.cid, who:(Profile.data.name||'IO'), place:raw0.placement, kills:raw0.kills,
+        dmg:Math.round(raw0.damage||0), timeSec:raw0.durationSec||0, score:raw0.score||0, win:!!raw0.win };
+      const their=parseResultCode(raw); if(!their||their.cid!==mine.cid){ this.toastC('Risultato di altra sfida'); return; }
       const w=judgeChallenge(mine,their);
       Profile.data.challenges=Profile.data.challenges||[];
       Profile.data.challenges.unshift({cid:mine.cid,win:w,me:mine,vs:their,ts:Date.now()});
       if(Profile.data.challenges.length>30) Profile.data.challenges.length=30;
-      Profile.save();
-      close(); this.showVerdict(w,mine,their); });
+      Profile.data._lastResult=null; Profile.save();
+      close(); this.showVerdict(w,mine,their);
+    };
+    bigBtn('③ CONFRONTA \u2014 scansiona QR',C.gold,()=>{ scanQR((val)=>doCompare(val)); });
+    bigBtn('...oppure incolla codice',0x8a86c8,()=>{ const raw=prompt('Incolla il codice RISULTATO (NXV1:...)'); if(raw) doCompare(raw); },true);
 
-    // my result code (if just played a challenge)
+    // my result code (if just played a challenge) — show as QR
     if(Profile.data._lastResult){ yb+=4;
-      E(this.add.text(cx,yb,'Il TUO codice risultato (dallo all\'amico):',{fontSize:'10px',color:'#8a86c8'}).setOrigin(0.5).setDepth(402)); yb+=20;
       const rc=makeResultCode(Profile.data._lastResult.cid,Profile.data._lastResult);
-      const rbox=E(this.add.text(cx,yb,rc,{fontSize:'9px',color:'#35e06a',fontFamily:'monospace',align:'center',wordWrap:{width:pw*0.82},backgroundColor:'#0b0918',padding:{x:8,y:6}}).setOrigin(0.5,0).setDepth(402).setInteractive({useHandCursor:true}));
-      rbox.on('pointerdown',()=>{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(rc).catch(()=>{}); this.toastC('Copiato'); });
-      yb+=rbox.height+10;
+      bigBtn('\ud83d\udcf1 MOSTRA IL TUO RISULTATO (QR)',C.green,()=>{ showQR(rc,'RISULTATO \u2014 fai scansionare'); });
     }
 
     // history
