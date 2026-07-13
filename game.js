@@ -192,7 +192,7 @@ function showQR(text,title){
   btn.onclick=closeQR;
   ov.appendChild(t); ov.appendChild(box); ov.appendChild(hint); ov.appendChild(btn);
   document.body.appendChild(ov);
-  try{ new QRCode(box,{text:text,width:240,height:240,correctLevel:QRCode.CorrectLevel.L}); }
+  try{ new QRCode(box,{text:text,width:280,height:280,correctLevel:QRCode.CorrectLevel.M}); }
   catch(e){ box.textContent='QR non disponibile'; }
 }
 function closeQR(){ const o=document.getElementById('qrOverlay'); if(o) o.remove(); }
@@ -204,24 +204,31 @@ function scanQR(onResult){
   const t=document.createElement('div'); t.textContent='INQUADRA IL QR DELL\u2019AMICO'; t.style.cssText='color:#33e1ff;font-weight:900;font-size:15px';
   const video=document.createElement('video'); video.setAttribute('playsinline','true'); video.style.cssText='width:78%;max-width:320px;border:3px solid #33e1ff;border-radius:12px;background:#000';
   const btn=document.createElement('button'); btn.textContent='ANNULLA'; btn.style.cssText='background:#14102b;color:#ff2ea6;border:2px solid #ff2ea6;border-radius:8px;padding:10px 26px;font-weight:900;font-size:14px';
-  ov.appendChild(t); ov.appendChild(video); ov.appendChild(btn); document.body.appendChild(ov);
-  const canvas=document.createElement('canvas'); const ctx=canvas.getContext('2d');
-  let stream=null, raf=null, done=false;
+  const status=document.createElement('div'); status.style.cssText='color:#8a86c8;font-size:11px;text-align:center'; status.textContent='avvio fotocamera...';
+  ov.appendChild(t); ov.appendChild(video); ov.appendChild(status); ov.appendChild(btn); document.body.appendChild(ov);
+  if(typeof jsQR==='undefined'){ t.textContent='Lettore QR non caricato'; status.textContent='usa "incolla codice" (serve connessione la prima volta)'; status.style.color='#ff2ea6'; }
+  const canvas=document.createElement('canvas'); const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  let stream=null, raf=null, done=false, frames=0;
   const stop=()=>{ done=true; if(raf) cancelAnimationFrame(raf); if(stream) stream.getTracks().forEach(t=>t.stop()); closeQR(); };
   btn.onclick=stop;
   const tick=()=>{ if(done) return;
-    if(video.readyState===video.HAVE_ENOUGH_DATA){
-      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-      ctx.drawImage(video,0,0,canvas.width,canvas.height);
-      const img=ctx.getImageData(0,0,canvas.width,canvas.height);
-      const code=(typeof jsQR!=='undefined')?jsQR(img.data,img.width,img.height):null;
-      if(code&&code.data){ const val=code.data; stop(); onResult(val); return; }
+    if(video.readyState>=2 && video.videoWidth>0){
+      frames++; if(frames%15===0) status.textContent='cerco il QR... tieni il codice ben inquadrato';
+      const w=video.videoWidth, h=video.videoHeight;
+      canvas.width=w; canvas.height=h;
+      ctx.drawImage(video,0,0,w,h);
+      try{ const img=ctx.getImageData(0,0,w,h);
+        const code=(typeof jsQR!=='undefined')?jsQR(img.data,w,h,{inversionAttempts:'attemptBoth'}):null;
+        if(code&&code.data){ status.textContent='TROVATO!'; status.style.color='#35e06a'; const val=code.data; stop(); onResult(val); return; }
+      }catch(e){}
     }
     raf=requestAnimationFrame(tick);
   };
   navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(s=>{
-    stream=s; video.srcObject=s; video.play(); raf=requestAnimationFrame(tick);
-  }).catch(e=>{ t.textContent='Fotocamera non disponibile — usa il codice testuale'; t.style.color='#ff2ea6'; });
+    stream=s; video.srcObject=s; video.setAttribute('autoplay','true'); video.muted=true;
+    video.play().then(()=>{ status.textContent='inquadra il QR'; raf=requestAnimationFrame(tick); })
+      .catch(()=>{ raf=requestAnimationFrame(tick); });
+  }).catch(e=>{ t.textContent='Fotocamera non disponibile'; status.textContent='usa "incolla codice"'; status.style.color='#ff2ea6'; });
 }
 
 function makeChallengeCode(){
