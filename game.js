@@ -6,7 +6,7 @@ let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 const VISION_MULT={base:1, rifle:1.5, oracle:2.0};
-const TITLE_FONT='Orbitron, "Segoe UI", system-ui, sans-serif';
+const TITLE_FONT='"Chakra Petch", "Segoe UI", system-ui, sans-serif';
 // design tokens (touch>=44px, type scale, 8pt spacing, 150-300ms motion)
 const T={ tap:44, s1:8,s2:16,s3:24,s4:32,
   fXs:'11px',fSm:'13px',fMd:'16px',fLg:'20px',fXl:'28px',
@@ -383,6 +383,10 @@ class Boot extends Phaser.Scene{
     Object.keys(ART.ops).forEach(k=>this.load.image('port_'+k,ART.ops[k]));
     this.load.image('port_bot',ART.bot);
     this.load.image('logo',ART.logo);
+    // custom top-down character sprites (facing +x / east). Fallback = procedural mkChar.
+    ['vyre','nova','oracle','aegis','wraith','bot'].forEach(id=>{
+      this.load.image('spr_'+id,'assets/spr_'+id+'.png');
+    });
     this.load.video('intro_video',ART.intro,'loadeddata',false,false);
     this.load.on('loaderror',(f)=>{ ART_OK[f.key]=false; console.warn('asset mancante:',f.key); });
   }
@@ -631,6 +635,25 @@ class Boot extends Phaser.Scene{
     OPERATORS.forEach(o=> mkChar('ch_'+o.id, CHAR_STYLE[o.id]||'op', o.col));
     mkChar('ch_bot','bot',C.enemy);
 
+    // ---- override procedural chars with custom sprites when available ----
+    // Each loaded PNG (facing +x) replaces every animation/death frame for that id.
+    // If a PNG is missing, the procedural mkChar texture above stays as fallback.
+    const SPRITE_IDS=['vyre','nova','oracle','aegis','wraith','bot'];
+    const CH_FRAMES=['_0','_1','_2','_3','_4','_5','_d0','_d1','_d2'];
+    SPRITE_IDS.forEach(id=>{
+      if(!this.textures.exists('spr_'+id)) return;           // keep fallback
+      const src=this.textures.get('spr_'+id).getSourceImage();
+      CH_FRAMES.forEach(suf=>{
+        const key='ch_'+id+suf;
+        if(this.textures.exists(key)) this.textures.remove(key);
+        const cv=this.textures.createCanvas(key,64,64);
+        const ctx=cv.getContext(); ctx.clearRect(0,0,64,64);
+        ctx.imageSmoothingEnabled=false;
+        ctx.drawImage(src,0,0,64,64);
+        cv.refresh();
+      });
+    });
+
     g.destroy();
     this.scene.start('Splash');
   }
@@ -753,6 +776,15 @@ function cyberFrame(sc,x,y,w,h,col,depth){
   g.lineStyle(1,col,0.25); g.strokeRect(x+5,y+5,w-10,h-10);
   g.fillStyle(col,0.035);
   for(let yy=y+8;yy<y+h-6;yy+=4) g.fillRect(x+6,yy,w-12,1);
+  // reinforced bright corner brackets (top-left + bottom-right)
+  const bl=Math.max(8,Math.min(18,w*0.16,h*0.5));
+  g.lineStyle(3,col,1);
+  g.beginPath();
+  g.moveTo(x+c,y); g.lineTo(x+c+bl,y);
+  g.moveTo(x,y+c); g.lineTo(x,y+c+bl);
+  g.moveTo(x+w-c,y+h); g.lineTo(x+w-c-bl,y+h);
+  g.moveTo(x+w,y+h-c); g.lineTo(x+w,y+h-c-bl);
+  g.strokePath();
   return g;
 }
 function cyberBtn(sc,x,y,w,h,col,label,sub,cb,depth){
@@ -2526,5 +2558,5 @@ const config={ type:Phaser.AUTO, parent:'game', backgroundColor:'#060410',
   scene:[Boot,Splash,Tutorial,Menu,Loadout,Game], render:{pixelArt:false,antialias:true} };
 function startGame(){ new Phaser.Game(config); }
 if(document.fonts && document.fonts.load){
-  Promise.race([ document.fonts.load('900 40px Orbitron').then(()=>document.fonts.ready), new Promise(r=>setTimeout(r,2500)) ]).then(startGame).catch(startGame);
+  Promise.race([ document.fonts.load('700 40px "Chakra Petch"').then(()=>document.fonts.ready), new Promise(r=>setTimeout(r,2500)) ]).then(startGame).catch(startGame);
 } else startGame();
