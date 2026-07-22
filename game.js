@@ -1858,7 +1858,7 @@ class Game extends Phaser.Scene{
     const p = isPlayer ? this.freeSpot(Phaser.Utils.Array.GetRandom(DISTRICTS)) : this.freeSpot();
     const op=isPlayer?OP(GAME.char):null;
     const charKey=isPlayer?('ch_'+GAME.char):'ch_bot';
-    const s=this.physics.add.image(p.x,p.y,charKey+'_0').setDepth(6); s.body.setCircle(15,17,17); s.setCollideWorldBounds(true);
+    const s=this.physics.add.image(p.x,p.y,charKey+'_0').setDepth(6).setScale(0.7); s.body.setCircle(15,17,17); s.setCollideWorldBounds(true);
     const gun=this.add.image(p.x,p.y,'gun_small').setOrigin(16/64,0.5).setDepth(7).setVisible(false);
     const u={ s,gun,isPlayer,charKey,frame:0, alive:true, hp:100,maxhp:100, shield:isPlayer?0:Phaser.Math.Between(0,50),maxshield:100,
       weapon:isPlayer?'pistol':Phaser.Utils.Array.GetRandom(['pistol','pistol','smg']),
