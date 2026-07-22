@@ -153,6 +153,7 @@ const Profile={
     if(res.win){ d.streak=(d.streak||0)+1; if(d.streak>(d.bestStreak||0)) d.bestStreak=d.streak; } else d.streak=0;
     if((res.score||0)>(d.topScore||0)) d.topScore=res.score;
     d.ops=d.ops||{}; d.ops[res.op]=(d.ops[res.op]||0)+1;
+    d.opStats=d.opStats||{}; const _os=d.opStats[res.op]||(d.opStats[res.op]={m:0,w:0,k:0}); _os.m++; _os.k+=res.kills; if(res.win) _os.w++;
     this.ensureDaily(); let bonus=0;
     const bump=(c)=>{ if(c.done) return;
       if(c.type==='kills') c.prog+=res.kills; else if(c.type==='killsManual'&&res.mode==='manual') c.prog+=res.kills;
@@ -1248,93 +1249,80 @@ class Loadout extends Phaser.Scene{
   create(){
     const W=this.scale.width,H=this.scale.height,cx=W/2;
     menuBg(this);
-    // top bar
-    this.add.text(14,24,'‹ INDIETRO',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#c9c6ea',fontStyle:'900',backgroundColor:'#0b0918',padding:{x:12,y:10}}).setOrigin(0,0.5).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.scene.start('Menu'); });
-    this.add.text(W-16,24,'💠 '+Profile.data.credits,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#ffd23f',fontStyle:'900',padding:{top:4,bottom:2}}).setOrigin(1,0.5);
-    this.add.text(cx,H*0.072,'SCEGLI OPERATORE',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5);
-    // SFIDA UN AMICO (here in Deploy, next to mode choice)
+    // ---- top bar ----
+    this.add.text(14,22,'‹ INDIETRO',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#c9c6ea',fontStyle:'700',backgroundColor:'#0b0918',padding:{x:12,y:9}}).setOrigin(0,0.5).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.scene.start('Menu'); });
+    this.add.text(W-16,22,'💠 '+Profile.data.credits,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#ffd23f',fontStyle:'700',padding:{top:4,bottom:2}}).setOrigin(1,0.5);
 
-
-    // operator selector row (portraits)
+    // ---- operator chips row ----
     const PORT={vyre:'port_vyre',nova:'port_nova',oracle:'port_oracle',aegis:'port_aegis',wraith:'port_wraith'};
     this.PORT=PORT; this.opChips=[];
-    const n=OPERATORS.length, gap=Math.min(64,W*0.17), x0=cx-(n-1)*gap/2, oy=H*0.145;
+    const n=OPERATORS.length, gap=Math.min(60,W*0.16), x0=cx-(n-1)*gap/2, oy=H*0.115;
     OPERATORS.forEach((o,i)=>{ const x=x0+i*gap;
-      const ring=this.add.circle(x,oy,26,0x0b0918).setStrokeStyle(3,0x2a2550);
-      let ic=null; if(this.textures.exists(PORT[o.id])){ ic=this.add.image(x,oy,PORT[o.id]).setDisplaySize(34,52); }
-      const lock=this.add.text(x,oy,'🔒',{fontSize:'15px'}).setOrigin(0.5).setVisible(false);
-      this.add.rectangle(x,oy,56,56,0xffffff,0.001).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); GAME.char=o.id; this.refresh(); });
+      const ring=this.add.circle(x,oy,24,0x0b0918).setStrokeStyle(3,0x2a2550);
+      let ic=null; if(this.textures.exists(PORT[o.id])){ ic=this.add.image(x,oy,PORT[o.id]).setDisplaySize(32,48); }
+      const lock=this.add.text(x,oy,'🔒',{fontSize:'14px'}).setOrigin(0.5).setVisible(false);
+      this.add.rectangle(x,oy,54,54,0xffffff,0.001).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); GAME.char=o.id; this.refresh(); });
       this.opChips.push({ring,ic,lock,o,x,oy}); });
 
-    // ===== CHARACTER CARD =====
-    const cardY=H*0.19, cardH=H*0.55, cardX=cx-Math.min(360,W*0.92)/2, cardW=Math.min(360,W*0.92);
-    cyberFrame(this,cardX,cardY,cardW,cardH,C.cyan,0);
-    // left: big portrait
-    const lx=cardX+cardW*0.30;
-    this.add.rectangle(lx,cardY+cardH*0.42,cardW*0.42,cardH*0.62,0x0b0918,0.55).setDepth(1);
-    this.bigPort=this.add.image(lx,cardY+cardH*0.42,'port_vyre').setDepth(2);
-    this.bigGlow=this.add.image(lx,cardY+cardH*0.42,'glow').setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(cardW*0.5,cardW*0.5).setAlpha(0.2).setDepth(1);
-    // right column — name, role, then tappable STORIA + ABILITÀ (open clean popups; no cropped text)
-    const rx=cardX+cardW*0.54, rw=cardW*0.42;
-    this.cName=this.add.text(rx,cardY+30,'',{fontFamily:TITLE_FONT,fontSize:'22px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
-    this.cRole=this.add.text(rx,cardY+56,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'900',color:'#8a86c8'}).setOrigin(0,0.5).setDepth(2);
+    // ---- name / role / STORIA (name tappable = lore) ----
+    const nameY=H*0.145;
+    this.cName=this.add.text(cx,nameY,'',{fontFamily:TITLE_FONT,fontSize:'30px',fontStyle:'700',color:'#fff'}).setOrigin(0.5).setDepth(4).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
+    this.cRole=this.add.text(cx,nameY+24,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'700',color:'#8a86c8'}).setOrigin(0.5).setDepth(4);
+    this.add.text(cx,nameY+42,'📖 STORIA ›',{fontFamily:TITLE_FONT,fontSize:'10px',fontStyle:'700',color:'#33e1ff'}).setOrigin(0.5).setDepth(4).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
 
-    // STORIA button (higher, tighter)
-    const storyY=cardY+cardH*0.30;
-    const storyBox=cyberFrame(this,rx,storyY-18,rw,36,0x3a3470,0);
-    this.add.text(rx+14,storyY,'📖 STORIA',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#c9c6ea',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.add.text(rx+rw-14,storyY,'›',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#8a86c8',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
-    this.add.rectangle(rx+rw/2,storyY,rw,36,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
-      .on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
+    // ---- hero stage (big portrait) ----
+    const stageY=H*0.355;
+    this.stageGlow=this.add.ellipse(cx,stageY+H*0.135,W*0.5,H*0.05,C.cyan,0.14).setDepth(0);
+    this.bigGlow=this.add.image(cx,stageY,'glow').setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(W*0.55,W*0.55).setAlpha(0.18).setDepth(1);
+    this.bigPort=this.add.image(cx,stageY,'port_vyre').setDepth(2);
 
-    // ABILITÀ block (moved up)
-    const abY=cardY+cardH*0.46;
-    this.add.rectangle(rx,abY-14,rw,1,C.cyan,0.35).setOrigin(0,0.5).setDepth(2);
-    this.add.text(rx,abY,'ABILITÀ',{fontFamily:TITLE_FONT,fontSize:'9px',color:'#5f7a8a',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.cAbIcon=this.add.text(rx,abY+24,'',{fontFamily:TITLE_FONT,fontSize:'19px',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.cAbName=this.add.text(rx+30,abY+24,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#fff'}).setOrigin(0,0.5).setDepth(2);
-    const abInfo=cyberFrame(this,rx,abY+40,rw,32,C.cyan,0);
-    this.add.text(rx+14,abY+56,'ℹ  come funziona',{fontFamily:TITLE_FONT,fontSize:'10px',color:'#33e1ff',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.add.text(rx+rw-14,abY+56,'›',{fontFamily:TITLE_FONT,fontSize:'16px',color:'#33e1ff',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
-    this.add.rectangle(rx+rw/2,abY+56,rw,32,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
-      .on('pointerdown',()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup(o.abName.toUpperCase()+'  '+o.icon, o.desc||'', o.col); });
+    // ---- stats strip (kill / partite / vinte with selected operator) ----
+    const stY=H*0.53, sbw=Math.min(118,W*0.30), sgap=sbw+8;
+    const mkStat=(x,label,col)=>{ cyberFrame(this,x-sbw/2,stY-24,sbw,48,col,0);
+      const v=this.add.text(x,stY-7,'0',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'700',color:'#fff'}).setOrigin(0.5).setDepth(2);
+      this.add.text(x,stY+15,label,{fontFamily:TITLE_FONT,fontSize:'8px',fontStyle:'700',color:'#8a86c8'}).setOrigin(0.5).setDepth(2); return v; };
+    this.statKill=mkStat(cx-sgap,'KILL',C.magenta);
+    this.statMatch=mkStat(cx,'PARTITE',C.cyan);
+    this.statWin=mkStat(cx+sgap,'VINTE',C.gold);
 
-    // ULTIMATE block (golden)
-    const ultY=cardY+cardH*0.72;
-    this.add.rectangle(rx,ultY-14,rw,1,C.gold,0.4).setOrigin(0,0.5).setDepth(2);
-    this.add.text(rx,ultY,'ULTIMATE',{fontFamily:TITLE_FONT,fontSize:'9px',color:'#8a7a3a',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.add.text(rx,ultY+24,'★',{fontFamily:TITLE_FONT,fontSize:'19px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0,0.5).setDepth(2);
-    this.cUltName=this.add.text(rx+30,ultY+24,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'900',color:'#ffd23f'}).setOrigin(0,0.5).setDepth(2);
-    cyberFrame(this,rx,ultY+40,rw,32,C.gold,0);
-    this.add.text(rx+14,ultY+56,'ℹ  come funziona',{fontFamily:TITLE_FONT,fontSize:'10px',color:'#ffd23f',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
-    this.add.text(rx+rw-14,ultY+56,'›',{fontFamily:TITLE_FONT,fontSize:'16px',color:'#ffd23f',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
-    this.add.rectangle(rx+rw/2,ultY+56,rw,32,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
-      .on('pointerdown',()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup('ULTIMATE · '+(o.ultName||''), ULT_DESC[o.ult]||'In arrivo.', C.gold); });
-    // unlock button (shown when locked)
-    this.unlockBtn=this.add.rectangle(lx,cardY+cardH-24,cardW*0.46,42,0x241a00).setStrokeStyle(2,C.gold).setDepth(3).setInteractive({useHandCursor:true}).setVisible(false);
-    this.unlockTxt=this.add.text(lx,cardY+cardH-24,'',{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'900',color:'#ffd23f',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(4).setVisible(false);
+    // ---- ability + ultimate rows (tappable = info) ----
+    const rw=Math.min(340,W*0.86), rx=cx-rw/2;
+    const infoRow=(y,kicker,col,onTap)=>{
+      cyberFrame(this,rx,y-20,rw,40,col,0);
+      const icon=this.add.text(rx+20,y,'',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'700',color:hexStr(col)}).setOrigin(0.5).setDepth(2);
+      this.add.text(rx+40,y-8,kicker,{fontFamily:TITLE_FONT,fontSize:'8px',color:'#5f7a8a',fontStyle:'700'}).setOrigin(0,0.5).setDepth(2);
+      const nm=this.add.text(rx+40,y+7,'',{fontFamily:TITLE_FONT,fontSize:'14px',fontStyle:'700',color:hexStr(col)}).setOrigin(0,0.5).setDepth(2);
+      this.add.text(rx+rw-14,y,'ℹ ›',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#8a86c8',fontStyle:'700'}).setOrigin(1,0.5).setDepth(2);
+      this.add.rectangle(rx+rw/2,y,rw,40,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true}).on('pointerdown',onTap);
+      return {icon,nm};
+    };
+    this.abRow=infoRow(H*0.635,'TATTICA',C.cyan,()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup(o.abName.toUpperCase()+'  '+o.icon, o.desc||'', o.col); });
+    this.ultRow=infoRow(H*0.705,'ULTIMATE',C.gold,()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup('ULTIMATE · '+(o.ultName||''), ULT_DESC[o.ult]||'In arrivo.', C.gold); });
+
+    // ---- unlock button (over stats when locked) ----
+    this.unlockBtn=this.add.rectangle(cx,stY,W*0.5,44,0x241a00).setStrokeStyle(2,C.gold).setDepth(6).setInteractive({useHandCursor:true}).setVisible(false);
+    this.unlockTxt=this.add.text(cx,stY,'',{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'700',color:'#ffd23f',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(7).setVisible(false);
     this.unlockBtn.on('pointerdown',()=>{ const o=OP(GAME.char); if(Profile.unlock(o.id,o.cost)) SFX.pickup(); else { SFX.ui(); this.flash('SERVONO '+o.cost+' CREDITI'); } this.refresh(); });
 
-    // ===== SKIN ROW (inside selection screen) =====
-    const sy=cardY+cardH+30;
-    this.add.text(cx,sy-18,'◤ SKIN ◢',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#8a86c8',fontStyle:'900'}).setOrigin(0.5);
+    // ---- skin row ----
+    const sy=H*0.80;
+    this.add.text(cx,sy-20,'◤ SKIN ◢',{fontFamily:TITLE_FONT,fontSize:'11px',color:'#8a86c8',fontStyle:'700'}).setOrigin(0.5);
     this.skinBtns=[]; const sg=Math.min(84,W*0.22), sx0=cx-(SKINS.length-1)*sg/2;
     SKINS.forEach((sk,i)=>{ const x=sx0+i*sg;
-      const box=cyberFrame(this,x-(sg-10)/2,sy-4,sg-10,44,0x2a2550,0);
-      this.add.text(x,sy+4,sk.name,{fontFamily:TITLE_FONT,fontSize:'10px',color:'#e8e6ff',fontStyle:'900'}).setOrigin(0.5).setDepth(2);
+      cyberFrame(this,x-(sg-10)/2,sy-4,sg-10,44,0x2a2550,0);
+      this.add.text(x,sy+4,sk.name,{fontFamily:TITLE_FONT,fontSize:'10px',color:'#e8e6ff',fontStyle:'700'}).setOrigin(0.5).setDepth(2);
       const sub=this.add.text(x,sy+22,'',{fontSize:'11px',color:'#8a86c8'}).setOrigin(0.5).setDepth(2);
       const selG=this.add.graphics().setDepth(1);
       this.add.rectangle(x,sy+8,sg-10,44,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); if(Profile.unlockedSkin(sk.id)) GAME.skin=sk.id; else if(Profile.unlockSkin(sk.id,sk.cost)){ GAME.skin=sk.id; SFX.pickup(); } else this.flash('SERVONO '+sk.cost+' CREDITI'); this.refresh(); });
       this.skinBtns.push({sub,sk,selG,x,sy}); });
 
-    // ===== START =====
-    const by=H*0.925, bbw=Math.min(340,W*0.86);
+    // ---- SELECT ----
+    const by=H*0.915, bbw=Math.min(340,W*0.86);
     cyberFrame(this,cx-bbw/2,by-30,bbw,60,C.player,0);
-    this.startTxt=this.add.text(cx,by,'',{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'900',color:'#33e1ff'}).setOrigin(0.5).setDepth(2);
-    this.add.rectangle(cx,by,bbw,60,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true})
-      .on('pointerdown',()=>{ if(!Profile.unlockedOp(GAME.char)){ SFX.ui(); this.flash('OPERATORE BLOCCATO'); return; } SFX.resume(); SFX.ui(); this.scene.start('Game'); });
+    this.startTxt=this.add.text(cx,by,'',{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'700',color:'#33e1ff'}).setOrigin(0.5).setDepth(2);
+    this.add.rectangle(cx,by,bbw,60,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ if(!Profile.unlockedOp(GAME.char)){ SFX.ui(); this.flash('OPERATORE BLOCCATO'); return; } SFX.resume(); SFX.ui(); this.scene.start('Game'); });
 
-    this.flashTxt=this.add.text(cx,by-42,'',{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'900',color:'#ff6b8a'}).setOrigin(0.5).setDepth(5).setAlpha(0);
+    this.flashTxt=this.add.text(cx,by-42,'',{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'700',color:'#ff6b8a'}).setOrigin(0.5).setDepth(5).setAlpha(0);
     this.refresh();
   }
   flash(m){ this.flashTxt.setText(m).setAlpha(1); this.tweens.add({targets:this.flashTxt,alpha:0,duration:1400}); }
@@ -1355,15 +1343,18 @@ class Loadout extends Phaser.Scene{
       c.ring.setStrokeStyle(3, GAME.char===c.o.id?c.o.col:0x2a2550);
       if(c.ic) c.ic.setAlpha(u?1:0.4); c.lock.setVisible(!u); });
     if(this.textures.exists(this.PORT[o.id])) this.bigPort.setTexture(this.PORT[o.id]);
-    const ph=this.scale.height*0.30; this.bigPort.setDisplaySize(ph*(this.bigPort.width/this.bigPort.height), ph).setAlpha(unlocked?1:0.5);
-    this.bigGlow.setTint(o.col);
+    const ph=this.scale.height*0.28; this.bigPort.setDisplaySize(ph*(this.bigPort.width/this.bigPort.height), ph).setAlpha(unlocked?1:0.5);
+    this.bigGlow.setTint(o.col); if(this.stageGlow) this.stageGlow.setFillStyle(o.col,0.14);
     this.cName.setText(o.name).setColor(colStr);
     this.cRole.setText(o.role||'');
-    this.cAbIcon.setText(o.icon).setColor(colStr);
-    this.cAbName.setText(o.abName.toUpperCase());
-    if(this.cUltName) this.cUltName.setText((o.ultName||'').toUpperCase());
+    this.abRow.icon.setText(o.icon).setColor(colStr); this.abRow.nm.setText(o.abName.toUpperCase()).setColor(colStr);
+    this.ultRow.icon.setText('★'); this.ultRow.nm.setText((o.ultName||'').toUpperCase());
+    const os=(Profile.data.opStats&&Profile.data.opStats[o.id])||{m:0,w:0,k:0};
+    this.statKill.setText(String(os.k)).setVisible(unlocked);
+    this.statMatch.setText(String(os.m)).setVisible(unlocked);
+    this.statWin.setText(String(os.w)).setVisible(unlocked);
     if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' 💠');
-      const uw=Math.max(this.scale.width*0.42*0.9, this.unlockTxt.width+30); this.unlockBtn.setSize(uw,42); this.unlockBtn.setStrokeStyle(2,C.gold); }
+      const uw=Math.max(this.scale.width*0.5, this.unlockTxt.width+30); this.unlockBtn.setSize(uw,44); }
     else { this.unlockBtn.setVisible(false); this.unlockTxt.setVisible(false); }
     this.skinBtns.forEach(b=>{ const u=Profile.unlockedSkin(b.sk.id); b.selG.clear();
       if(GAME.skin===b.sk.id){ b.selG.lineStyle(2,C.cyan,1); b.selG.strokeRect(b.x-(Math.min(84,this.scale.width*0.22)-10)/2,b.sy-4,Math.min(84,this.scale.width*0.22)-10,44); }
