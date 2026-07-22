@@ -1612,17 +1612,14 @@ class Game extends Phaser.Scene{
     for(let i=0;i<(n||6);i++){ const tx=x+4+i*6; g.beginPath(); g.moveTo(tx,y); g.lineTo(tx+3,y-4); g.strokePath(); }
   }
   hudBar(g,x,y,w,h,frac,col,bgcol){
-    const sk=4; // skewed (parallelogram) bar = sci-fi look
-    g.fillStyle(bgcol||0x10202c,0.85);
-    g.beginPath(); g.moveTo(x+sk,y); g.lineTo(x+w,y); g.lineTo(x+w-sk,y+h); g.lineTo(x,y+h); g.closePath(); g.fillPath();
-    const fw=Math.max(0,(w-sk)*Phaser.Math.Clamp(frac,0,1));
-    if(fw>2){ g.fillStyle(col,1);
-      g.beginPath(); g.moveTo(x+sk,y+1); g.lineTo(x+sk+fw,y+1); g.lineTo(x+fw,y+h-1); g.lineTo(x+1,y+h-1); g.closePath(); g.fillPath(); }
-    g.lineStyle(1,col,0.75);
-    g.beginPath(); g.moveTo(x+sk,y); g.lineTo(x+w,y); g.lineTo(x+w-sk,y+h); g.lineTo(x,y+h); g.closePath(); g.strokePath();
-    // segment notches
-    g.lineStyle(1,0x061018,0.7);
-    for(let i=1;i<8;i++){ const px=x+sk+(w-sk)*i/8; g.beginPath(); g.moveTo(px,y+1); g.lineTo(px-sk*(h-2)/h,y+h-1); g.strokePath(); }
+    const N=10, gap=2, sw=(w-(N-1)*gap)/N;
+    const on=Phaser.Math.Clamp(frac,0,1)*N;
+    for(let i=0;i<N;i++){ const bx=x+i*(sw+gap);
+      g.fillStyle(bgcol||0x0e1c28,0.85); g.fillRect(bx,y,sw,h);
+      const f=Phaser.Math.Clamp(on-i,0,1);
+      if(f>0){ g.fillStyle(col,1); g.fillRect(bx,y,sw*f,h);
+        g.fillStyle(0xffffff,0.18); g.fillRect(bx,y,sw*f,1); }
+    }
   }
 
   setupCameras(){
@@ -1975,16 +1972,16 @@ class Game extends Phaser.Scene{
     const dx=u.s.x, dy=u.s.y, rot=u.s.rotation, key=u.charKey;
     if(u.s.body) u.s.body.enable=false;
     u.s.setVelocity && u.s.setVelocity(0,0);
-    const corpse=this.add.image(dx,dy,key+'_d0').setDepth(4).setRotation(rot); if(this.toWorld) this.toWorld(corpse);
+    const corpse=this.add.image(dx,dy,key+'_0').setDepth(4).setRotation(rot); if(this.toWorld) this.toWorld(corpse);
+    corpse.setTint(0xff2e4d);                       // digital red death
     const kb=(by&&by.s)?Phaser.Math.Angle.Between(by.s.x,by.s.y,dx,dy):rot;
-    this.tweens.add({targets:corpse,x:dx+Math.cos(kb)*26,y:dy+Math.sin(kb)*26,duration:360,ease:'Quad.out'});
-    this.tweens.add({targets:corpse,scale:{from:1.14,to:1},duration:260,ease:'Quad.out'});
+    this.tweens.add({targets:corpse,x:dx+Math.cos(kb)*20,y:dy+Math.sin(kb)*20,duration:240,ease:'Quad.out'});
+    // dissolve into data: quick red fade + slight distort, with rising data sparks
+    this.tweens.add({targets:corpse,alpha:0,scaleX:1.08,scaleY:0.86,duration:820,delay:160,ease:'Sine.in',onComplete:()=>corpse.destroy()});
+    if(this.FX.particles){ const dn=Math.round(9*this.FX.particles);
+      for(let i=0;i<dn;i++){ const p=this.add.image(dx+Phaser.Math.Between(-11,11),dy+Phaser.Math.Between(-11,11),'spark').setTint(0xff3b6b).setBlendMode(Phaser.BlendModes.ADD).setDepth(12); if(this.toWorld) this.toWorld(p);
+        this.tweens.add({targets:p,y:p.y-Phaser.Math.Between(18,42),alpha:0,scale:0,duration:Phaser.Math.Between(500,900),delay:i*28,onComplete:()=>p.destroy()}); } }
     u.s.destroy();
-    // hit -> falling -> down (slower, readable)
-    this.time.delayedCall(360,()=>{ if(corpse.active){ corpse.setTexture(key+'_d1');
-      this.tweens.add({targets:corpse,scale:{from:1,to:0.96},duration:320,ease:'Sine.in'}); } });
-    this.time.delayedCall(760,()=>{ if(corpse.active){ corpse.setTexture(key+'_d2'); corpse.setScale(1);
-      this.tweens.add({targets:corpse,alpha:0.5,duration:9000,delay:7000,onComplete:()=>corpse.destroy()}); } });
     if(by&&by.isPlayer&&!u.isPlayer){ this.kills++; this.flashKill(); SFX.kill();
       this.time.timeScale=0.55; this.time.delayedCall(60,()=>{ this.time.timeScale=1; }); }
     if(u.isPlayer){ SFX.kill(); this.cameras.main.shake(320,0.008);
