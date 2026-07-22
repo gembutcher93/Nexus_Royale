@@ -388,6 +388,9 @@ class Boot extends Phaser.Scene{
     ['vyre','nova','oracle','aegis','wraith','bot'].forEach(id=>{
       this.load.image('spr_'+id,'assets/spr_'+id+'.png');
     });
+    ['vyre','nova','oracle','aegis','wraith'].forEach(id=>{
+      this.load.image('chip_'+id,'assets/chip_'+id+'.png');
+    });
     this.load.video('intro_video',ART.intro,'loadeddata',false,false);
     this.load.on('loaderror',(f)=>{ ART_OK[f.key]=false; console.warn('asset mancante:',f.key); });
   }
@@ -1255,26 +1258,29 @@ class Loadout extends Phaser.Scene{
 
     // ---- operator chips row ----
     const PORT={vyre:'port_vyre',nova:'port_nova',oracle:'port_oracle',aegis:'port_aegis',wraith:'port_wraith'};
+    const CHIP={vyre:'chip_vyre',nova:'chip_nova',oracle:'chip_oracle',aegis:'chip_aegis',wraith:'chip_wraith'};
     this.PORT=PORT; this.opChips=[];
-    const n=OPERATORS.length, gap=Math.min(60,W*0.16), x0=cx-(n-1)*gap/2, oy=H*0.115;
+    const n=OPERATORS.length, gap=Math.min(60,W*0.16), x0=cx-(n-1)*gap/2, oy=H*0.09;
     OPERATORS.forEach((o,i)=>{ const x=x0+i*gap;
       const ring=this.add.circle(x,oy,24,0x0b0918).setStrokeStyle(3,0x2a2550);
-      let ic=null; if(this.textures.exists(PORT[o.id])){ ic=this.add.image(x,oy,PORT[o.id]).setDisplaySize(32,48); }
+      let ic=null; const ck=CHIP[o.id];
+      if(ck&&this.textures.exists(ck)){ ic=this.add.image(x,oy,ck).setDisplaySize(42,42); }
+      else if(this.textures.exists(PORT[o.id])){ ic=this.add.image(x,oy,PORT[o.id]).setDisplaySize(32,48); }
       const lock=this.add.text(x,oy,'🔒',{fontSize:'14px'}).setOrigin(0.5).setVisible(false);
       this.add.rectangle(x,oy,54,54,0xffffff,0.001).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); GAME.char=o.id; this.refresh(); });
       this.opChips.push({ring,ic,lock,o,x,oy}); });
 
-    // ---- name / role / STORIA (name tappable = lore) ----
-    const nameY=H*0.145;
+    // ---- name / role (name tappable = lore) ----
+    const nameY=H*0.185;
     this.cName=this.add.text(cx,nameY,'',{fontFamily:TITLE_FONT,fontSize:'30px',fontStyle:'700',color:'#fff'}).setOrigin(0.5).setDepth(4).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
     this.cRole=this.add.text(cx,nameY+24,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'700',color:'#8a86c8'}).setOrigin(0.5).setDepth(4);
     this.add.text(cx,nameY+42,'📖 STORIA ›',{fontFamily:TITLE_FONT,fontSize:'10px',fontStyle:'700',color:'#33e1ff'}).setOrigin(0.5).setDepth(4).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
 
-    // ---- hero stage (big portrait) ----
-    const stageY=H*0.355;
+    // ---- hero stage (big portrait, tappable = lore) ----
+    const stageY=H*0.375;
     this.stageGlow=this.add.ellipse(cx,stageY+H*0.135,W*0.5,H*0.05,C.cyan,0.14).setDepth(0);
     this.bigGlow=this.add.image(cx,stageY,'glow').setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(W*0.55,W*0.55).setAlpha(0.18).setDepth(1);
-    this.bigPort=this.add.image(cx,stageY,'port_vyre').setDepth(2);
+    this.bigPort=this.add.image(cx,stageY,'port_vyre').setDepth(2).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
 
     // ---- stats strip (kill / partite / vinte with selected operator) ----
     const stY=H*0.53, sbw=Math.min(118,W*0.30), sgap=sbw+8;
