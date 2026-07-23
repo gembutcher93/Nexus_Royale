@@ -394,6 +394,9 @@ class Boot extends Phaser.Scene{
     ['tl','t','tr','l','c','r','bl','b','br'].forEach(k=>{
       this.load.image('b_'+k,'assets/b_'+k+'.png');
     });
+    ['w_ctl','w_ctr','w_cbl','w_cbr','w_v','w_h','w_f'].forEach(k=>{
+      this.load.image(k,'assets/'+k+'.png');
+    });
     this.load.video('intro_video',ART.intro,'loadeddata',false,false);
     this.load.on('loaderror',(f)=>{ ART_OK[f.key]=false; console.warn('asset mancante:',f.key); });
   }
@@ -1273,11 +1276,11 @@ class Loadout extends Phaser.Scene{
       this.add.rectangle(x,oy,54,54,0xffffff,0.001).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); GAME.char=o.id; this.refresh(); });
       this.opChips.push({ring,ic,lock,o,x,oy}); });
 
-    // ---- name / role (name tappable = lore) ----
-    const nameY=H*0.185;
-    this.cName=this.add.text(cx,nameY,'',{fontFamily:TITLE_FONT,fontSize:'30px',fontStyle:'700',color:'#fff'}).setOrigin(0.5).setDepth(4).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
-    this.cRole=this.add.text(cx,nameY+24,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'700',color:'#8a86c8'}).setOrigin(0.5).setDepth(4);
-    this.add.text(cx,nameY+42,'📖 STORIA ›',{fontFamily:TITLE_FONT,fontSize:'10px',fontStyle:'700',color:'#33e1ff'}).setOrigin(0.5).setDepth(4).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
+    // ---- name / role / storia — allineati a DESTRA ----
+    const nameY=H*0.185, rx0=W-16;
+    this.cName=this.add.text(rx0,nameY,'',{fontFamily:TITLE_FONT,fontSize:'28px',fontStyle:'700',color:'#fff'}).setOrigin(1,0.5).setDepth(4).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
+    this.cRole=this.add.text(rx0,nameY+26,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'700',color:'#8a86c8'}).setOrigin(1,0.5).setDepth(4);
+    this.add.text(rx0,nameY+46,'📖 STORIA ›',{fontFamily:TITLE_FONT,fontSize:'10px',fontStyle:'700',color:'#33e1ff'}).setOrigin(1,0.5).setDepth(4).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
 
     // ---- hero stage (big portrait, tappable = lore) ----
     const stageY=H*0.375;
@@ -1308,9 +1311,10 @@ class Loadout extends Phaser.Scene{
     this.abRow=infoRow(H*0.635,'TATTICA',C.cyan,()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup(o.abName.toUpperCase()+'  '+o.icon, o.desc||'', o.col); });
     this.ultRow=infoRow(H*0.705,'ULTIMATE',C.gold,()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup('ULTIMATE · '+(o.ultName||''), ULT_DESC[o.ult]||'In arrivo.', C.gold); });
 
-    // ---- unlock button (over stats when locked) ----
-    this.unlockBtn=this.add.rectangle(cx,stY,W*0.5,44,0x241a00).setStrokeStyle(2,C.gold).setDepth(6).setInteractive({useHandCursor:true}).setVisible(false);
-    this.unlockTxt=this.add.text(cx,stY,'',{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'700',color:'#ffd23f',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(7).setVisible(false);
+    // ---- unlock button (a destra, sotto nome/classe/storia) ----
+    const ubw=Math.min(W*0.46,210), ubx=W-16-ubw/2, uby=H*0.185+86;
+    this.unlockBtn=this.add.rectangle(ubx,uby,ubw,42,0x241a00).setStrokeStyle(2,C.gold).setDepth(6).setInteractive({useHandCursor:true}).setVisible(false);
+    this.unlockTxt=this.add.text(ubx,uby,'',{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'700',color:'#ffd23f',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(7).setVisible(false);
     this.unlockBtn.on('pointerdown',()=>{ const o=OP(GAME.char); if(Profile.unlock(o.id,o.cost)) SFX.pickup(); else { SFX.ui(); this.flash('SERVONO '+o.cost+' CREDITI'); } this.refresh(); });
 
     // ---- skin row ----
@@ -1362,8 +1366,7 @@ class Loadout extends Phaser.Scene{
     this.statKill.setText(String(os.k)).setVisible(unlocked);
     this.statMatch.setText(String(os.m)).setVisible(unlocked);
     this.statWin.setText(String(os.w)).setVisible(unlocked);
-    if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' 💠');
-      const uw=Math.max(this.scale.width*0.5, this.unlockTxt.width+30); this.unlockBtn.setSize(uw,44); }
+    if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' 💠'); }
     else { this.unlockBtn.setVisible(false); this.unlockTxt.setVisible(false); }
     this.skinBtns.forEach(b=>{ const u=Profile.unlockedSkin(b.sk.id); b.selG.clear();
       if(GAME.skin===b.sk.id){ b.selG.lineStyle(2,C.cyan,1); b.selG.strokeRect(b.x-(Math.min(84,this.scale.width*0.22)-10)/2,b.sy-4,Math.min(84,this.scale.width*0.22)-10,44); }
@@ -1688,21 +1691,21 @@ class Game extends Phaser.Scene{
   }
 
   tileBuilding(x,y,w,h,col){
-    if(!this.textures.exists('b_tl')) return false;
-    const S=Math.max(24,Math.min(100,Math.floor(Math.min(w,h)/2)));
+    if(!this.textures.exists('w_ctl')) return false;
+    const B=46, Cn=Math.min(102,Math.floor(Math.min(w,h)/2));   // spessore muro nativo + spigolo
     const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
       return (m(r)<<16)|(m(g)<<8)|m(b); };
     const tint=mix(col||0x33e1ff,0.62);
-    const put=(key,px,py,pw,ph,rep)=>{ const o=rep
-        ? this.add.tileSprite(px,py,pw,ph,key).setOrigin(0,0)
-        : this.add.image(px,py,key).setOrigin(0,0).setDisplaySize(pw,ph);
-      o.setDepth(0.6).setTint(tint); return o; };
-    const iw=w-2*S, ih=h-2*S;
-    if(iw>0&&ih>0) put('b_c',x+S,y+S,iw,ih,true);
-    if(iw>0){ put('b_t',x+S,y,iw,S,true); put('b_b',x+S,y+h-S,iw,S,true); }
-    if(ih>0){ put('b_l',x,y+S,S,ih,true); put('b_r',x+w-S,y+S,S,ih,true); }
-    put('b_tl',x,y,S,S); put('b_tr',x+w-S,y,S,S);
-    put('b_bl',x,y+h-S,S,S); put('b_br',x+w-S,y+h-S,S,S);
+    const rep=(key,px,py,pw,ph)=>{ if(pw<=0||ph<=0) return;
+      this.add.tileSprite(px,py,pw,ph,key).setOrigin(0,0).setDepth(0.6).setTint(tint); };
+    const img=(key,px,py,pw,ph)=>this.add.image(px,py,key).setOrigin(0,0).setDisplaySize(pw,ph).setDepth(0.62).setTint(tint);
+    rep('w_f',x,y,w,h);                                   // pavimento/tetto sotto
+    rep('w_h',x+Cn,y,w-2*Cn,B);                           // muro alto
+    rep('w_h',x+Cn,y+h-B,w-2*Cn,B);                       // muro basso
+    rep('w_v',x,y+Cn,B,h-2*Cn);                           // muro sx
+    rep('w_v',x+w-B,y+Cn,B,h-2*Cn);                       // muro dx
+    img('w_ctl',x,y,Cn,Cn); img('w_ctr',x+w-Cn,y,Cn,Cn);
+    img('w_cbl',x,y+h-Cn,Cn,Cn); img('w_cbr',x+w-Cn,y+h-Cn,Cn,Cn);
     return true;
   }
   buildCity(){
