@@ -391,6 +391,9 @@ class Boot extends Phaser.Scene{
     ['vyre','nova','oracle','aegis','wraith'].forEach(id=>{
       this.load.image('chip_'+id,'assets/chip_'+id+'.png');
     });
+    ['tl','t','tr','l','c','r','bl','b','br'].forEach(k=>{
+      this.load.image('b_'+k,'assets/b_'+k+'.png');
+    });
     this.load.video('intro_video',ART.intro,'loadeddata',false,false);
     this.load.on('loaderror',(f)=>{ ART_OK[f.key]=false; console.warn('asset mancante:',f.key); });
   }
@@ -1684,6 +1687,24 @@ class Game extends Phaser.Scene{
     }
   }
 
+  tileBuilding(x,y,w,h,col){
+    if(!this.textures.exists('b_tl')) return false;
+    const S=Math.max(24,Math.min(100,Math.floor(Math.min(w,h)/2)));
+    const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
+      return (m(r)<<16)|(m(g)<<8)|m(b); };
+    const tint=mix(col||0x33e1ff,0.62);
+    const put=(key,px,py,pw,ph,rep)=>{ const o=rep
+        ? this.add.tileSprite(px,py,pw,ph,key).setOrigin(0,0)
+        : this.add.image(px,py,key).setOrigin(0,0).setDisplaySize(pw,ph);
+      o.setDepth(0.6).setTint(tint); return o; };
+    const iw=w-2*S, ih=h-2*S;
+    if(iw>0&&ih>0) put('b_c',x+S,y+S,iw,ih,true);
+    if(iw>0){ put('b_t',x+S,y,iw,S,true); put('b_b',x+S,y+h-S,iw,S,true); }
+    if(ih>0){ put('b_l',x,y+S,S,ih,true); put('b_r',x+w-S,y+S,S,ih,true); }
+    put('b_tl',x,y,S,S); put('b_tr',x+w-S,y,S,S);
+    put('b_bl',x,y+h-S,S,S); put('b_br',x+w-S,y+h-S,S,S);
+    return true;
+  }
   buildCity(){
     const ndCol=(cx,cy)=>{ let best=DISTRICTS[0],bd=1e18; DISTRICTS.forEach(d=>{ const dx=cx-d.x*WORLD_W,dy=cy-d.y*WORLD_H,dd=dx*dx+dy*dy; if(dd<bd){bd=dd;best=d;} }); return best.c; };
     const addWall=(x,y,w,h,edge,type)=>{
@@ -1711,6 +1732,8 @@ class Game extends Phaser.Scene{
           G.fillStyle(0xff3b6b,0.7); G.fillRect(x+w-7,y+h*0.32,4,h*0.36);
         } else { G.fillStyle(edge,0.5); G.fillRect(x+4,y+4,w-8,5); }
       } else if(type==='building'){
+        const tiled=this.tileBuilding(x,y,w,h,edge);
+        if(!tiled){
         // rooftop mass + parapet + neon trim (all static, one graphics)
         G.fillStyle(0x191627,1); G.fillRect(x,y,w,h);
         G.fillStyle(0x221f34,0.5);
@@ -1734,6 +1757,7 @@ class Game extends Phaser.Scene{
             G.fillStyle(C.magenta,1); G.fillCircle(px+pw/2,py-2,3);
           } else { G.fillStyle(edge,0.18); G.fillRect(px,py,pw,ph); G.lineStyle(1,edge,0.9); G.strokeRect(px,py,pw,ph);
             G.fillStyle(edge,0.5); for(let k=1;k<4;k++) G.fillRect(px+3,py+k*(ph/4),pw-6,1); }
+        }
         }
         // neon rooftop sign (only a few get an animated glow)
         if(w>190&&h>110&&Math.random()<0.55){
@@ -1858,7 +1882,7 @@ class Game extends Phaser.Scene{
     const p = isPlayer ? this.freeSpot(Phaser.Utils.Array.GetRandom(DISTRICTS)) : this.freeSpot();
     const op=isPlayer?OP(GAME.char):null;
     const charKey=isPlayer?('ch_'+GAME.char):'ch_bot';
-    const s=this.physics.add.image(p.x,p.y,charKey+'_0').setDepth(6).setScale(0.2); s.body.setCircle(15,17,17); s.setCollideWorldBounds(true);
+    const s=this.physics.add.image(p.x,p.y,charKey+'_0').setDepth(6); s.body.setCircle(15,17,17); s.setCollideWorldBounds(true);
     const gun=this.add.image(p.x,p.y,'gun_small').setOrigin(16/64,0.5).setDepth(7).setVisible(false);
     const u={ s,gun,isPlayer,charKey,frame:0, alive:true, hp:100,maxhp:100, shield:isPlayer?0:Phaser.Math.Between(0,50),maxshield:100,
       weapon:isPlayer?'pistol':Phaser.Utils.Array.GetRandom(['pistol','pistol','smg']),
