@@ -397,6 +397,10 @@ class Boot extends Phaser.Scene{
     ['w_ctl','w_ctr','w_cbl','w_cbr','w_v','w_h','w_f'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
+    // loot art: sprite armi reali + medkit + batteria scudo. Fallback = silhouette procedurali.
+    Object.keys(WEAPONS).forEach(k=> this.load.image('wpn_'+k,'assets/wpn_'+k+'.png'));
+    this.load.image('wpn_rifle_leg','assets/wpn_rifle_leg.png');
+    ['lootH','lootS'].forEach(k=> this.load.image(k,'assets/'+k+'.png'));
     this.load.video('intro_video',ART.intro,'loadeddata',false,false);
     this.load.on('loaderror',(f)=>{ ART_OK[f.key]=false; console.warn('asset mancante:',f.key); });
   }
@@ -526,10 +530,14 @@ class Boot extends Phaser.Scene{
     g.fillStyle(0xffffff,0.22); g.fillRoundedRect(7,9,26,20,2);
     g.lineStyle(2,0xffffff,0.9); g.beginPath(); g.moveTo(4,19);g.lineTo(36,19);g.moveTo(20,6);g.lineTo(20,32); g.strokePath();
     g.generateTexture('crateN',40,40);
-    g.clear(); g.fillStyle(0x0d0b1c,1); g.fillRoundedRect(4,6,32,28,3); g.lineStyle(3,C.green,1); g.strokeRoundedRect(4,6,32,28,3);
-    g.fillStyle(C.green,1); g.fillRect(18,12,6,16); g.fillRect(12,18,18,4); g.generateTexture('lootH',40,40);
-    g.clear(); g.fillStyle(0x0d0b1c,1); g.fillRoundedRect(8,4,24,32,3); g.lineStyle(3,C.shield,1); g.strokeRoundedRect(8,4,24,32,3);
-    g.fillStyle(C.shield,0.55); g.fillRect(12,8,16,11); g.fillStyle(C.shield,1); g.fillRect(12,8,16,3); g.generateTexture('lootS',40,40);
+    if(!this.textures.exists('lootH')){
+      g.clear(); g.fillStyle(0x0d0b1c,1); g.fillRoundedRect(4,6,32,28,3); g.lineStyle(3,C.green,1); g.strokeRoundedRect(4,6,32,28,3);
+      g.fillStyle(C.green,1); g.fillRect(18,12,6,16); g.fillRect(12,18,18,4); g.generateTexture('lootH',40,40);
+    }
+    if(!this.textures.exists('lootS')){
+      g.clear(); g.fillStyle(0x0d0b1c,1); g.fillRoundedRect(8,4,24,32,3); g.lineStyle(3,C.shield,1); g.strokeRoundedRect(8,4,24,32,3);
+      g.fillStyle(C.shield,0.55); g.fillRect(12,8,16,11); g.fillStyle(C.shield,1); g.fillRect(12,8,16,3); g.generateTexture('lootS',40,40);
+    }
 
     // dropship
     g.clear(); g.fillStyle(0x0c0a1a,1); g.fillEllipse(64,28,120,34);
@@ -559,7 +567,7 @@ class Boot extends Phaser.Scene{
       else { /* railgun */ g.fillStyle(D,1); g.fillRoundedRect(5,14,10,10,2); g.fillStyle(M,1); g.fillRect(13,16,30,3); g.fillStyle(D,1); g.fillRect(18,11,8,4); g.fillStyle(col,1); g.fillRect(40,12,4,11); }
       g.generateTexture(key,48,36);
     };
-    Object.keys(WEAPONS).forEach(k=> drawWpn('wpn_'+k, WEAPONS[k].col, k));
+    Object.keys(WEAPONS).forEach(k=>{ if(!this.textures.exists('wpn_'+k)) drawWpn('wpn_'+k, WEAPONS[k].col, k); });
 
     // ---- procedural TOP-DOWN animated characters (facing +x): frame 0 idle, 1-4 walk ----
     const CHAR_STYLE={vyre:'op',nova:'hood',aegis:'op',oracle:'hood',wraith:'hood'};
@@ -1691,21 +1699,21 @@ class Game extends Phaser.Scene{
   }
 
   tileBuilding(x,y,w,h,col){
-    if(!this.textures.exists('w_ctl')) return false;
-    const B=46, Cn=Math.min(102,Math.floor(Math.min(w,h)/2));   // spessore muro nativo + spigolo
+    if(!this.textures.exists('b_tl')) return false;
+    const S=Math.max(24,Math.min(100,Math.floor(Math.min(w,h)/2)));
     const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
       return (m(r)<<16)|(m(g)<<8)|m(b); };
     const tint=mix(col||0x33e1ff,0.62);
-    const rep=(key,px,py,pw,ph)=>{ if(pw<=0||ph<=0) return;
-      this.add.tileSprite(px,py,pw,ph,key).setOrigin(0,0).setDepth(0.6).setTint(tint); };
-    const img=(key,px,py,pw,ph)=>this.add.image(px,py,key).setOrigin(0,0).setDisplaySize(pw,ph).setDepth(0.62).setTint(tint);
-    rep('w_f',x,y,w,h);                                   // pavimento/tetto sotto
-    rep('w_h',x+Cn,y,w-2*Cn,B);                           // muro alto
-    rep('w_h',x+Cn,y+h-B,w-2*Cn,B);                       // muro basso
-    rep('w_v',x,y+Cn,B,h-2*Cn);                           // muro sx
-    rep('w_v',x+w-B,y+Cn,B,h-2*Cn);                       // muro dx
-    img('w_ctl',x,y,Cn,Cn); img('w_ctr',x+w-Cn,y,Cn,Cn);
-    img('w_cbl',x,y+h-Cn,Cn,Cn); img('w_cbr',x+w-Cn,y+h-Cn,Cn,Cn);
+    const put=(key,px,py,pw,ph,rep)=>{ if(pw<=0||ph<=0) return null;
+      const o=rep ? this.add.tileSprite(px,py,pw,ph,key).setOrigin(0,0)
+                  : this.add.image(px,py,key).setOrigin(0,0).setDisplaySize(pw,ph);
+      o.setDepth(0.6).setTint(tint); return o; };
+    const iw=w-2*S, ih=h-2*S;
+    put('b_c',x+S,y+S,iw,ih,true);
+    put('b_t',x+S,y,iw,S,true); put('b_b',x+S,y+h-S,iw,S,true);
+    put('b_l',x,y+S,S,ih,true); put('b_r',x+w-S,y+S,S,ih,true);
+    put('b_tl',x,y,S,S); put('b_tr',x+w-S,y,S,S);
+    put('b_bl',x,y+h-S,S,S); put('b_br',x+w-S,y+h-S,S,S);
     return true;
   }
   buildCity(){
@@ -1856,7 +1864,9 @@ class Game extends Phaser.Scene{
     if(type==='weapon'){
       const w=WEAPONS[payload];
       // ground weapon = its own silhouette on a faint pad
-      l=this.loot.create(x,y,'wpn_'+payload).setDepth(2);
+      // skin dorata "leggendaria" per il rifle uscito da airdrop
+      const wkey = (airdrop && payload==='rifle' && this.textures.exists('wpn_rifle_leg')) ? 'wpn_rifle_leg' : 'wpn_'+payload;
+      l=this.loot.create(x,y,wkey).setDepth(2);
       l.setScale(airdrop?1.25:1);
       const pad=this.add.ellipse(x,y+9,airdrop?48:38,airdrop?18:14, airdrop?C.gold:w.col, 0.16).setDepth(1);
       if(this.toWorld) this.toWorld(pad);
