@@ -2039,23 +2039,32 @@ class Game extends Phaser.Scene{
       if(r.x+r.w > x+w-wth-46 && r.y+r.h>doorY0 && r.y<doorY1) return false;   // non davanti alla porta
       return !placed.some(o=> r.x < o.x+o.w+10 && r.x+r.w+10 > o.x && r.y < o.y+o.h+10 && r.y+r.h+10 > o.y);
     };
-    // catalogo: chiave tessera + proporzioni reali del mobile
+    // Catalogo. REGOLA: la tessera non si deforma mai, si usa alla sua proporzione
+    // nativa e i mobili grandi si compongono AFFIANCANDO piu' copie (rx x ry).
+    // fur3 e' 128x64 (2:1) -> ruotata in verticale e' un letto singolo; due
+    // affiancate fanno il matrimoniale. fur1/2/4/5 sono quadrate.
+    const NAT={fur1:[1,1],fur2:[1,1],fur3:[2,1],fur4:[1,1],fur5:[1,1]};
     const CAT=[
-      {k:'fur3', w:96, h:52, n:'letto'},      // barra allungata = letto
-      {k:'fur3', w:110,h:44, n:'bancone'},
-      {k:'fur1', w:64, h:64, n:'schermo'},
-      {k:'fur2', w:58, h:58, n:'tavolo'},
-      {k:'fur4', w:50, h:50, n:'sedia'},
-      {k:'fur5', w:46, h:46, n:'sgabello'},
+      {k:'fur3', u:46, rx:2, ry:1, rot:true,  n:'letto matrimoniale'},
+      {k:'fur3', u:46, rx:1, ry:1, rot:true,  n:'letto singolo'},
+      {k:'fur3', u:52, rx:1, ry:1, rot:false, n:'bancone'},
+      {k:'fur3', u:44, rx:2, ry:1, rot:false, n:'tavolo lungo'},
+      {k:'fur1', u:54, rx:1, ry:1, rot:false, n:'schermo'},
+      {k:'fur2', u:50, rx:1, ry:1, rot:false, n:'tavolino'},
+      {k:'fur4', u:44, rx:1, ry:1, rot:false, n:'sedia'},
+      {k:'fur5', u:42, rx:1, ry:1, rot:false, n:'sgabello'},
     ];
     const target=Math.max(3,Math.min(9,Math.round((iw*ih)/16000)));
     let tries=0;
-    while(placed.length<target && tries++<60){
+    while(placed.length<target && tries++<70){
       const it=CAT[Math.floor(Math.random()*CAT.length)];
-      const vert=Math.random()<0.5;
-      let fw=vert?it.h:it.w, fh=vert?it.w:it.h;
+      const nat=NAT[it.k];                       // proporzione nativa della tessera
+      // dimensione di UNA copia, proporzione rispettata
+      let uw=it.u*nat[0], uh=it.u*nat[1];
+      if(it.rot){ const t=uw; uw=uh; uh=t; }     // ruotata di 90 gradi
+      // il blocco e' rx x ry copie affiancate
+      const fw=uw*it.rx, fh=uh*it.ry;
       if(fw>iw-8||fh>ih-8) continue;
-      // addossati ai muri: i mobili grandi vanno a bordo parete, come in una stanza vera
       const big=fw*fh>3600;
       let px,py;
       if(big){
@@ -2068,9 +2077,16 @@ class Game extends Phaser.Scene{
       const r={x:px,y:py,w:fw,h:fh};
       if(!free(r)) continue;
       placed.push(r);
-      this.add.image(px,py,it.k).setOrigin(0,0).setDisplaySize(fw,fh)
-        .setDepth(0.55).setTint(c).setAlpha(0.95);
-      // COLLISIONE: il mobile e' un riparo vero
+      // disegno: una immagine per copia, mai stirata
+      for(let ry=0;ry<it.ry;ry++) for(let rx=0;rx<it.rx;rx++){
+        // origine al centro: setDisplaySize lavora prima della rotazione, quindi
+        // per una copia ruotata passo le misure NON ruotate (uh x uw).
+        const im=this.add.image(px+rx*uw+uw/2, py+ry*uh+uh/2, it.k)
+          .setOrigin(0.5).setDepth(0.55).setTint(c).setAlpha(0.95);
+        if(it.rot){ im.setDisplaySize(uh,uw).setAngle(90); }
+        else       { im.setDisplaySize(uw,uh); }
+      }
+      // COLLISIONE: un solo corpo per tutto il mobile
       const body=this.walls.create(px+fw/2,py+fh/2,'px').setVisible(false);
       body.setDisplaySize(fw-6,fh-6); body.refreshBody();
       this.wallRects.push({x:px+3,y:py+3,w:fw-6,h:fh-6,type:'cover',dc:c});
@@ -2764,7 +2780,10 @@ class Game extends Phaser.Scene{
       if(best){ aimAng=Phaser.Math.Angle.Between(P.s.x,P.s.y,best.s.x,best.s.y); firing=true; } else if(ml>0.1) aimAng=Math.atan2(mvy,mvx);
     }
     P.aim=aimAng; P.s.setRotation(aimAng); if(firing) this.shoot(P,aimAng);
-    if(this.fog) this.drawVisionFog();
+    // Oracle in mira col portale: niente oscuramento, altrimenti il riquadro
+    // resta nero e non vedi dove stai puntando.
+    if(this.portalAiming){ if(this.fogBack) this.fogBack.clear(); if(this.fog) this.fog.setVisible(false); }
+    else if(this.fog) this.drawVisionFog();
     // SENTENZA: keep the mark ring on the target, clear when expired/dead
     if(this.sentence){ const t=this.sentence.target;
       if(!t||!t.alive||t.marked<=time){ if(t&&t.markRing){ t.markRing.destroy(); t.markRing=null; } this.sentence=null; }
