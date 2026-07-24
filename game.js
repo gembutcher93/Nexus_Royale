@@ -1494,84 +1494,114 @@ class Loadout extends Phaser.Scene{
   create(){
     const W=this.scale.width,H=this.scale.height,cx=W/2;
     menuBg(this);
-    // ---- top bar ----
-    this.add.text(14,22,'‹ INDIETRO',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#b9d8ce',fontStyle:'700',backgroundColor:'#08120e',padding:{x:12,y:9}}).setOrigin(0,0.5).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.scene.start('Menu'); });
-    this.add.text(W-16,22,'💠 '+Profile.data.credits,{fontFamily:TITLE_FONT,fontSize:'13px',color:'#ffc247',fontStyle:'700',padding:{top:4,bottom:2}}).setOrigin(1,0.5);
+    // ---- testata: indietro + crediti ----
+    const back=uiTag(this,14,26,'\u2039 INDIETRO',5);
+    back.setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.scene.start('Menu'); });
+    this.add.text(W-16,26,'\u25c8 '+Profile.data.credits,{fontFamily:UI.MONO,fontSize:'15px',color:'#ffc247',padding:{top:4,bottom:2}}).setOrigin(1,0.5).setDepth(5);
 
-    // ---- operator chips row ----
     const PORT={vyre:'port_vyre',nova:'port_nova',oracle:'port_oracle',aegis:'port_aegis',wraith:'port_wraith'};
     const CHIP={vyre:'chip_vyre',nova:'chip_nova',oracle:'chip_oracle',aegis:'chip_aegis',wraith:'chip_wraith'};
     this.PORT=PORT; this.opChips=[];
-    const n=OPERATORS.length, gap=Math.min(60,W*0.16), x0=cx-(n-1)*gap/2, oy=H*0.09;
+
+    // ---- layout calcolato DAL FONDO: questa schermata non scorre ----
+    const ctaH=58, ctaY=H-16-ctaH;
+    const skinH=62, skinY=ctaY-12-skinH;
+    const panH=Math.min(206,H*0.27), panY=skinY-12-panH;
+
+    // ---- chip operatori ----
+    const n=OPERATORS.length, gap=Math.min(62,W*0.165), x0=cx-(n-1)*gap/2, oy=H*0.085;
     OPERATORS.forEach((o,i)=>{ const x=x0+i*gap;
-      const ring=this.add.circle(x,oy,24,0x08120e).setStrokeStyle(3,0x1b3a33);
+      const ring=this.add.circle(x,oy,25,0x0a1512).setStrokeStyle(3,0x1b3a33).setDepth(3);
       let ic=null; const ck=CHIP[o.id];
-      if(ck&&this.textures.exists(ck)){ ic=this.add.image(x,oy,ck).setDisplaySize(42,42); }
-      else if(this.textures.exists(PORT[o.id])){ ic=this.add.image(x,oy,PORT[o.id]).setDisplaySize(32,48); }
-      const lock=this.add.text(x,oy,'🔒',{fontSize:'13px'}).setOrigin(0.5).setVisible(false);
-      this.add.rectangle(x,oy,54,54,0xffffff,0.001).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); GAME.char=o.id; this.refresh(); });
+      if(ck&&this.textures.exists(ck)) ic=this.add.image(x,oy,ck).setDisplaySize(44,44).setDepth(4);
+      else if(this.textures.exists(PORT[o.id])) ic=this.add.image(x,oy,PORT[o.id]).setDisplaySize(32,48).setDepth(4);
+      const lock=this.add.text(x,oy,'\ud83d\udd12',{fontSize:'14px'}).setOrigin(0.5).setDepth(5).setVisible(false);
+      this.add.rectangle(x,oy,56,56,0xffffff,0.001).setDepth(6).setInteractive({useHandCursor:true})
+        .on('pointerdown',()=>{ SFX.ui(); GAME.char=o.id; this.refresh(); });
       this.opChips.push({ring,ic,lock,o,x,oy}); });
 
-    // ---- name / role / storia — allineati a DESTRA ----
-    const nameY=H*0.185, rx0=W-16;
-    this.cName=this.add.text(rx0,nameY,'',{fontFamily:TITLE_FONT,fontSize:'28px',fontStyle:'700',color:'#fff'}).setOrigin(1,0.5).setDepth(4).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
-    this.cRole=this.add.text(rx0,nameY+26,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'700',color:'#7fa79b'}).setOrigin(1,0.5).setDepth(4);
-    this.add.text(rx0,nameY+46,'📖 STORIA ›',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'700',color:'#3df2b4'}).setOrigin(1,0.5).setDepth(4).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
+    // ---- nome / classe / storia, a destra ----
+    const nameY=H*0.175, rx0=W-16;
+    const lore=()=>{ SFX.ui(); this.openInfoPopup('STORIA \u00b7 '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); };
+    this.cName=this.add.text(rx0,nameY,'',{fontFamily:TITLE_FONT,fontSize:'30px',fontStyle:'700',color:'#fff'})
+      .setOrigin(1,0.5).setDepth(5).setInteractive({useHandCursor:true}).on('pointerdown',lore);
+    this.cRole=this.add.text(rx0,nameY+28,'',{fontFamily:UI.MONO,fontSize:'14px',color:UI.dim}).setOrigin(1,0.5).setDepth(5);
+    this.add.text(rx0,nameY+50,'\u25b8 STORIA',{fontFamily:UI.MONO,fontSize:'13px',color:'#3df2b4'})
+      .setOrigin(1,0.5).setDepth(5).setInteractive({useHandCursor:true}).on('pointerdown',lore);
 
-    // ---- hero stage (big portrait, tappable = lore) ----
-    const stageY=H*0.375;
-    this.stageGlow=this.add.ellipse(cx,stageY+H*0.135,W*0.5,H*0.05,C.cyan,0.14).setDepth(0);
-    this.bigGlow=this.add.image(cx,stageY,'glow').setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(W*0.55,W*0.55).setAlpha(0.18).setDepth(1);
-    this.bigPort=this.add.image(cx,stageY,'port_vyre').setDepth(2).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); this.openInfoPopup('STORIA · '+OP(GAME.char).name, OP(GAME.char).lore||'', OP(GAME.char).col); });
+    // ---- palco: ritratto grande ----
+    const stageY=(nameY+panY)/2;
+    this.stageGlow=this.add.ellipse(cx,panY-14,W*0.52,H*0.045,C.player,0.14).setDepth(0);
+    this.bigGlow=this.add.image(cx,stageY,'glow').setBlendMode(Phaser.BlendModes.ADD)
+      .setDisplaySize(W*0.58,W*0.58).setAlpha(0.18).setDepth(1);
+    this.bigPort=this.add.image(cx,stageY,'port_vyre').setDepth(2)
+      .setInteractive({useHandCursor:true}).on('pointerdown',lore);
 
-    // ---- stats strip (kill / partite / vinte with selected operator) ----
-    const stY=H*0.53, sbw=Math.min(118,W*0.30), sgap=sbw+8;
-    const mkStat=(x,label,col)=>{ cyberFrame(this,x-sbw/2,stY-24,sbw,48,col,0);
-      const v=this.add.text(x,stY-7,'0',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'700',color:'#fff'}).setOrigin(0.5).setDepth(2);
-      this.add.text(x,stY+15,label,{fontFamily:TITLE_FONT,fontSize:'8px',fontStyle:'700',color:'#7fa79b'}).setOrigin(0.5).setDepth(2); return v; };
-    this.statKill=mkStat(cx-sgap,'KILL',C.magenta);
-    this.statMatch=mkStat(cx,'PARTITE',C.cyan);
-    this.statWin=mkStat(cx+sgap,'VINTE',C.gold);
+    // ---- SBLOCCA, sotto nome/classe ----
+    const ubw=Math.min(W*0.46,214), ubx=W-16-ubw/2, uby=nameY+92;
+    this.unlockBtn=this.add.rectangle(ubx,uby,ubw,44,0x241a00).setStrokeStyle(2,C.gold).setDepth(6)
+      .setInteractive({useHandCursor:true}).setVisible(false);
+    this.unlockTxt=this.add.text(ubx,uby,'',{fontFamily:TITLE_FONT,fontSize:'14px',fontStyle:'700',color:'#ffc247',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(7).setVisible(false);
+    this.unlockBtn.on('pointerdown',()=>{ const o=OP(GAME.char);
+      if(Profile.unlock(o.id,o.cost)) SFX.pickup(); else { SFX.ui(); this.flash('SERVONO '+o.cost+' CREDITI'); }
+      this.refresh(); });
 
-    // ---- ability + ultimate rows (tappable = info) ----
-    const rw=Math.min(340,W*0.86), rx=cx-rw/2;
-    const infoRow=(y,kicker,col,onTap)=>{
-      cyberFrame(this,rx,y-20,rw,40,col,0);
-      const icon=this.add.text(rx+20,y,'',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'700',color:hexStr(col)}).setOrigin(0.5).setDepth(2);
-      this.add.text(rx+40,y-8,kicker,{fontFamily:TITLE_FONT,fontSize:'8px',color:'#5f7a8a',fontStyle:'700'}).setOrigin(0,0.5).setDepth(2);
-      const nm=this.add.text(rx+40,y+7,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'700',color:hexStr(col)}).setOrigin(0,0.5).setDepth(2);
-      this.add.text(rx+rw-14,y,'ℹ ›',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#7fa79b',fontStyle:'700'}).setOrigin(1,0.5).setDepth(2);
-      this.add.rectangle(rx+rw/2,y,rw,40,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true}).on('pointerdown',onTap);
-      return {icon,nm};
+    // ---- pannello OPERATORE: statistiche + tattica + ultimate ----
+    const pw=Math.min(352,W*0.92), px=cx-pw/2;
+    const pan=uiPanel(this,px,panY,pw,panH,'OPERATORE',C.player,2);
+    const iw=pw-44, ix=px+22;
+    const sw3=Math.floor((iw-12)/3);
+    let ty=pan.top;
+    const st=(x,label,col)=>{ const e=uiStat(this,x,ty,sw3,54,label,'0',col,3); return e[2]; };
+    this.statKill =st(ix,            'KILL',    C.magenta);
+    this.statMatch=st(ix+sw3+6,      'PARTITE', C.player);
+    this.statWin  =st(ix+(sw3+6)*2,  'VINTE',   C.gold);
+    ty+=62;
+    // righe abilita': stessa forma dei bottoni-banner, ma informative
+    const row=(y,kicker,col,onTap)=>{
+      const h=Math.max(38,Math.min(46,(panY+panH-16-y)/2-4)), cut=12;
+      const g=this.add.graphics().setDepth(3);
+      g.fillStyle(UI.lo,1);
+      g.beginPath(); g.moveTo(ix,y); g.lineTo(ix+iw-cut,y); g.lineTo(ix+iw,y+cut);
+      g.lineTo(ix+iw,y+h); g.lineTo(ix+cut,y+h); g.lineTo(ix,y+h-cut); g.closePath(); g.fillPath();
+      g.fillStyle(col,1); g.fillRect(ix,y,4,h-cut);
+      const icon=this.add.text(ix+20,y+h/2,'',{fontFamily:TITLE_FONT,fontSize:'19px',fontStyle:'700',color:hexStr(col)}).setOrigin(0.5).setDepth(4);
+      this.add.text(ix+40,y+h/2-9,kicker,{fontFamily:UI.MONO,fontSize:'11px',color:UI.faint}).setOrigin(0,0.5).setDepth(4);
+      const nm=this.add.text(ix+40,y+h/2+9,'',{fontFamily:TITLE_FONT,fontSize:'15px',fontStyle:'700',color:hexStr(col)}).setOrigin(0,0.5).setDepth(4);
+      this.add.text(ix+iw-14,y+h/2,'\u2139',{fontFamily:UI.MONO,fontSize:'14px',color:UI.faint}).setOrigin(1,0.5).setDepth(4);
+      this.add.rectangle(ix+iw/2,y+h/2,iw,h,0xffffff,0.001).setDepth(5).setInteractive({useHandCursor:true}).on('pointerdown',onTap);
+      return {icon,nm,h};
     };
-    this.abRow=infoRow(H*0.635,'TATTICA',C.cyan,()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup(o.abName.toUpperCase()+'  '+o.icon, o.desc||'', o.col); });
-    this.ultRow=infoRow(H*0.705,'ULTIMATE',C.gold,()=>{ const o=OP(GAME.char); SFX.ui(); this.openInfoPopup('ULTIMATE · '+(o.ultName||''), ULT_DESC[o.ult]||'In arrivo.', C.gold); });
+    this.abRow=row(ty,'TATTICA',C.player,()=>{ const o=OP(GAME.char); SFX.ui();
+      this.openInfoPopup(o.abName.toUpperCase()+'  '+o.icon, o.desc||'', o.col); });
+    ty+=this.abRow.h+8;
+    this.ultRow=row(ty,'ULTIMATE',C.gold,()=>{ const o=OP(GAME.char); SFX.ui();
+      this.openInfoPopup('ULTIMATE \u00b7 '+(o.ultName||''), ULT_DESC[o.ult]||'In arrivo.', C.gold); });
 
-    // ---- unlock button (a destra, sotto nome/classe/storia) ----
-    const ubw=Math.min(W*0.46,210), ubx=W-16-ubw/2, uby=H*0.185+86;
-    this.unlockBtn=this.add.rectangle(ubx,uby,ubw,42,0x241a00).setStrokeStyle(2,C.gold).setDepth(6).setInteractive({useHandCursor:true}).setVisible(false);
-    this.unlockTxt=this.add.text(ubx,uby,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'700',color:'#ffc247',padding:{top:6,bottom:2}}).setOrigin(0.5).setDepth(7).setVisible(false);
-    this.unlockBtn.on('pointerdown',()=>{ const o=OP(GAME.char); if(Profile.unlock(o.id,o.cost)) SFX.pickup(); else { SFX.ui(); this.flash('SERVONO '+o.cost+' CREDITI'); } this.refresh(); });
+    // ---- skin, come bottoni-banner piccoli ----
+    this.add.text(ix,skinY-10,'SKIN',{fontFamily:UI.MONO,fontSize:'12px',color:UI.faint}).setOrigin(0,0.5).setDepth(3);
+    this.skinBtns=[];
+    const sgw=Math.floor((iw-8*(SKINS.length-1))/SKINS.length);
+    SKINS.forEach((sk,i)=>{ const x=ix+i*(sgw+8);
+      const selG=this.add.graphics().setDepth(3);
+      this.add.text(x+sgw/2,skinY+18,sk.name,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#e6fbf3',fontStyle:'700'}).setOrigin(0.5).setDepth(4);
+      const sub=this.add.text(x+sgw/2,skinY+40,'',{fontFamily:UI.MONO,fontSize:'12px',color:UI.faint}).setOrigin(0.5).setDepth(4);
+      this.add.rectangle(x+sgw/2,skinY+skinH/2,sgw,skinH,0xffffff,0.001).setDepth(5).setInteractive({useHandCursor:true})
+        .on('pointerdown',()=>{ SFX.ui();
+          if(Profile.unlockedSkin(sk.id)) GAME.skin=sk.id;
+          else if(Profile.unlockSkin(sk.id,sk.cost)){ GAME.skin=sk.id; SFX.pickup(); }
+          else this.flash('SERVONO '+sk.cost+' CREDITI');
+          this.refresh(); });
+      this.skinBtns.push({sub,sk,selG,x,sy:skinY,w:sgw,h:skinH}); });
 
-    // ---- skin row ----
-    const sy=H*0.80;
-    this.add.text(cx,sy-20,'◤ SKIN ◢',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#7fa79b',fontStyle:'700'}).setOrigin(0.5);
-    this.skinBtns=[]; const sg=Math.min(84,W*0.22), sx0=cx-(SKINS.length-1)*sg/2;
-    SKINS.forEach((sk,i)=>{ const x=sx0+i*sg;
-      cyberFrame(this,x-(sg-10)/2,sy-4,sg-10,44,0x1b3a33,0);
-      this.add.text(x,sy+4,sk.name,{fontFamily:TITLE_FONT,fontSize:'13px',color:'#e6fbf3',fontStyle:'700'}).setOrigin(0.5).setDepth(2);
-      const sub=this.add.text(x,sy+22,'',{fontSize:'13px',color:'#7fa79b'}).setOrigin(0.5).setDepth(2);
-      const selG=this.add.graphics().setDepth(1);
-      this.add.rectangle(x,sy+8,sg-10,44,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); if(Profile.unlockedSkin(sk.id)) GAME.skin=sk.id; else if(Profile.unlockSkin(sk.id,sk.cost)){ GAME.skin=sk.id; SFX.pickup(); } else this.flash('SERVONO '+sk.cost+' CREDITI'); this.refresh(); });
-      this.skinBtns.push({sub,sk,selG,x,sy}); });
+    // ---- ENTRA IN PARTITA ----
+    const bbw=Math.min(346,W*0.92);
+    const cta=uiCta(this,cx-bbw/2,ctaY,bbw,ctaH,'',C.player,4,()=>{
+      if(!Profile.unlockedOp(GAME.char)){ SFX.ui(); this.flash('OPERATORE BLOCCATO'); return; }
+      SFX.resume(); SFX.ui(); this.scene.start('Game'); });
+    this.startTxt=cta.txt;
 
-    // ---- SELECT ----
-    const by=H*0.915, bbw=Math.min(340,W*0.86);
-    cyberFrame(this,cx-bbw/2,by-30,bbw,60,C.player,0);
-    this.startTxt=this.add.text(cx,by,'',{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'700',color:'#3df2b4'}).setOrigin(0.5).setDepth(2);
-    this.add.rectangle(cx,by,bbw,60,0xffffff,0.001).setDepth(3).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ if(!Profile.unlockedOp(GAME.char)){ SFX.ui(); this.flash('OPERATORE BLOCCATO'); return; } SFX.resume(); SFX.ui(); this.scene.start('Game'); });
-
-    this.flashTxt=this.add.text(cx,by-42,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'700',color:'#ff7d90'}).setOrigin(0.5).setDepth(5).setAlpha(0);
+    this.flashTxt=this.add.text(cx,ctaY-16,'',{fontFamily:TITLE_FONT,fontSize:'14px',fontStyle:'700',color:'#ff7d90'}).setOrigin(0.5).setDepth(9).setAlpha(0);
     this.refresh();
   }
   flash(m){ this.flashTxt.setText(m).setAlpha(1); this.tweens.add({targets:this.flashTxt,alpha:0,duration:1400}); }
@@ -1592,7 +1622,7 @@ class Loadout extends Phaser.Scene{
       c.ring.setStrokeStyle(3, GAME.char===c.o.id?c.o.col:0x1b3a33);
       if(c.ic) c.ic.setAlpha(u?1:0.4); c.lock.setVisible(!u); });
     if(this.textures.exists(this.PORT[o.id])) this.bigPort.setTexture(this.PORT[o.id]);
-    const ph=this.scale.height*0.28; this.bigPort.setDisplaySize(ph*(this.bigPort.width/this.bigPort.height), ph).setAlpha(unlocked?1:0.5);
+    const ph=Math.min(this.scale.height*0.26, this.stageGlow.y-this.scale.height*0.22); this.bigPort.setDisplaySize(ph*(this.bigPort.width/this.bigPort.height), ph).setAlpha(unlocked?1:0.5);
     this.bigGlow.setTint(o.col); if(this.stageGlow) this.stageGlow.setFillStyle(o.col,0.14);
     this.cName.setText(o.name).setColor(colStr);
     this.cRole.setText(o.role||'');
@@ -1605,8 +1635,14 @@ class Loadout extends Phaser.Scene{
     if(!unlocked){ this.unlockBtn.setVisible(true); this.unlockTxt.setVisible(true).setText('SBLOCCA · '+o.cost+' 💠'); }
     else { this.unlockBtn.setVisible(false); this.unlockTxt.setVisible(false); }
     this.skinBtns.forEach(b=>{ const u=Profile.unlockedSkin(b.sk.id); b.selG.clear();
-      if(GAME.skin===b.sk.id){ b.selG.lineStyle(2,C.cyan,1); b.selG.strokeRect(b.x-(Math.min(84,this.scale.width*0.22)-10)/2,b.sy-4,Math.min(84,this.scale.width*0.22)-10,44); }
-      b.sub.setText(u?(GAME.skin===b.sk.id?'attiva':'ok'):(b.sk.cost+'💠')).setColor(u?'#7fa79b':'#ffc247'); });
+      const on=(GAME.skin===b.sk.id), cut=10;
+      b.selG.fillStyle(on?C.player:UI.lo, on?0.20:1);
+      b.selG.beginPath(); b.selG.moveTo(b.x,b.sy); b.selG.lineTo(b.x+b.w-cut,b.sy); b.selG.lineTo(b.x+b.w,b.sy+cut);
+      b.selG.lineTo(b.x+b.w,b.sy+b.h); b.selG.lineTo(b.x+cut,b.sy+b.h); b.selG.lineTo(b.x,b.sy+b.h-cut);
+      b.selG.closePath(); b.selG.fillPath();
+      b.selG.lineStyle(on?2:1,on?C.player:0x2b4a42,1); b.selG.strokePath();
+      b.selG.fillStyle(on?C.player:0xffffff,on?1:0.10); b.selG.fillRect(b.x,b.sy,4,b.h-cut);
+      b.sub.setText(u?(on?'ATTIVA':'OK'):(b.sk.cost+' CR')).setColor(u?(on?'#3df2b4':UI.faint):'#ffc247'); });
     this.startTxt.setText(unlocked?'▶  ENTRA IN PARTITA':'🔒  BLOCCATO').setColor(unlocked?'#3df2b4':'#7fa79b');
   }
 }
@@ -2037,8 +2073,9 @@ class Game extends Phaser.Scene{
       if(rot) im.setDisplaySize(ph,pw).setAngle(90); else im.setDisplaySize(pw,ph);
       this.solid(px,py,pw,ph,c);
     };
-    rooms.forEach(r=>{
-      const [rx,ry,rw,rh]=r;
+    const CLR=34;   // fascia libera lungo TUTTE le pareti: le porte stanno li'
+    rooms.forEach(r0=>{
+      const rx=r0[0]+CLR, ry=r0[1]+CLR, rw=r0[2]-CLR*2, rh=r0[3]-CLR*2;
       if(rw<70||rh<70) return;
       if(kind==='ospedale'){
         // letti allineati alla parete, come in una corsia
@@ -2046,19 +2083,19 @@ class Game extends Phaser.Scene{
         for(let k=0;k<n;k++){
           const px=rx+10+k*(bw+22);
           if(px+bw>rx+rw-6) break;
-          put('fur3',px,ry+8,bw,bh,true);
+          put('fur3',px,ry,bw,Math.min(bh,rh),true);
         }
-        if(rh>150) put('fur1',rx+rw-58,ry+rh-58,50,50,false);
+        if(rh>170&&rw>120) put('fur1',rx+rw-54,ry+rh-54,50,50,false);
       } else if(kind==='uffici'){
         const n=Math.max(1,Math.min(4,Math.floor((rw*rh)/14000)));
         for(let k=0;k<n;k++){
-          const px=rx+12+Math.random()*Math.max(1,rw-80), py=ry+12+Math.random()*Math.max(1,rh-70);
+          const px=rx+Math.random()*Math.max(1,rw-60), py=ry+Math.random()*Math.max(1,rh-60);
           put(Math.random()<0.5?'fur1':'fur2',px,py,54,54,false);
         }
       } else { // scuola / generico: banchi in griglia
         const bw=50,bh=34;
-        for(let yy=ry+12; yy+bh<ry+rh-8; yy+=bh+26)
-          for(let xx=rx+12; xx+bw<rx+rw-8; xx+=bw+26) put('fur3',xx,yy,bw,bh,false);
+        for(let yy=ry; yy+bh<=ry+rh; yy+=bh+30)
+          for(let xx=rx; xx+bw<=rx+rw; xx+=bw+30) put('fur3',xx,yy,bw,bh,false);
       }
     });
   }
@@ -2073,8 +2110,13 @@ class Game extends Phaser.Scene{
     let frames=0;
     for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){
       const bx=i*cw+ROAD/2, by=j*ch+ROAD/2, bw=cw-ROAD, bh=ch-ROAD;
-      if(bw<SWW*2+40||bh<SWW*2+40) continue;
       if(this.megaLots && this.megaLots[i+'_'+j]) continue;   // ci sta sopra una megastruttura
+      if(bw<SWW*2+40||bh<SWW*2+40){
+        // lotto troppo stretto per la cornice: lastricato pieno, mai un buco nero
+        if(this.textures.exists('sw_f') && bw>10 && bh>10)
+          this.add.tileSprite(bx,by,bw,bh,'sw_f').setOrigin(0,0).setDepth(-18).setTileScale(0.5,0.5);
+        continue;
+      }
       const tint=this.ndCol? this.ndCol(bx+bw/2,by+bh/2) : 0xff3355;
       // marciapiede: cornice rossa attorno al lotto
       const ok=this.tileFrame(bx,by,bw,bh,'sw_',SWK,0xffffff,-18);
@@ -2233,10 +2275,10 @@ class Game extends Phaser.Scene{
     const c=col||0x9fd8ff;
     const ix=x+wth+10, iy=y+wth+10, iw=w-2*wth-20, ih=h-2*wth-20;
     if(iw<80||ih<80) return;
-    const doorY0=gy-14, doorY1=gy+gap+14;            // corridoio davanti al varco: libero
+    const doorY0=gy-40, doorY1=gy+gap+40;            // corridoio davanti al varco: libero
     const placed=[];
     const free=(r)=>{
-      if(r.x+r.w > x+w-wth-46 && r.y+r.h>doorY0 && r.y<doorY1) return false;   // non davanti alla porta
+      if(r.x+r.w > x+w-wth-110 && r.y+r.h>doorY0 && r.y<doorY1) return false;   // corridoio d'ingresso libero   // non davanti alla porta
       return !placed.some(o=> r.x < o.x+o.w+10 && r.x+r.w+10 > o.x && r.y < o.y+o.h+10 && r.y+r.h+10 > o.y);
     };
     // Catalogo. REGOLA: la tessera non si deforma mai, si usa alla sua proporzione
@@ -2382,7 +2424,7 @@ class Game extends Phaser.Scene{
     // draw the river as segments BETWEEN intersections, leaving bridge gaps at each cross street
     for(let j=0;j<rows;j++){
       const segTop=j*ch + (j===0?0:34), segBot=(j+1)*ch - 34;   // gap around each horizontal road = bridge
-      if(segBot-segTop>30) addWall(rvX,segTop,rvW,segBot-segTop,0,'water');
+      if(segBot-segTop>30) addWall(rvX,segTop,rvW,segBot-segTop,C.waterEdge,'water');
     }
     // bridge decks at the crossings (visual: paved strip over the river)
     for(let j=1;j<rows;j++){ const by=j*ch;
@@ -2431,7 +2473,12 @@ class Game extends Phaser.Scene{
       else if(r<0.58) tipo='aperto';                   // piu' case in cui si entra
       else tipo='blocco';                              // 2-3 palazzine piccole
 
-      if(tipo==='vuoto') continue;
+      if(tipo==='vuoto'){
+        // spiazzo lastricato, non un buco nero
+        if(this.textures.exists('sw_f'))
+          this.add.tileSprite(px,py,maxW,maxH,'sw_f').setOrigin(0,0).setDepth(-15).setTileScale(0.5,0.5).setAlpha(0.8);
+        continue;
+      }
 
       if(tipo==='parco'){
         const G=this.gDecor;
