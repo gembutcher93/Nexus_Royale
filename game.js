@@ -1630,6 +1630,7 @@ class Game extends Phaser.Scene{
     this.gDecor=this.add.graphics().setDepth(-16);   // street clutter (static)
     this.gCity =this.add.graphics().setDepth(0);     // buildings + props (static)
     this.animCount=0;                                 // budget for infinite tweens
+    this.planMegas();
     this.drawRoads();
 
     this.walls=this.physics.add.staticGroup(); this.wallRects=[];
@@ -1895,6 +1896,173 @@ class Game extends Phaser.Scene{
     return true;
   }
 
+  // Corpo solido generico (usato dalle megastrutture): collisione + voce in wallRects
+  // Sceglie i lotti da fondere in megastrutture. Una mega prende 2 o 4 lotti
+  // e SI MANGIA la strada in mezzo: e' quello che le fa sembrare grandi davvero.
+  planMegas(){
+    const cols=this.GC, rows=this.GR, cw=WORLD_W/cols, ch=WORLD_H/rows, ROAD=150;
+    this.megas=[]; this.megaLots={};
+    const KINDS=['ospedale','uffici','scuola'];
+    const used=(i,j)=>this.megaLots[i+'_'+j];
+    const target=Phaser.Math.Between(4,6);
+    let guard=0;
+    while(this.megas.length<target && guard++<200){
+      const a=Math.random()<0.45?2:1, b=Math.random()<0.45?2:1;
+      if(a===1&&b===1) continue;                       // deve occupare piu' di un lotto
+      const i=Phaser.Math.Between(0,cols-a), j=Phaser.Math.Between(0,rows-b);
+      let free=true;
+      for(let u=0;u<a;u++)for(let v=0;v<b;v++) if(used(i+u,j+v)) free=false;
+      if(!free) continue;
+      for(let u=0;u<a;u++)for(let v=0;v<b;v++) this.megaLots[(i+u)+'_'+(j+v)]=1;
+      this.megas.push({
+        x:i*cw+ROAD/2, y:j*ch+ROAD/2,
+        w:a*cw-ROAD,   h:b*ch-ROAD,
+        kind:Phaser.Utils.Array.GetRandom(KINDS)
+      });
+    }
+  }
+
+  solid(x,y,w,h,col){
+    if(w<=0||h<=0) return;
+    const b=this.walls.create(x+w/2,y+h/2,'px').setVisible(false);
+    b.setDisplaySize(w,h); b.refreshBody();
+    this.wallRects.push({x,y,w,h,type:'cover',dc:col});
+  }
+
+  // ===== MEGASTRUTTURA: ospedale / uffici / scuola =====
+  // Occupa PIU' lotti e la strada in mezzo. Perimetro con piu' ingressi, corridoio
+  // centrale, stanze ai lati con la loro porta, arredi dentro. Ci si entra e ci si combatte.
+  megaBuilding(x,y,w,h,col,kind){
+    const c=col||0x3df2b4, wth=34;
+    const ts=wth/40, CS=Math.round(96*ts);
+    if(w<CS*4||h<CS*4) return false;
+    const dark=(v,f)=>{ const r=((v>>16)&255)*f,g=((v>>8)&255)*f,b=(v&255)*f;
+      return (Math.round(r)<<16)|(Math.round(g)<<8)|Math.round(b); };
+    // pavimento
+    if(this.textures.exists('fl_n')){
+      this.add.tileSprite(x+wth,y+wth,w-2*wth,h-2*wth,'fl_n').setOrigin(0,0)
+        .setDepth(0.44).setTint(dark(c,0.38)).setTileScale(0.55);
+    }
+    const bar=(bx,by,bw,bh,horiz)=>{ if(bw<=0||bh<=0) return;
+      if(this.textures.exists('wl_v')){
+        this.add.tileSprite(bx,by,bw,bh,horiz?'wl_h':'wl_v').setOrigin(0,0)
+          .setDepth(0.8).setTint(c).setTileScale(ts,ts);
+      } else { const g=this.add.graphics().setDepth(0.8); g.fillStyle(c,0.85); g.fillRect(bx,by,bw,bh); }
+      this.solid(bx,by,bw,bh,c);
+    };
+    // ---- perimetro con DUE ingressi per lato lungo ----
+    const horizMain = w>=h;
+    const doorW=Math.max(70,Math.min(110,(horizMain?w:h)*0.10));
+    const cuts=(len,start)=>{           // due varchi distribuiti sul lato
+      const a=start+len*0.30-doorW/2, b=start+len*0.70-doorW/2;
+      return [[a,a+doorW],[b,b+doorW]];
+    };
+    const segs=(from,to,holes)=>{       // spezza un lato attorno ai varchi
+      let out=[], cur=from;
+      holes.sort((p,q)=>p[0]-q[0]).forEach(hd=>{ if(hd[0]>cur) out.push([cur,hd[0]]); cur=Math.max(cur,hd[1]); });
+      if(to>cur) out.push([cur,to]); return out;
+    };
+    const hx=cuts(w-2*CS,x+CS), hy=cuts(h-2*CS,y+CS);
+    segs(x+CS,x+w-CS,JSON.parse(JSON.stringify(hx))).forEach(sg=>bar(sg[0],y,sg[1]-sg[0],wth,true));
+    segs(x+CS,x+w-CS,[[0,0]]).forEach(sg=>bar(sg[0],y+h-wth,sg[1]-sg[0],wth,true));
+    segs(y+CS,y+h-CS,JSON.parse(JSON.stringify(hy))).forEach(sg=>bar(x,sg[0],wth,sg[1]-sg[0],false));
+    segs(y+CS,y+h-CS,[[0,0]]).forEach(sg=>bar(x+w-wth,sg[0],wth,sg[1]-sg[0],false));
+    // spigoli
+    if(this.textures.exists('wl_c')){
+      const cor=(cx2,cy2,fx,fy)=>this.add.image(cx2,cy2,'wl_c').setOrigin(0,0)
+        .setDisplaySize(CS,CS).setDepth(0.85).setTint(c).setFlipX(fx).setFlipY(fy);
+      cor(x,y,false,false); cor(x+w-CS,y,true,false);
+      cor(x,y+h-CS,false,true); cor(x+w-CS,y+h-CS,true,true);
+    }
+    this.solid(x,y,CS,wth,c); this.solid(x,y,wth,CS,c);
+    this.solid(x+w-CS,y,CS,wth,c); this.solid(x+w-wth,y,wth,CS,c);
+    this.solid(x,y+h-wth,CS,wth,c); this.solid(x,y+h-CS,wth,CS,c);
+    this.solid(x+w-CS,y+h-wth,CS,wth,c); this.solid(x+w-wth,y+h-CS,wth,CS,c);
+
+    // ---- interno: corridoio centrale + stanze ai lati ----
+    const PW=18;                       // tramezzi piu' sottili dei muri esterni
+    const ix=x+wth, iy=y+wth, iw=w-2*wth, ih=h-2*wth;
+    const CORR=Math.max(96,Math.min(150,(horizMain?ih:iw)*0.26));
+    const part=(px,py,pw,ph)=>{        // tramezzo pieno
+      const g=this.add.graphics().setDepth(0.78);
+      g.fillStyle(c,0.55); g.fillRect(px,py,pw,ph);
+      g.fillStyle(0xffffff,0.10); g.fillRect(px,py,pw,2);
+      this.solid(px,py,pw,ph,c);
+    };
+    const rooms=[];
+    if(horizMain){
+      const cTop=iy+(ih-CORR)/2;
+      const nR=Math.max(2,Math.round(iw/300));
+      const rw=iw/nR;
+      for(let k=0;k<nR;k++){
+        const rx=ix+k*rw;
+        // muri lungo il corridoio, con la porta della stanza
+        const dx=rx+rw*0.5-30;
+        part(rx,cTop-PW,Math.max(0,dx-rx),PW);
+        part(dx+60,cTop-PW,Math.max(0,rx+rw-(dx+60)),PW);
+        part(rx,cTop+CORR,Math.max(0,dx-rx),PW);
+        part(dx+60,cTop+CORR,Math.max(0,rx+rw-(dx+60)),PW);
+        if(k>0){ part(rx-PW/2,iy,PW,cTop-PW-iy); part(rx-PW/2,cTop+CORR+PW,PW,iy+ih-(cTop+CORR+PW)); }
+        rooms.push([rx+8,iy+8,rw-16,cTop-PW-iy-16]);
+        rooms.push([rx+8,cTop+CORR+PW+8,rw-16,iy+ih-(cTop+CORR+PW)-16]);
+      }
+    } else {
+      const cLeft=ix+(iw-CORR)/2;
+      const nR=Math.max(2,Math.round(ih/300));
+      const rh=ih/nR;
+      for(let k=0;k<nR;k++){
+        const ry=iy+k*rh;
+        const dy=ry+rh*0.5-30;
+        part(cLeft-PW,ry,PW,Math.max(0,dy-ry));
+        part(cLeft-PW,dy+60,PW,Math.max(0,ry+rh-(dy+60)));
+        part(cLeft+CORR,ry,PW,Math.max(0,dy-ry));
+        part(cLeft+CORR,dy+60,PW,Math.max(0,ry+rh-(dy+60)));
+        if(k>0){ part(ix,ry-PW/2,cLeft-PW-ix,PW); part(cLeft+CORR+PW,ry-PW/2,ix+iw-(cLeft+CORR+PW),PW); }
+        rooms.push([ix+8,ry+8,cLeft-PW-ix-16,rh-16]);
+        rooms.push([cLeft+CORR+PW+8,ry+8,ix+iw-(cLeft+CORR+PW)-16,rh-16]);
+      }
+    }
+    // ---- arredi stanza per stanza, secondo la destinazione ----
+    this.furnishRooms(rooms,c,kind);
+    return true;
+  }
+
+  // arreda un elenco di stanze. kind cambia il mobilio: ospedale = letti in fila,
+  // uffici = scrivanie e schermi, scuola = banchi.
+  furnishRooms(rooms,c,kind){
+    if(!this.textures.exists('fur1')) return;
+    const put=(k,px,py,pw,ph,rot)=>{
+      const im=this.add.image(px+pw/2,py+ph/2,k).setOrigin(0.5).setDepth(0.55)
+        .setTint(c).setAlpha(0.95);
+      if(rot) im.setDisplaySize(ph,pw).setAngle(90); else im.setDisplaySize(pw,ph);
+      this.solid(px,py,pw,ph,c);
+    };
+    rooms.forEach(r=>{
+      const [rx,ry,rw,rh]=r;
+      if(rw<70||rh<70) return;
+      if(kind==='ospedale'){
+        // letti allineati alla parete, come in una corsia
+        const bw=46, bh=92, n=Math.max(1,Math.floor(rw/(bw+22)));
+        for(let k=0;k<n;k++){
+          const px=rx+10+k*(bw+22);
+          if(px+bw>rx+rw-6) break;
+          put('fur3',px,ry+8,bw,bh,true);
+        }
+        if(rh>150) put('fur1',rx+rw-58,ry+rh-58,50,50,false);
+      } else if(kind==='uffici'){
+        const n=Math.max(1,Math.min(4,Math.floor((rw*rh)/14000)));
+        for(let k=0;k<n;k++){
+          const px=rx+12+Math.random()*Math.max(1,rw-80), py=ry+12+Math.random()*Math.max(1,rh-70);
+          put(Math.random()<0.5?'fur1':'fur2',px,py,54,54,false);
+        }
+      } else { // scuola / generico: banchi in griglia
+        const bw=50,bh=34;
+        for(let yy=ry+12; yy+bh<ry+rh-8; yy+=bh+26)
+          for(let xx=rx+12; xx+bw<rx+rw-8; xx+=bw+26) put('fur3',xx,yy,bw,bh,false);
+      }
+    });
+  }
+
   drawRoads(){
     const cols=this.GC, rows=this.GR, cw=WORLD_W/cols, ch=WORLD_H/rows;
     const ROAD=150;
@@ -1906,6 +2074,7 @@ class Game extends Phaser.Scene{
     for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){
       const bx=i*cw+ROAD/2, by=j*ch+ROAD/2, bw=cw-ROAD, bh=ch-ROAD;
       if(bw<SWW*2+40||bh<SWW*2+40) continue;
+      if(this.megaLots && this.megaLots[i+'_'+j]) continue;   // ci sta sopra una megastruttura
       const tint=this.ndCol? this.ndCol(bx+bw/2,by+bh/2) : 0xff3355;
       // marciapiede: cornice rossa attorno al lotto
       const ok=this.tileFrame(bx,by,bw,bh,'sw_',SWK,0xffffff,-18);
@@ -2238,7 +2407,15 @@ class Game extends Phaser.Scene{
       addWall(bx+bw-wth,by,wth,gy-by,edge,tp);
       addWall(bx+bw-wth,gy+gap,wth,by+bh-(gy+gap),edge,tp);
     };
+    // prima le MEGASTRUTTURE, poi i lotti normali
+    (this.megas||[]).forEach(m=>{
+      const edge=ndCol(m.x+m.w/2,m.y+m.h/2);
+      if(!this.megaBuilding(m.x,m.y,m.w,m.h,edge,m.kind))
+        addWall(m.x,m.y,m.w,m.h,edge,'building');      // ripiego: blocco pieno
+    });
+
     for(let cxr=0;cxr<cols;cxr++)for(let cyr=0;cyr<rows;cyr++){
+      if(this.megaLots && this.megaLots[cxr+'_'+cyr]) continue;
       const px=cxr*cw+ROAD/2+PAD2, py=cyr*ch+ROAD/2+PAD2;
       const maxW=cw-ROAD-PAD2*2, maxH=ch-ROAD-PAD2*2;
       if(maxW<120||maxH<120) continue;
@@ -2247,12 +2424,12 @@ class Game extends Phaser.Scene{
       const dc=1-Math.min(1,(Math.abs(cxr-midX)/midX + Math.abs(cyr-midY)/midY)/2);
       const r=Math.random();
       let tipo;
-      if(r<0.10) tipo='vuoto';
-      else if(r<0.20) tipo='parco';
-      else if(r<0.28) tipo='piazza';
-      else if(r<0.40+dc*0.18) tipo='complesso';       // ospedali/scuole: piu' al centro
-      else if(r<0.60) tipo='aperto';
-      else tipo='blocco';                              // 2-4 palazzine piccole
+      // I complessi grandi ora li fanno le MEGASTRUTTURE, qui restano i lotti normali.
+      if(r<0.08) tipo='vuoto';
+      else if(r<0.17) tipo='parco';
+      else if(r<0.24) tipo='piazza';
+      else if(r<0.58) tipo='aperto';                   // piu' case in cui si entra
+      else tipo='blocco';                              // 2-3 palazzine piccole
 
       if(tipo==='vuoto') continue;
 
@@ -2305,7 +2482,7 @@ class Game extends Phaser.Scene{
         continue;
       }
 
-      if(tipo==='aperto' && maxW>230 && maxH>190){
+      if(tipo==='aperto' && maxW>200 && maxH>170){
         const bw=maxW-Phaser.Math.Between(0,Math.floor(maxW*0.12));
         const bh=maxH-Phaser.Math.Between(0,Math.floor(maxH*0.12));
         openB(px+Phaser.Math.Between(0,maxW-bw), py+Phaser.Math.Between(0,maxH-bh), bw, bh, edge);
@@ -2314,7 +2491,7 @@ class Game extends Phaser.Scene{
 
       // BLOCCO: 2-4 palazzine piccole separate da chiostrine, non un blocco unico
       const vert = maxH>=maxW;
-      const n = Phaser.Math.Between(2, dc>0.55?4:3);
+      const n = Phaser.Math.Between(2, dc>0.55?3:2);
       const gapc = 22;
       if(vert){
         const hEach=Math.floor((maxH-gapc*(n-1))/n);
