@@ -4,6 +4,7 @@
 let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
+const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 const VISION_MULT={base:1, rifle:1.5, oracle:2.0};
 const TITLE_FONT='"Chakra Petch", "Segoe UI", system-ui, sans-serif';
@@ -395,6 +396,9 @@ class Boot extends Phaser.Scene{
       this.load.image('b_'+k,'assets/b_'+k+'.png');
     });
     ['w_ctl','w_ctr','w_cbl','w_cbr','w_v','w_h','w_f'].forEach(k=>{
+      this.load.image(k,'assets/'+k+'.png');
+    });
+    ['sw_tl','sw_t','sw_tr','sw_l','sw_c','sw_r','sw_bl','sw_b','sw_br','sw_f'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
     ['fl_n','wl_c','wl_v','wl_h','fan1','fan2','fan3','fan4','sol1','sol2','fur1','fur2','fur3','fur4','fur5'].forEach(k=>{
@@ -1870,43 +1874,72 @@ class Game extends Phaser.Scene{
     this.scale.on('resize',rz); this.events.once('shutdown',()=>this.scale.off('resize',rz));
   }
 
+  // Cornice a nine-slice generica: gli spigoli restano a scala piena, i bordi si
+  // ripetono. Serve per il marciapiede (set rosso #46-52 #57-59).
+  tileFrame(x,y,w,h,pre,k,tint,depth){
+    if(!this.textures.exists(pre+'tl')) return false;
+    const CS=Math.round(96*k);
+    if(w<CS*2+8||h<CS*2+8) return false;
+    const d=depth||-18;
+    const img=(key,px,py,pw,ph)=>this.add.image(px,py,key).setOrigin(0,0)
+      .setDisplaySize(pw,ph).setDepth(d).setTint(tint);
+    const rep=(key,px,py,pw,ph,horiz)=>{ if(pw<=0||ph<=0) return;
+      this.add.tileSprite(px,py,pw,ph,key).setOrigin(0,0).setDepth(d)
+        .setTint(tint).setTileScale(k,k); };
+    rep(pre+'t',x+CS,y,w-2*CS,CS,true);
+    rep(pre+'b',x+CS,y+h-CS,w-2*CS,CS,true);
+    rep(pre+'l',x,y+CS,CS,h-2*CS,false);
+    rep(pre+'r',x+w-CS,y+CS,CS,h-2*CS,false);
+    img(pre+'tl',x,y,CS,CS);          img(pre+'tr',x+w-CS,y,CS,CS);
+    img(pre+'bl',x,y+h-CS,CS,CS);     img(pre+'br',x+w-CS,y+h-CS,CS,CS);
+    return true;
+  }
+
   drawRoads(){
     const cols=this.GC, rows=this.GR, cw=WORLD_W/cols, ch=WORLD_H/rows;
-    const ROAD=110;               // street width between blocks
-    const SW=this.add.graphics().setDepth(-18);
+    const ROAD=150;
+    // La carreggiata resta NERA: e' il fondo. Sopra ci va solo il marciapiede.
+    const SWK=0.5, SWW=Math.round(96*SWK);      // fascia marciapiede = 48px
+    const gAsf=this.add.graphics().setDepth(-19);
+    gAsf.fillStyle(0x090a0c,1); gAsf.fillRect(0,0,WORLD_W,WORLD_H);
+    let frames=0;
     for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){
       const bx=i*cw+ROAD/2, by=j*ch+ROAD/2, bw=cw-ROAD, bh=ch-ROAD;
-      if(bw<40||bh<40) continue;
-      SW.fillStyle(0x2a2a38,1); SW.fillRect(bx,by,bw,bh);
-      SW.lineStyle(1,0x1a1a26,0.55);
-      for(let gx=bx;gx<bx+bw;gx+=32) SW.strokeRect(gx,by,32,32);
-      SW.lineStyle(2,0x2b4a42,0.9); SW.strokeRect(bx,by,bw,bh);
+      if(bw<SWW*2+40||bh<SWW*2+40) continue;
+      const tint=this.ndCol? this.ndCol(bx+bw/2,by+bh/2) : 0xff3355;
+      // marciapiede: cornice rossa attorno al lotto
+      const ok=this.tileFrame(bx,by,bw,bh,'sw_',SWK,0xffffff,-18);
+      if(ok) frames++;
+      else { // fallback procedurale, come prima
+        const SW=this.add.graphics().setDepth(-18);
+        SW.fillStyle(0x2a2a38,1); SW.fillRect(bx,by,bw,bh);
+        SW.lineStyle(2,0x2b4a42,0.9); SW.strokeRect(bx,by,bw,bh);
+      }
     }
     const g=this.add.graphics().setDepth(-17);
-    // lane dashes down the middle of every street
-    g.fillStyle(0xd8c14a,0.55);
+    // mezzeria: solo sui viali, non nei vicoli
+    g.fillStyle(0xd8c14a,0.5);
     for(let i=1;i<cols;i++){ const x=i*cw-2;
-      for(let y=20;y<WORLD_H;y+=110) g.fillRect(x,y,4,52); }
+      for(let y=20;y<WORLD_H;y+=118) g.fillRect(x,y,4,54); }
     for(let j=1;j<rows;j++){ const y=j*ch-2;
-      for(let x=20;x<WORLD_W;x+=110) g.fillRect(x,y,52,4); }
-    // crosswalks at intersections
-    g.fillStyle(0xd7ddff,0.35);
+      for(let x=20;x<WORLD_W;x+=118) g.fillRect(x,y,54,4); }
+    // attraversamenti agli incroci
+    g.fillStyle(0xd7ddff,0.30);
     for(let i=1;i<cols;i++)for(let j=1;j<rows;j++){
       const x=i*cw, y=j*ch;
-      for(let k=-2;k<=2;k++){ g.fillRect(x-58,y+k*14-3,26,7); g.fillRect(x+32,y+k*14-3,26,7);
-                              g.fillRect(x+k*14-3,y-58,7,26); g.fillRect(x+k*14-3,y+32,7,26); }
+      for(let k=-2;k<=2;k++){ g.fillRect(x-70,y+k*15-3,30,7); g.fillRect(x+40,y+k*15-3,30,7);
+                              g.fillRect(x+k*15-3,y-70,7,30); g.fillRect(x+k*15-3,y+40,7,30); }
     }
-    // streetlights: only a limited number of glow images (they are the costly part)
+    // lampioni
     let lights=0;
     for(let i=1;i<cols;i++)for(let j=0;j<rows;j++){
       if(Math.random()<0.55) continue;
-      const x=i*cw+(Math.random()<0.5?-ROAD/2+12:ROAD/2-12), y=j*ch+ch/2;
+      const x=i*cw+(Math.random()<0.5?-ROAD/2+14:ROAD/2-14), y=j*ch+ch/2;
       const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.gold]);
       if(lights<this.FX.lights){ lights++;
         this.add.image(x,y,'glow').setDisplaySize(150,150).setTint(col).setAlpha(0.10).setBlendMode(Phaser.BlendModes.ADD).setDepth(-16); }
       g.fillStyle(col,0.9); g.fillCircle(x,y,3);
     }
-    // street clutter (static, single graphics)
     const D=this.gDecor;
     for(let i=0;i<60;i++){
       const x=Phaser.Math.Between(60,WORLD_W-60), y=Phaser.Math.Between(60,WORLD_H-60);
@@ -1914,9 +1947,7 @@ class Game extends Phaser.Scene{
       if(r<0.42){ const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.purple]);
         D.fillStyle(col,0.08); D.fillEllipse(x,y,Phaser.Math.Between(50,120),Phaser.Math.Between(24,56));
       } else if(r<0.68){ D.fillStyle(0x24242f,1); D.fillCircle(x,y,11); D.lineStyle(2,0x14141c,1); D.strokeCircle(x,y,11);
-        D.fillStyle(0x1c1c26,1); D.fillCircle(x,y,5);
       } else if(r<0.86){ D.fillStyle(0x1a1a24,1); D.fillRect(x-14,y-9,28,18);
-        D.fillStyle(0x2b2b38,1); for(let k=0;k<5;k++) D.fillRect(x-12+k*5,y-7,3,14);
       } else { const col=Phaser.Utils.Array.GetRandom([C.magenta,C.green,C.gold]);
         D.fillStyle(col,0.10); D.fillEllipse(x,y,Phaser.Math.Between(26,54),Phaser.Math.Between(14,26)); }
     }
@@ -2175,7 +2206,7 @@ class Game extends Phaser.Scene{
 
     // ===== NEON RIVER — a coherent canal flowing ALONG a street (not cutting through) =====
     const cols=this.GC,rows=this.GR,cw=WORLD_W/cols,ch=WORLD_H/rows;
-    const ROAD=110, PAD=26;
+    const ROAD=150, PAD=26;
     // pick a vertical avenue for the river (a road line, so it follows the city, not random)
     const riverCol=Math.max(1,Math.min(cols-1,Math.round(cols*0.42)));
     const rvX=riverCol*cw - 34, rvW=68;
@@ -2191,25 +2222,121 @@ class Game extends Phaser.Scene{
       this.gCity.fillStyle(C.gold,0.5); this.gCity.fillRect(rvX-6,by-30,rvW+12,2); this.gCity.fillRect(rvX-6,by+28,rvW+12,2);
     }
 
+    // ===== LOTTI TIPIZZATI: il quadrante non e' piu' "un edificio" =====
+    // Ogni lotto riceve un TIPO. Il centro della mappa e' il nucleo denso e
+    // irregolare, la periferia e' piu' regolare e piu' rada.
+    const SWW=48, PAD2=PAD+SWW;                       // dentro il marciapiede
+    const midX=(cols-1)/2, midY=(rows-1)/2;
+    const openB=(bx,by,bw,bh,edge)=>{
+      const wth=34, gap=Phaser.Math.Between(90,150);
+      const marg=Math.round(2.4*wth)+6;
+      const gy=by+Phaser.Math.Between(marg,Math.max(marg,bh-gap-marg));
+      const ok=this.openBuilding(bx,by,bw,bh,wth,gy,gap,edge);
+      const tp=ok?'nodraw':'building';
+      addWall(bx,by,bw,wth,edge,tp); addWall(bx,by+bh-wth,bw,wth,edge,tp);
+      addWall(bx,by,wth,bh,edge,tp);
+      addWall(bx+bw-wth,by,wth,gy-by,edge,tp);
+      addWall(bx+bw-wth,gy+gap,wth,by+bh-(gy+gap),edge,tp);
+    };
     for(let cxr=0;cxr<cols;cxr++)for(let cyr=0;cyr<rows;cyr++){
-      if(Math.random()<0.26) continue;
-      const px=cxr*cw+ROAD/2+PAD, py=cyr*ch+ROAD/2+PAD;
-      const maxW=cw-ROAD-PAD*2, maxH=ch-ROAD-PAD*2;
-      if(maxW<110||maxH<110) continue;
-      const bw=maxW-Phaser.Math.Between(0,Math.floor(maxW*0.18)), bh=maxH-Phaser.Math.Between(0,Math.floor(maxH*0.18));
-      const bx=px+Phaser.Math.Between(0,Math.max(0,maxW-bw)), by=py+Phaser.Math.Between(0,Math.max(0,maxH-bh));
-      const edge=ndCol(bx+bw/2,by+bh/2);
-      if(Math.random()<0.42 && bw>230 && bh>190){
-        const wth=34, gap=Phaser.Math.Between(90,150);
-        const marg=Math.round(2.4*wth)+6;                 // fuori dagli spigoli
-        const gy=by+Phaser.Math.Between(marg,Math.max(marg,bh-gap-marg));
-        const open=this.openBuilding(bx,by,bw,bh,wth,gy,gap,edge);
-        const tp=open?'nodraw':'building';
-        addWall(bx,by,bw,wth,edge,tp); addWall(bx,by+bh-wth,bw,wth,edge,tp);
-        addWall(bx,by,wth,bh,edge,tp);
-        addWall(bx+bw-wth,by,wth,gy-by,edge,tp);
-        addWall(bx+bw-wth,gy+gap,wth,by+bh-(gy+gap),edge,tp);
-      } else addWall(bx,by,bw,bh,edge,'building');
+      const px=cxr*cw+ROAD/2+PAD2, py=cyr*ch+ROAD/2+PAD2;
+      const maxW=cw-ROAD-PAD2*2, maxH=ch-ROAD-PAD2*2;
+      if(maxW<120||maxH<120) continue;
+      const edge=ndCol(px+maxW/2,py+maxH/2);
+      // quanto siamo vicini al centro (0 = periferia, 1 = nucleo)
+      const dc=1-Math.min(1,(Math.abs(cxr-midX)/midX + Math.abs(cyr-midY)/midY)/2);
+      const r=Math.random();
+      let tipo;
+      if(r<0.10) tipo='vuoto';
+      else if(r<0.20) tipo='parco';
+      else if(r<0.28) tipo='piazza';
+      else if(r<0.40+dc*0.18) tipo='complesso';       // ospedali/scuole: piu' al centro
+      else if(r<0.60) tipo='aperto';
+      else tipo='blocco';                              // 2-4 palazzine piccole
+
+      if(tipo==='vuoto') continue;
+
+      if(tipo==='parco'){
+        const G=this.gDecor;
+        G.fillStyle(0x0d2019,0.95); G.fillRect(px,py,maxW,maxH);
+        G.lineStyle(2,C.green,0.30); G.strokeRect(px,py,maxW,maxH);
+        const n=Math.max(4,Math.floor(maxW*maxH/26000));
+        for(let k=0;k<n;k++){
+          const tx=px+Phaser.Math.Between(24,maxW-24), ty=py+Phaser.Math.Between(24,maxH-24);
+          const rr=Phaser.Math.Between(14,30);
+          G.fillStyle(0x18402e,1); G.fillCircle(tx,ty,rr);
+          G.lineStyle(2,C.green,0.35); G.strokeCircle(tx,ty,rr);
+          // gli alberi sono ripari: hitbox tonda
+          const bdy=this.walls.create(tx,ty,'px').setVisible(false);
+          bdy.setDisplaySize(rr*1.4,rr*1.4); bdy.refreshBody();
+          this.wallRects.push({x:tx-rr*0.7,y:ty-rr*0.7,w:rr*1.4,h:rr*1.4,type:'cover',dc:C.green});
+        }
+        G.lineStyle(10,C.magenta,0.10); G.lineBetween(px+10,py+maxH-10,px+maxW-10,py+10);
+        continue;
+      }
+
+      if(tipo==='piazza'){
+        // lastricato liscio col pezzo #52, niente edifici: spazio aperto e pericoloso
+        if(this.textures.exists('sw_f')){
+          this.add.tileSprite(px,py,maxW,maxH,'sw_f').setOrigin(0,0).setDepth(-15)
+            .setTileScale(0.5,0.5).setTint(0xffffff).setAlpha(0.9);
+        }
+        const G=this.gDecor;
+        G.lineStyle(2,edge,0.45); G.strokeRect(px,py,maxW,maxH);
+        // monumento centrale, con collisione
+        const mx=px+maxW/2, my=py+maxH/2, mr=Math.min(46,Math.min(maxW,maxH)*0.16);
+        G.fillStyle(0x0e1a17,1); G.fillCircle(mx,my,mr);
+        G.lineStyle(3,edge,0.9); G.strokeCircle(mx,my,mr);
+        G.fillStyle(edge,0.55); G.fillCircle(mx,my,mr*0.4);
+        const bdy=this.walls.create(mx,my,'px').setVisible(false);
+        bdy.setDisplaySize(mr*1.8,mr*1.8); bdy.refreshBody();
+        this.wallRects.push({x:mx-mr*0.9,y:my-mr*0.9,w:mr*1.8,h:mr*1.8,type:'cover',dc:edge});
+        continue;
+      }
+
+      if(tipo==='complesso'){
+        // struttura grande: corpo principale + ala, con cortile fra i due
+        const bodyH=Math.floor(maxH*Phaser.Math.FloatBetween(0.52,0.64));
+        addWall(px,py,maxW,bodyH,edge,'building');
+        const alaW=Math.floor(maxW*Phaser.Math.FloatBetween(0.45,0.60));
+        const alaY=py+bodyH+Math.floor(maxH*0.10);
+        const alaH=(py+maxH)-alaY;
+        if(alaH>70) addWall(px,alaY,alaW,alaH,edge,'building');
+        continue;
+      }
+
+      if(tipo==='aperto' && maxW>230 && maxH>190){
+        const bw=maxW-Phaser.Math.Between(0,Math.floor(maxW*0.12));
+        const bh=maxH-Phaser.Math.Between(0,Math.floor(maxH*0.12));
+        openB(px+Phaser.Math.Between(0,maxW-bw), py+Phaser.Math.Between(0,maxH-bh), bw, bh, edge);
+        continue;
+      }
+
+      // BLOCCO: 2-4 palazzine piccole separate da chiostrine, non un blocco unico
+      const vert = maxH>=maxW;
+      const n = Phaser.Math.Between(2, dc>0.55?4:3);
+      const gapc = 22;
+      if(vert){
+        const hEach=Math.floor((maxH-gapc*(n-1))/n);
+        for(let k=0;k<n;k++){
+          if(Math.random()<0.14) continue;                       // qualche vuoto: corte interna
+          const ww=maxW-Phaser.Math.Between(0,Math.floor(maxW*0.22));
+          const yy=py+k*(hEach+gapc);
+          if(hEach<70||ww<70) continue;
+          if(Math.random()<0.24 && ww>230 && hEach>190) openB(px,yy,ww,hEach,edge);
+          else addWall(px+Phaser.Math.Between(0,maxW-ww),yy,ww,hEach,edge,'building');
+        }
+      } else {
+        const wEach=Math.floor((maxW-gapc*(n-1))/n);
+        for(let k=0;k<n;k++){
+          if(Math.random()<0.14) continue;
+          const hh=maxH-Phaser.Math.Between(0,Math.floor(maxH*0.22));
+          const xx=px+k*(wEach+gapc);
+          if(wEach<70||hh<70) continue;
+          if(Math.random()<0.24 && wEach>230 && hh>190) openB(xx,py,wEach,hh,edge);
+          else addWall(xx,py+Phaser.Math.Between(0,maxH-hh),wEach,hh,edge,'building');
+        }
+      }
     }
     for(let i=0;i<56;i++){
       const horiz=Math.random()<0.5;
@@ -2279,7 +2406,7 @@ class Game extends Phaser.Scene{
     const p = isPlayer ? this.freeSpot(Phaser.Utils.Array.GetRandom(DISTRICTS)) : this.freeSpot();
     const op=isPlayer?OP(GAME.char):null;
     const charKey=isPlayer?('ch_'+GAME.char):'ch_bot';
-    const s=this.physics.add.image(p.x,p.y,charKey+'_0').setDepth(6); s.body.setCircle(15,17,17); s.setCollideWorldBounds(true);
+    const s=this.physics.add.image(p.x,p.y,charKey+'_0').setDepth(6).setScale(UNIT_SCALE); s.body.setCircle(15,17,17); s.setCollideWorldBounds(true);
     const gun=this.add.image(p.x,p.y,'gun_small').setOrigin(16/64,0.5).setDepth(7).setVisible(false);
     const u={ s,gun,isPlayer,charKey,frame:0, alive:true, hp:100,maxhp:100, shield:isPlayer?0:Phaser.Math.Between(0,50),maxshield:100,
       weapon:isPlayer?'pistol':Phaser.Utils.Array.GetRandom(['pistol','pistol','smg']),
