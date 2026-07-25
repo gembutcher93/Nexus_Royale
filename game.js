@@ -398,6 +398,7 @@ class Boot extends Phaser.Scene{
     ['w_ctl','w_ctr','w_cbl','w_cbr','w_v','w_h','w_f'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
+    for(let i=0;i<24;i++) this.load.image('car'+i,'assets/car'+i+'.png');
     ['sw_tl','sw_t','sw_tr','sw_l','sw_c','sw_r','sw_bl','sw_b','sw_br','sw_f'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
@@ -1045,7 +1046,7 @@ function menuTitle(sc,y){ const W=sc.scale.width,cx=W/2;
   sc.add.rectangle(cx,y+Math.min(34,W*0.066),Math.min(280,W*0.66),2,C.cyan,0.6);
 }
 function overlayPanel(sc,title,build){ const W=sc.scale.width,H=sc.scale.height,cx=W/2; const els=[];
-  els.push(sc.add.rectangle(0,0,W,H,0x040907,0.94).setOrigin(0).setDepth(400).setInteractive());
+  els.push(sc.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(400).setInteractive());
   const pw=Math.min(370,W*0.94), ph=Math.min(H*0.70,560), px=cx-pw/2, py=H*0.46-ph/2;
   const pan=uiPanel(sc,px,py,pw,ph,title,C.player,401);
   pan.els.forEach(o=>els.push(o));
@@ -1146,7 +1147,7 @@ class Menu extends Phaser.Scene{
   }
 
   askQuality(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[];
-    els.push(this.add.rectangle(0,0,W,H,0x040907,0.95).setOrigin(0).setDepth(500).setInteractive());
+    els.push(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(500).setInteractive());
     const pw=Math.min(360,W*0.92), ph=H*0.5, py=H*0.5-ph/2, px=cx-pw/2;
     const _pan=uiPanel(this,px,py,pw,ph,'QUALITÀ GRAFICA',C.player,501); _pan.els.forEach(o=>els.push(o));
     els.push(this.add.text(cx,_pan.top+4,'Consigliata EQUILIBRATA per giocare\npiù pulito col Royale a 100.',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#b9d8ce',align:'center',lineSpacing:3}).setOrigin(0.5,0).setDepth(502));
@@ -1176,7 +1177,7 @@ class Menu extends Phaser.Scene{
 
   openMenuList(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[];
     const close=()=>{ SFX.ui(); els.forEach(o=>o.destroy()); };
-    els.push(this.add.rectangle(0,0,W,H,0x040907,0.92).setOrigin(0).setDepth(400).setInteractive().on('pointerdown',()=>close()));
+    els.push(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(400).setInteractive().on('pointerdown',()=>close()));
     const items=[['◈  SFIDE GIORNALIERE',()=>this.openChallenges()],['👤  PROFILO',()=>this.openProfile()],
       ['💠  INVIA CREDITI A INKANIMUS',()=>this.openTransfer()],['⚙  OPZIONI',()=>this.openSettings()],
       ['?  COME SI GIOCA',()=>this.scene.start('Tutorial')]];
@@ -1189,7 +1190,7 @@ class Menu extends Phaser.Scene{
 
   refresh(){ this.credTxt.setText('💠 '+Profile.data.credits); }
   openChallenge(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
-    E(this.add.rectangle(0,0,W,H,0x040907,0.95).setOrigin(0).setDepth(400).setInteractive());
+    E(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(400).setInteractive());
     const pw=Math.min(360,W*0.92), py=H*0.07, ph=H*0.86, px=cx-pw/2;
     const _pan=uiPanel(this,px,py,pw,ph,'SFIDA UN AMICO',C.magenta,401); _pan.els.forEach(E);
     E(this.add.text(cx,_pan.top+2,'stessa mappa, stessi bot, stessa zona.\nGiocate separati, poi confrontate i risultati.',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#b9d8ce',align:'center',lineSpacing:4,wordWrap:{width:pw-56}}).setOrigin(0.5,0).setDepth(402));
@@ -1257,7 +1258,7 @@ class Menu extends Phaser.Scene{
   }
   toastC(m){ const t=this.add.text(this.scale.width/2,this.scale.height*0.5,m,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#fff',fontStyle:'900',backgroundColor:'#ff3355',padding:{x:14,y:10}}).setOrigin(0.5).setDepth(600); this.tweens.add({targets:t,alpha:0,duration:1600,delay:400,onComplete:()=>t.destroy()}); }
   showVerdict(w,mine,their){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[];
-    els.push(this.add.rectangle(0,0,W,H,0x040907,0.95).setOrigin(0).setDepth(500).setInteractive());
+    els.push(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(500).setInteractive());
     const col=w==='io'?C.green:(w==='avversario'?0xff3b6b:C.gold), title=w==='io'?'HAI VINTO':(w==='avversario'?'HAI PERSO':'PAREGGIO');
     { const _pw=Math.min(340,W*0.9); const _pan=uiPanel(this,cx-_pw/2,H*0.24,_pw,H*0.5,title,col,501); _pan.els.forEach(o=>els.push(o)); }
     const rows=[['piazzamento','#'+mine.place,'#'+their.place],['kill',mine.kills,their.kills],['danni',mine.dmg,their.dmg]];
@@ -1272,7 +1273,7 @@ class Menu extends Phaser.Scene{
   }
 
   openTransfer(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
-    E(this.add.rectangle(0,0,W,H,0x040907,0.95).setOrigin(0).setDepth(400).setInteractive());
+    E(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(400).setInteractive());
     const pw=Math.min(360,W*0.92), py=H*0.10, ph=H*0.8, px=cx-pw/2;
     const _pan=uiPanel(this,px,py,pw,ph,'INVIA A INKANIMUS',C.player,401); _pan.els.forEach(E);
     E(this.add.text(cx,py+64,'Scegli quanti crediti spostare\nnel tuo profilo InkAnimus.',{fontSize:'13px',color:'#b9d8ce',align:'center',lineSpacing:3}).setOrigin(0.5).setDepth(402));
@@ -1322,7 +1323,7 @@ class Menu extends Phaser.Scene{
     openChallenges(){
     const W=this.scale.width,H=this.scale.height,cx=W/2, d=Profile.data;
     const els=[]; const E=o=>{els.push(o);return o;};
-    E(this.add.rectangle(0,0,W,H,0x040907,0.95).setOrigin(0).setDepth(400).setInteractive());
+    E(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(400).setInteractive());
     const pw=Math.min(370,W*0.94), py=H*0.05, ph=H*0.9, px=cx-pw/2;
     const _pan=uiPanel(this,px,py,pw,ph,'SFIDE',C.magenta,401); _pan.els.forEach(E);
     E(uiHazard(this,px+24,_pan.top,pw-48,C.magenta,402));
@@ -1358,7 +1359,7 @@ class Menu extends Phaser.Scene{
   openProfile(){
     const W=this.scale.width,H=this.scale.height,cx=W/2, d=Profile.data;
     const els=[]; const E=o=>{els.push(o);return o;};
-    E(this.add.rectangle(0,0,W,H,0x040907,0.96).setOrigin(0).setDepth(400).setInteractive());
+    E(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(400).setInteractive());
     const pw=Math.min(370,W*0.94), py=H*0.05, ph=H*0.9, px=cx-pw/2;
     const _pan=uiPanel(this,px,py,pw,ph,'PROFILO',C.player,401); _pan.els.forEach(E);
 
@@ -1371,10 +1372,15 @@ class Menu extends Phaser.Scene{
     // wallet chips row
     const wchips=[['CR ATTUALI',d.credits,C.gold],['LIFETIME',d.lifetime||0,C.cyan],['TRASFERITI',d.transferred||0,C.magenta]];
     const wcw=(pw-40)/3;
-    wchips.forEach((c,i)=>{ const x=cx-pw/2+20+i*wcw;
-      uiStat(this,x+3,py+88,wcw-6,34,c[0],c[1],c[2],401).forEach(E);
+    wchips.forEach((c,i)=>{ const x=cx-pw/2+20+i*wcw, cw2=wcw-6, ch2=46, cy2=py+86, cut=9;
+      const g=this.add.graphics().setDepth(401); g.fillStyle(UI.lo,1);
+      g.beginPath(); g.moveTo(x+3+cut,cy2); g.lineTo(x+3+cw2,cy2); g.lineTo(x+3+cw2,cy2+ch2-cut);
+      g.lineTo(x+3+cw2-cut,cy2+ch2); g.lineTo(x+3,cy2+ch2); g.lineTo(x+3,cy2+cut); g.closePath(); g.fillPath();
+      g.fillStyle(c[2],1); g.fillRect(x+3+cut,cy2,13,2); E(g);
+      E(this.add.text(x+3+cw2/2,cy2+14,c[0],{fontFamily:UI.MONO,fontSize:'10px',color:UI.faint}).setOrigin(0.5).setDepth(402));
+      E(this.add.text(x+3+cw2/2,cy2+32,''+c[1],{fontFamily:UI.MONO,fontSize:'17px',color:hexStr(c[2])}).setOrigin(0.5).setDepth(402));
     });
-    E(this.add.text(cx,py+134,'STATISTICHE COMPLETE',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
+    E(this.add.text(cx,py+146,'STATISTICHE COMPLETE',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
 
     // grid of stat cards (scrollable)
     const fmt=t=>{ const m=Math.floor(t/60),sec=t%60; return m?(m+'m'+sec+'s'):(sec+'s'); };
@@ -1384,7 +1390,7 @@ class Menu extends Phaser.Scene{
       ['MIGLIOR PIAZZ.',d.best>=99?'—':'#'+d.best],['PIAZZ. MEDIO',d.matches?'#'+(d.placeSum/d.matches).toFixed(1):'—'],['SERIE ATTUALE',d.streak||0],['MIGLIOR SERIE',d.bestStreak||0],
       ['TOP SCORE',(d.topScore||0).toLocaleString('it')],['PART. PIÙ LUNGA',fmt(d.bestTime||0)],['TEMPO TOTALE',fmt(d.totalTime||0)],['TRASFERITI',d.transferred||0],
     ];
-    const vTop=py+148, vBot=py+ph-64, vH=vBot-vTop;
+    const vTop=py+162, vBot=py+ph-64, vH=vBot-vTop;
     const cols=2, cardW=(pw-40-12)/cols, cardH=48, rowGap=8, colGap=12;
     const cont=E(this.add.container(0,0).setDepth(402));
     cards.forEach((c,i)=>{ const r=Math.floor(i/cols), col=i%cols;
@@ -1411,7 +1417,7 @@ class Menu extends Phaser.Scene{
 
   openSettings(){
     const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
-    E(this.add.rectangle(0,0,W,H,0x040907,0.94).setOrigin(0).setDepth(400).setInteractive());
+    E(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(400).setInteractive());
     const pw=Math.min(370,W*0.94), py=H*0.06, ph=H*0.88, px=cx-pw/2;
     const _pan=uiPanel(this,px,py,pw,ph,'OPZIONI',C.player,401); _pan.els.forEach(E);
 
@@ -1583,7 +1589,7 @@ class Loadout extends Phaser.Scene{
   flash(m){ this.flashTxt.setText(m).setAlpha(1); this.tweens.add({targets:this.flashTxt,alpha:0,duration:1400}); }
   openInfoPopup(title,body,col){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
     const c=col||C.player;
-    E(this.add.rectangle(0,0,W,H,0x040907,0.9).setOrigin(0).setDepth(500).setInteractive());
+    E(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(500).setInteractive());
     const pw=Math.min(360,W*0.9), ph=Math.min(320,H*0.42), py=H*0.5-ph/2, px=cx-pw/2;
     const pan=uiPanel(this,px,py,pw,ph,title,c,501); pan.els.forEach(E);
     E(uiHazard(this,px+24,pan.top+2,pw-48,C.magenta,502));
@@ -1618,7 +1624,7 @@ class Loadout extends Phaser.Scene{
       b.selG.lineStyle(on?2:1,on?C.player:0x2b4a42,1); b.selG.strokePath();
       b.selG.fillStyle(on?C.player:0xffffff,on?1:0.10); b.selG.fillRect(b.x,b.sy,4,b.h-cut);
       b.sub.setText(u?(on?'ATTIVA':'OK'):(b.sk.cost+' CR')).setColor(u?(on?'#3df2b4':UI.faint):'#ffc247'); });
-    this.startTxt.setText(unlocked?'▶  ENTRA IN PARTITA':'🔒  BLOCCATO').setColor(unlocked?'#3df2b4':'#7fa79b');
+    this.startTxt.setText(unlocked?'▶  ENTRA IN PARTITA':'BLOCCATO').setColor(unlocked?'#04120c':'#04120c');
   }
 }
 
@@ -2328,14 +2334,19 @@ class Game extends Phaser.Scene{
           this.tweens.add({targets:sh,y:y+h*0.8,alpha:0,duration:Phaser.Math.Between(2200,3600),repeat:-1,repeatDelay:Phaser.Math.Between(200,1200),onRepeat:()=>{sh.y=y+h*0.2;sh.alpha=0.5;}});
         }
       } else if(type==='cover'){
-        const car = w>h;
-        G.fillStyle(0x000000,0.32); G.fillRect(x+2,y+3,w,h);
-        G.fillStyle(0x152622,1); G.fillRect(x,y,w,h);
-        G.lineStyle(2,edge,0.85); G.strokeRect(x,y,w,h);
-        if(car){ G.fillStyle(0x1d332d,1); G.fillRect(x+w*0.24,y+3,w*0.5,h-6);
-          G.fillStyle(edge,0.85); G.fillRect(x+3,y+h*0.32,4,h*0.36);
-          G.fillStyle(0xff3b6b,0.7); G.fillRect(x+w-7,y+h*0.32,4,h*0.36);
-        } else { G.fillStyle(edge,0.5); G.fillRect(x+4,y+4,w-8,5); }
+        // se abbiamo le sprite auto reali, disegna solo un'ombra sotto (la sprite la mette buildCity)
+        if(this.textures.exists('car0')){
+          G.fillStyle(0x000000,0.35); G.fillEllipse(x+w/2+2,y+h/2+4,w*0.9,h*0.7);
+        } else {
+          const car = w>h;
+          G.fillStyle(0x000000,0.32); G.fillRect(x+2,y+3,w,h);
+          G.fillStyle(0x152622,1); G.fillRect(x,y,w,h);
+          G.lineStyle(2,edge,0.85); G.strokeRect(x,y,w,h);
+          if(car){ G.fillStyle(0x1d332d,1); G.fillRect(x+w*0.24,y+3,w*0.5,h-6);
+            G.fillStyle(edge,0.85); G.fillRect(x+3,y+h*0.32,4,h*0.36);
+            G.fillStyle(0xff3b6b,0.7); G.fillRect(x+w-7,y+h*0.32,4,h*0.36);
+          } else { G.fillStyle(edge,0.5); G.fillRect(x+4,y+4,w-8,5); }
+        }
       } else if(type==='building'){
         const tiled=this.tileBuilding(x,y,w,h,edge);
         if(tiled) this.roofProps(x,y,w,h,edge);
@@ -2544,6 +2555,13 @@ class Game extends Phaser.Scene{
       const x=Phaser.Math.Between(80,WORLD_W-80-w), y=Phaser.Math.Between(80,WORLD_H-80-h);
       if(this.wallRects.some(r=>x<r.x+r.w+20&&x+w>r.x-20&&y<r.y+r.h+20&&y+h>r.y-20)) continue;
       addWall(x,y,w,h,ndCol(x+w/2,y+h/2),'cover');
+      // sprite auto reale sopra la hitbox
+      if(this.textures.exists('car0')){
+        const k='car'+Phaser.Math.Between(0,23);
+        const im=this.add.image(x+w/2,y+h/2,k).setDepth(0.6);
+        // orienta la sprite (nativa verso EST) lungo il lato lungo del box
+        if(horiz) im.setDisplaySize(w+6,h+8); else { im.setAngle(90); im.setDisplaySize(h+6,w+8); }
+      }
     }
     DISTRICTS.forEach(d=>{ this.add.text(d.x*WORLD_W,d.y*WORLD_H,d.n,{fontSize:'40px',color:'#ffffff',fontStyle:'900'})
       .setOrigin(0.5).setDepth(-2).setAlpha(0.10).setTint(d.c); });
