@@ -398,9 +398,6 @@ class Boot extends Phaser.Scene{
     ['w_ctl','w_ctr','w_cbl','w_cbr','w_v','w_h','w_f'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
-    ['rd_asphalt','rd_conc','rd_line_w','rd_line_r','rd_line_y','rd_cross','rd_manhole','rd_grate1','rd_grate2','rprop_bush1','rprop_bush2','rprop_helipad'].forEach(k=>{
-      this.load.image(k,'assets/'+k+'.png');
-    });
     ['sw_tl','sw_t','sw_tr','sw_l','sw_c','sw_r','sw_bl','sw_b','sw_br','sw_f'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
@@ -1200,15 +1197,14 @@ class Menu extends Phaser.Scene{
   refresh(){ this.credTxt.setText('💠 '+Profile.data.credits); }
   openChallenge(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
     E(this.add.rectangle(0,0,W,H,0x040907,0.95).setOrigin(0).setDepth(400).setInteractive());
-    const pw=Math.min(360,W*0.92), py=H*0.07, ph=H*0.86;
-    E(cyberFrame(this,cx-pw/2,py,pw,ph,C.magenta,401));
-    E(this.add.text(cx,py+26,'SFIDA UN AMICO',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#ff3355'}).setOrigin(0.5).setDepth(402));
-    E(this.add.text(cx,py+52,'stessa mappa, stessi bot, stessa zona.\nGiocate separati, poi confrontate i risultati.',{fontSize:'13px',color:'#b9d8ce',align:'center',lineSpacing:3,wordWrap:{width:pw-40}}).setOrigin(0.5).setDepth(402));
+    const pw=Math.min(360,W*0.92), py=H*0.07, ph=H*0.86, px=cx-pw/2;
+    const _pan=uiPanel(this,px,py,pw,ph,'SFIDA UN AMICO',C.magenta,401); _pan.els.forEach(E);
+    E(this.add.text(cx,_pan.top+2,'stessa mappa, stessi bot, stessa zona.\nGiocate separati, poi confrontate i risultati.',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#b9d8ce',align:'center',lineSpacing:4,wordWrap:{width:pw-56}}).setOrigin(0.5,0).setDepth(402));
 
-    let yb=py+92;
-    const bigBtn=(label,col,cb,small)=>{ const h=small?36:50; const b=E(this.add.rectangle(cx,yb,pw*0.84,h,0x0e1f1a).setStrokeStyle(2,col).setDepth(402).setInteractive({useHandCursor:true}));
-      E(this.add.text(cx,yb,label,{fontFamily:TITLE_FONT,fontSize:small?'10px':'12px',color:hexStr(col),fontStyle:'900',wordWrap:{width:pw*0.78}}).setOrigin(0.5).setDepth(403));
-      b.on('pointerdown',()=>{ SFX.ui(); cb(); }); yb+=h+8; };
+    let yb=_pan.top+52;
+    const bigBtn=(label,col,cb,small)=>{ const h=small?38:50;
+      uiCta(this,cx-pw*0.84/2,yb,pw*0.84,h,label,col,402,()=>{ SFX.ui(); cb(); }).els.forEach(E);
+      yb+=h+9; };
     // code output box (appears at the bottom, wraps inside the panel width)
     const out=E(this.add.text(cx,0,'',{fontSize:'12px',color:'#ffc247',fontFamily:'monospace',align:'center',wordWrap:{width:pw-56},backgroundColor:'#08120e',padding:{x:10,y:8}}).setOrigin(0.5,0).setDepth(403).setVisible(false));
     const showCode=(txt)=>{ out.setText('CODICE SFIDA (copiato):\n'+txt).setPosition(cx,yb+4).setVisible(true);
@@ -1287,9 +1283,8 @@ class Menu extends Phaser.Scene{
 
   openTransfer(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
     E(this.add.rectangle(0,0,W,H,0x040907,0.95).setOrigin(0).setDepth(400).setInteractive());
-    const pw=Math.min(360,W*0.92), py=H*0.10, ph=H*0.8;
-    E(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,401));
-    E(this.add.text(cx,py+28,'INVIA A INKANIMUS',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'900',color:'#3df2b4'}).setOrigin(0.5).setDepth(402));
+    const pw=Math.min(360,W*0.92), py=H*0.10, ph=H*0.8, px=cx-pw/2;
+    const _pan=uiPanel(this,px,py,pw,ph,'INVIA A INKANIMUS',C.player,401); _pan.els.forEach(E);
     E(this.add.text(cx,py+64,'Scegli quanti crediti spostare\nnel tuo profilo InkAnimus.',{fontSize:'13px',color:'#b9d8ce',align:'center',lineSpacing:3}).setOrigin(0.5).setDepth(402));
     let amt=Math.min(100,Profile.data.credits);
     const amtTxt=E(this.add.text(cx,py+120,'',{fontFamily:TITLE_FONT,fontSize:'30px',color:'#ffc247',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
@@ -1297,12 +1292,8 @@ class Menu extends Phaser.Scene{
     const refresh=()=>{ amtTxt.setText('💠 '+amt); avail.setText('disponibili: '+Profile.data.credits); };
     amtTxt.setPadding(0,6,0,2);
     [['-100',-100],['-10',-10],['+10',10],['+100',100]].forEach((c,i)=>{ const bw=pw*0.20, x=cx+(i-1.5)*(bw+6), yy=py+192;
-      E(cyberFrame(this,x-bw/2,yy-22,bw,44,C.cyan,402));
-      E(this.add.text(x,yy,c[0],{fontFamily:TITLE_FONT,fontSize:'13px',color:'#e6fbf3',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
-      E(this.add.rectangle(x,yy,bw,44,0xffffff,0.001).setDepth(404).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); amt=Phaser.Math.Clamp(amt+c[1],0,Profile.data.credits); refresh(); })); });
-    E(cyberFrame(this,cx-pw*0.28,py+228,pw*0.56,44,C.gold,402));
-    E(this.add.text(cx,py+250,'TUTTI I CREDITI',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#ffc247',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
-    E(this.add.rectangle(cx,py+250,pw*0.56,44,0xffffff,0.001).setDepth(404).setInteractive({useHandCursor:true}).on('pointerdown',()=>{ SFX.ui(); amt=Profile.data.credits; refresh(); }));
+      uiCta(this,x-bw/2,yy-22,bw,44,c[0],C.player,402,()=>{ SFX.ui(); amt=Phaser.Math.Clamp(amt+c[1],0,Profile.data.credits); refresh(); }).els.forEach(E); });
+    uiCta(this,cx-pw*0.28,py+228,pw*0.56,44,'TUTTI I CREDITI',C.gold,402,()=>{ SFX.ui(); amt=Profile.data.credits; refresh(); }).els.forEach(E);
     const out=E(this.add.text(cx,py+352,'',{fontSize:'13px',color:'#ffc247',fontFamily:'monospace',align:'center',wordWrap:{width:pw*0.82},backgroundColor:'#08120e',padding:{x:8,y:8}}).setOrigin(0.5).setDepth(403).setVisible(false));
     const genB=E(this.add.rectangle(cx,py+308,pw*0.72,48,0x0e1f1a).setStrokeStyle(3,C.player).setDepth(402).setInteractive({useHandCursor:true}));
     const genT=E(this.add.text(cx,py+308,'GENERA CODICE',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
@@ -1609,15 +1600,14 @@ class Loadout extends Phaser.Scene{
   }
   flash(m){ this.flashTxt.setText(m).setAlpha(1); this.tweens.add({targets:this.flashTxt,alpha:0,duration:1400}); }
   openInfoPopup(title,body,col){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
+    const c=col||C.player;
     E(this.add.rectangle(0,0,W,H,0x040907,0.9).setOrigin(0).setDepth(500).setInteractive());
-    const pw=Math.min(360,W*0.9), ph=Math.min(320,H*0.42), py=H*0.5-ph/2;
-    E(cyberFrame(this,cx-pw/2,py,pw,ph,col||C.cyan,501));
-    E(this.add.text(cx,py+30,title,{fontFamily:TITLE_FONT,fontSize:'16px',fontStyle:'900',color:hexStr(col||C.cyan),align:'center',wordWrap:{width:pw-40}}).setOrigin(0.5).setDepth(502));
-    E(this.add.rectangle(cx,py+54,pw*0.7,1,col||C.cyan,0.5).setDepth(502));
-    E(this.add.text(cx,py+70,body,{fontSize:'13px',color:'#dff0e8',align:'left',wordWrap:{width:pw-48},lineSpacing:6}).setOrigin(0.5,0).setDepth(502));
-    const cb=E(this.add.rectangle(cx,py+ph-32,Math.min(200,W*0.5),44,0x0e1f1a).setStrokeStyle(2,C.player).setDepth(502).setInteractive({useHandCursor:true}));
-    E(this.add.text(cx,py+ph-32,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(503));
-    cb.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); });
+    const pw=Math.min(360,W*0.9), ph=Math.min(320,H*0.42), py=H*0.5-ph/2, px=cx-pw/2;
+    const pan=uiPanel(this,px,py,pw,ph,title,c,501); pan.els.forEach(E);
+    E(uiHazard(this,px+24,pan.top+2,pw-48,C.magenta,502));
+    E(this.add.text(px+24,pan.top+18,body,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#dff0e8',align:'left',wordWrap:{width:pw-48},lineSpacing:6}).setOrigin(0,0).setDepth(502));
+    const cw=Math.min(200,W*0.5);
+    uiCta(this,cx-cw/2,py+ph-58,cw,44,'CHIUDI',c,502,()=>{ els.forEach(o=>o.destroy&&o.destroy()); }).els.forEach(E);
   }
   refresh(){
     const o=OP(GAME.char), unlocked=Profile.unlockedOp(o.id), colStr=hexStr(o.col);
@@ -2106,60 +2096,45 @@ class Game extends Phaser.Scene{
   drawRoads(){
     const cols=this.GC, rows=this.GR, cw=WORLD_W/cols, ch=WORLD_H/rows;
     const ROAD=150;
-    const hasArt=this.textures.exists('rd_asphalt');
-    // ---- fondo: asfalto vero (tile ripetuto) o nero di ripiego ----
-    if(hasArt){
-      this.add.tileSprite(0,0,WORLD_W,WORLD_H,'rd_asphalt').setOrigin(0).setDepth(-20).setTileScale(0.5);
-    } else {
-      this.add.graphics().setDepth(-20).fillStyle(0x090a0c,1).fillRect(0,0,WORLD_W,WORLD_H);
-    }
-    // ---- marciapiedi: fascia di cemento crepato lungo il perimetro del lotto ----
-    const SWW=48;
+    // La carreggiata resta NERA: e' il fondo. Sopra ci va solo il marciapiede.
+    const SWK=0.5, SWW=Math.round(96*SWK);      // fascia marciapiede = 48px
+    const gAsf=this.add.graphics().setDepth(-19);
+    gAsf.fillStyle(0x090a0c,1); gAsf.fillRect(0,0,WORLD_W,WORLD_H);
+    let frames=0;
     for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){
-      if(this.megaLots && this.megaLots[i+'_'+j]) continue;
       const bx=i*cw+ROAD/2, by=j*ch+ROAD/2, bw=cw-ROAD, bh=ch-ROAD;
+      if(this.megaLots && this.megaLots[i+'_'+j]) continue;   // ci sta sopra una megastruttura
       if(bw<SWW*2+40||bh<SWW*2+40){
-        if(hasArt && bw>10 && bh>10)
-          this.add.tileSprite(bx,by,bw,bh,'rd_conc').setOrigin(0,0).setDepth(-18).setTileScale(0.5);
+        // lotto troppo stretto per la cornice: lastricato pieno, mai un buco nero
+        if(this.textures.exists('sw_f') && bw>10 && bh>10)
+          this.add.tileSprite(bx,by,bw,bh,'sw_f').setOrigin(0,0).setDepth(-18).setTileScale(0.5,0.5);
         continue;
       }
-      if(hasArt){
-        const cc=(x,y,w,h)=>this.add.tileSprite(x,y,w,h,'rd_conc').setOrigin(0,0).setDepth(-18).setTileScale(0.5);
-        cc(bx,by,bw,SWW); cc(bx,by+bh-SWW,bw,SWW);
-        cc(bx,by+SWW,SWW,bh-2*SWW); cc(bx+bw-SWW,by+SWW,SWW,bh-2*SWW);
-      } else if(this.tileFrame){
-        this.tileFrame(bx,by,bw,bh,'sw_',0.5,0xffffff,-18);
+      const tint=this.ndCol? this.ndCol(bx+bw/2,by+bh/2) : 0xff3355;
+      // marciapiede: cornice rossa attorno al lotto
+      const ok=this.tileFrame(bx,by,bw,bh,'sw_',SWK,0xffffff,-18);
+      if(ok) frames++;
+      else { // fallback procedurale, come prima
+        const SW=this.add.graphics().setDepth(-18);
+        SW.fillStyle(0x2a2a38,1); SW.fillRect(bx,by,bw,bh);
+        SW.lineStyle(2,0x2b4a42,0.9); SW.strokeRect(bx,by,bw,bh);
       }
     }
-    // ---- linee di carreggiata: tessera vera al centro di ogni strada ----
-    if(hasArt){
-      const laneV=(x)=>{ for(let y=0;y<WORLD_H;y+=35)
-        this.add.image(x,y,'rd_line_w').setOrigin(0.5,0).setDisplaySize(ROAD*0.62,35).setDepth(-19).setAlpha(0.9); };
-      const laneH=(y)=>{ for(let x=0;x<WORLD_W;x+=35)
-        this.add.image(x,y,'rd_line_w').setOrigin(0,0.5).setAngle(90).setDisplaySize(ROAD*0.62,35).setDepth(-19).setAlpha(0.9); };
-      for(let i=1;i<cols;i++) laneV(i*cw);
-      for(let j=1;j<rows;j++) laneH(j*ch);
-      // strisce pedonali + tombini agli incroci
-      for(let i=1;i<cols;i++)for(let j=1;j<rows;j++){
-        const x=i*cw, y=j*ch;
-        this.add.image(x-ROAD*0.36,y,'rd_cross').setDisplaySize(46,ROAD*0.7).setDepth(-18).setAlpha(0.85);
-        this.add.image(x+ROAD*0.36,y,'rd_cross').setDisplaySize(46,ROAD*0.7).setDepth(-18).setAlpha(0.85);
-        this.add.image(x,y-ROAD*0.36,'rd_cross').setAngle(90).setDisplaySize(46,ROAD*0.7).setDepth(-18).setAlpha(0.85);
-        this.add.image(x,y+ROAD*0.36,'rd_cross').setAngle(90).setDisplaySize(46,ROAD*0.7).setDepth(-18).setAlpha(0.85);
-        if(Math.random()<0.4) this.add.image(x,y,'rd_manhole').setDisplaySize(40,40).setDepth(-17).setAlpha(0.9);
-      }
-      // qualche griglia sparsa sulle strade
-      for(let k=0;k<40;k++){
-        const x=Phaser.Math.Between(0,WORLD_W), y=Phaser.Math.Between(0,WORLD_H);
-        this.add.image(x,y,Math.random()<0.5?'rd_grate1':'rd_grate2').setDisplaySize(38,38).setDepth(-17).setAlpha(0.55);
-      }
-    } else {
-      const g=this.add.graphics().setDepth(-17); g.fillStyle(0xd8c14a,0.5);
-      for(let i=1;i<cols;i++){ const x=i*cw-2; for(let y=20;y<WORLD_H;y+=118) g.fillRect(x,y,4,54); }
-      for(let j=1;j<rows;j++){ const y=j*ch-2; for(let x=20;x<WORLD_W;x+=118) g.fillRect(x,y,54,4); }
+    const g=this.add.graphics().setDepth(-17);
+    // mezzeria: solo sui viali, non nei vicoli
+    g.fillStyle(0xd8c14a,0.5);
+    for(let i=1;i<cols;i++){ const x=i*cw-2;
+      for(let y=20;y<WORLD_H;y+=118) g.fillRect(x,y,4,54); }
+    for(let j=1;j<rows;j++){ const y=j*ch-2;
+      for(let x=20;x<WORLD_W;x+=118) g.fillRect(x,y,54,4); }
+    // attraversamenti agli incroci
+    g.fillStyle(0xd7ddff,0.30);
+    for(let i=1;i<cols;i++)for(let j=1;j<rows;j++){
+      const x=i*cw, y=j*ch;
+      for(let k=-2;k<=2;k++){ g.fillRect(x-70,y+k*15-3,30,7); g.fillRect(x+40,y+k*15-3,30,7);
+                              g.fillRect(x+k*15-3,y-70,7,30); g.fillRect(x+k*15-3,y+40,7,30); }
     }
-    // ---- lampioni (glow, come prima) ----
-    const g2=this.add.graphics().setDepth(-16);
+    // lampioni
     let lights=0;
     for(let i=1;i<cols;i++)for(let j=0;j<rows;j++){
       if(Math.random()<0.55) continue;
@@ -2167,7 +2142,18 @@ class Game extends Phaser.Scene{
       const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.gold]);
       if(lights<this.FX.lights){ lights++;
         this.add.image(x,y,'glow').setDisplaySize(150,150).setTint(col).setAlpha(0.10).setBlendMode(Phaser.BlendModes.ADD).setDepth(-16); }
-      g2.fillStyle(col,0.9); g2.fillCircle(x,y,3);
+      g.fillStyle(col,0.9); g.fillCircle(x,y,3);
+    }
+    const D=this.gDecor;
+    for(let i=0;i<60;i++){
+      const x=Phaser.Math.Between(60,WORLD_W-60), y=Phaser.Math.Between(60,WORLD_H-60);
+      const r=Math.random();
+      if(r<0.42){ const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.purple]);
+        D.fillStyle(col,0.08); D.fillEllipse(x,y,Phaser.Math.Between(50,120),Phaser.Math.Between(24,56));
+      } else if(r<0.68){ D.fillStyle(0x24242f,1); D.fillCircle(x,y,11); D.lineStyle(2,0x14141c,1); D.strokeCircle(x,y,11);
+      } else if(r<0.86){ D.fillStyle(0x1a1a24,1); D.fillRect(x-14,y-9,28,18);
+      } else { const col=Phaser.Utils.Array.GetRandom([C.magenta,C.green,C.gold]);
+        D.fillStyle(col,0.10); D.fillEllipse(x,y,Phaser.Math.Between(26,54),Phaser.Math.Between(14,26)); }
     }
   }
 
@@ -2494,13 +2480,13 @@ class Game extends Phaser.Scene{
         const n=Math.max(4,Math.floor(maxW*maxH/26000));
         for(let k=0;k<n;k++){
           const tx=px+Phaser.Math.Between(24,maxW-24), ty=py+Phaser.Math.Between(24,maxH-24);
-          const rr=Phaser.Math.Between(18,32);
-          if(this.textures.exists('rprop_bush1')){
-            this.add.image(tx,ty,Math.random()<0.5?'rprop_bush1':'rprop_bush2').setDisplaySize(rr*2,rr*2).setDepth(0.5);
-          } else { G.fillStyle(0x18402e,1); G.fillCircle(tx,ty,rr); G.lineStyle(2,C.green,0.35); G.strokeCircle(tx,ty,rr); }
+          const rr=Phaser.Math.Between(14,30);
+          G.fillStyle(0x18402e,1); G.fillCircle(tx,ty,rr);
+          G.lineStyle(2,C.green,0.35); G.strokeCircle(tx,ty,rr);
+          // gli alberi sono ripari: hitbox tonda
           const bdy=this.walls.create(tx,ty,'px').setVisible(false);
-          bdy.setDisplaySize(rr*1.5,rr*1.5); bdy.refreshBody();
-          this.wallRects.push({x:tx-rr*0.75,y:ty-rr*0.75,w:rr*1.5,h:rr*1.5,type:'cover',dc:C.green});
+          bdy.setDisplaySize(rr*1.4,rr*1.4); bdy.refreshBody();
+          this.wallRects.push({x:tx-rr*0.7,y:ty-rr*0.7,w:rr*1.4,h:rr*1.4,type:'cover',dc:C.green});
         }
         G.lineStyle(10,C.magenta,0.10); G.lineBetween(px+10,py+maxH-10,px+maxW-10,py+10);
         continue;
