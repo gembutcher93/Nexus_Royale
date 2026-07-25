@@ -1147,20 +1147,15 @@ class Menu extends Phaser.Scene{
 
   askQuality(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[];
     els.push(this.add.rectangle(0,0,W,H,0x040907,0.95).setOrigin(0).setDepth(500).setInteractive());
-    const pw=Math.min(360,W*0.92), ph=H*0.5, py=H*0.5-ph/2;
-    els.push(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,501));
-    els.push(this.add.text(cx,py+30,'QUALITÀ GRAFICA',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(502));
-    els.push(this.add.text(cx,py+62,'Consigliata EQUILIBRATA per giocare\npiù pulito col Royale a 100.',{fontSize:'13px',color:'#b9d8ce',align:'center',lineSpacing:3}).setOrigin(0.5).setDepth(502));
+    const pw=Math.min(360,W*0.92), ph=H*0.5, py=H*0.5-ph/2, px=cx-pw/2;
+    const _pan=uiPanel(this,px,py,pw,ph,'QUALITÀ GRAFICA',C.player,501); _pan.els.forEach(o=>els.push(o));
+    els.push(this.add.text(cx,_pan.top+4,'Consigliata EQUILIBRATA per giocare\npiù pulito col Royale a 100.',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#b9d8ce',align:'center',lineSpacing:3}).setOrigin(0.5,0).setDepth(502));
     const opts=[['low','BASSA','max fluidità'],['med','EQUILIBRATA','consigliata'],['high','ALTA','massima resa']];
-    opts.forEach((o,i)=>{ const yy=py+118+i*58;
-      const col=o[0]==='med'?C.green:0x1b3a33;
-      els.push(cyberFrame(this,cx-pw/2+20,yy-24,pw-40,48,col,502));
-      els.push(this.add.text(cx-pw/2+38,yy-6,o[1],{fontFamily:TITLE_FONT,fontSize:'13px',color:'#e6fbf3',fontStyle:'900'}).setOrigin(0,0.5).setDepth(503));
-      els.push(this.add.text(cx-pw/2+38,yy+12,o[2],{fontSize:'13px',color:'#7fa79b'}).setOrigin(0,0.5).setDepth(503));
-      els.push(this.add.rectangle(cx,yy,pw-40,48,0xffffff,0.001).setDepth(504).setInteractive({useHandCursor:true})
-        .on('pointerdown',()=>{ SFX.ui(); GAME.quality=o[0];
-          try{ localStorage.setItem('nexusQuality',o[0]); localStorage.setItem('nexusQualitySet','1'); }catch(e){}
-          els.forEach(x=>x.destroy()); }));
+    opts.forEach((o,i)=>{ const yy=_pan.top+58+i*60;
+      const col=o[0]==='med'?C.green:C.player;
+      uiCta(this,px+20,yy,pw-40,50,o[1]+'  ·  '+o[2],col,502,()=>{ SFX.ui(); GAME.quality=o[0];
+        try{ localStorage.setItem('nexusQuality',o[0]); localStorage.setItem('nexusQualitySet','1'); }catch(e){}
+        els.forEach(x=>x.destroy&&x.destroy()); }).els.forEach(x=>els.push(x));
     });
   }
 
@@ -1168,7 +1163,8 @@ class Menu extends Phaser.Scene{
     const W=this.scale.width, bw=Math.min(340,W*0.86);
     this.add.text(cx,y-30,label,{fontFamily:TITLE_FONT,fontSize:'13px',color:'#7fa79b',fontStyle:'900'}).setOrigin(0.5);
     // cycle-on-tap dropdown (mobile friendly)
-    const box=cyberFrame(this,cx-bw/2,y-22,bw,44,C.cyan,0);
+    const _g=this.add.graphics().setDepth(0); _g.fillStyle(UI.lo,1);
+    { const cut=12,x0=cx-bw/2,y0=y-22; _g.beginPath(); _g.moveTo(x0,y0); _g.lineTo(x0+bw-cut,y0); _g.lineTo(x0+bw,y0+cut); _g.lineTo(x0+bw,y0+44); _g.lineTo(x0+cut,y0+44); _g.lineTo(x0,y0+44-cut); _g.closePath(); _g.fillPath(); _g.lineStyle(1,C.player,0.3); _g.strokePath(); _g.fillStyle(C.player,1); _g.fillRect(x0,y0,4,44-cut); }
     const t1=this.add.text(cx-bw/2+18,y,'',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#e6fbf3',fontStyle:'900'}).setOrigin(0,0.5).setDepth(2);
     const t2=this.add.text(cx-bw/2+150,y,'',{fontSize:'14px',color:'#8fa9a0'}).setOrigin(0,0.5).setDepth(2);
     const arr=this.add.text(cx+bw/2-18,y,'⇄',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#3df2b4',fontStyle:'900'}).setOrigin(1,0.5).setDepth(2);
@@ -1184,13 +1180,10 @@ class Menu extends Phaser.Scene{
     const items=[['◈  SFIDE GIORNALIERE',()=>this.openChallenges()],['👤  PROFILO',()=>this.openProfile()],
       ['💠  INVIA CREDITI A INKANIMUS',()=>this.openTransfer()],['⚙  OPZIONI',()=>this.openSettings()],
       ['?  COME SI GIOCA',()=>this.scene.start('Tutorial')]];
-    const pw=Math.min(360,W*0.9), ph=items.length*62+76, py=H*0.5-ph/2;
-    els.push(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,401));
-    els.push(this.add.text(cx,py+28,'MENU',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
-    items.forEach((it,i)=>{ const yy=py+70+i*62;
-      els.push(cyberFrame(this,cx-pw/2+16,yy-24,pw-32,48,0x1b3a33,402));
-      els.push(this.add.text(cx-pw/2+34,yy,it[0],{fontFamily:TITLE_FONT,fontSize:'13px',color:'#e6fbf3',fontStyle:'900'}).setOrigin(0,0.5).setDepth(403));
-      els.push(this.add.rectangle(cx,yy,pw-32,48,0xffffff,0.001).setDepth(404).setInteractive({useHandCursor:true}).on('pointerdown',(pt,lx,ly,ev)=>{ if(ev&&ev.stopPropagation)ev.stopPropagation(); const fn=it[1]; close(); this.time.delayedCall(10,fn); }));
+    const pw=Math.min(360,W*0.9), ph=items.length*60+84, py=H*0.5-ph/2, px=cx-pw/2;
+    const _pan=uiPanel(this,px,py,pw,ph,'MENU',C.player,401); _pan.els.forEach(o=>els.push(o));
+    items.forEach((it,i)=>{ const yy=_pan.top+8+i*60;
+      uiCta(this,px+16,yy,pw-32,48,it[0],C.player,402,()=>{ const fn=it[1]; close(); this.time.delayedCall(10,fn); }).els.forEach(o=>els.push(o));
     });
   }
 
@@ -1266,8 +1259,7 @@ class Menu extends Phaser.Scene{
   showVerdict(w,mine,their){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[];
     els.push(this.add.rectangle(0,0,W,H,0x040907,0.95).setOrigin(0).setDepth(500).setInteractive());
     const col=w==='io'?C.green:(w==='avversario'?0xff3b6b:C.gold), title=w==='io'?'HAI VINTO':(w==='avversario'?'HAI PERSO':'PAREGGIO');
-    els.push(cyberFrame(this,cx-Math.min(340,W*0.9)/2,H*0.24,Math.min(340,W*0.9),H*0.5,col,501));
-    els.push(this.add.text(cx,H*0.30,title,{fontFamily:TITLE_FONT,fontSize:'30px',fontStyle:'900',color:hexStr(col)}).setOrigin(0.5).setDepth(502));
+    { const _pw=Math.min(340,W*0.9); const _pan=uiPanel(this,cx-_pw/2,H*0.24,_pw,H*0.5,title,col,501); _pan.els.forEach(o=>els.push(o)); }
     const rows=[['piazzamento','#'+mine.place,'#'+their.place],['kill',mine.kills,their.kills],['danni',mine.dmg,their.dmg]];
     els.push(this.add.text(cx-70,H*0.40,'TU',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(502));
     els.push(this.add.text(cx+70,H*0.40,(their.who||'AVV').slice(0,8),{fontFamily:TITLE_FONT,fontSize:'13px',color:'#ff3355',fontStyle:'900'}).setOrigin(0.5).setDepth(502));
@@ -1276,9 +1268,7 @@ class Menu extends Phaser.Scene{
       els.push(this.add.text(cx-70,yy,''+r[1],{fontFamily:TITLE_FONT,fontSize:'13px',color:'#fff',fontStyle:'900'}).setOrigin(0.5).setDepth(502));
       els.push(this.add.text(cx+70,yy,''+r[2],{fontFamily:TITLE_FONT,fontSize:'13px',color:'#fff',fontStyle:'900'}).setOrigin(0.5).setDepth(502));
     });
-    const cb=this.add.rectangle(cx,H*0.68,180,44,0x0e1f1a).setStrokeStyle(2,C.player).setDepth(502).setInteractive({useHandCursor:true});
-    els.push(cb); els.push(this.add.text(cx,H*0.68,'OK',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(503));
-    cb.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); });
+    uiCta(this,cx-90,H*0.68-22,180,44,'OK',C.player,502,()=>{ els.forEach(o=>o.destroy&&o.destroy()); }).els.forEach(o=>els.push(o));
   }
 
   openTransfer(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
@@ -1333,10 +1323,9 @@ class Menu extends Phaser.Scene{
     const W=this.scale.width,H=this.scale.height,cx=W/2, d=Profile.data;
     const els=[]; const E=o=>{els.push(o);return o;};
     E(this.add.rectangle(0,0,W,H,0x040907,0.95).setOrigin(0).setDepth(400).setInteractive());
-    const pw=Math.min(370,W*0.94), py=H*0.05, ph=H*0.9;
-    E(cyberFrame(this,cx-pw/2,py,pw,ph,C.magenta,401));
-    E(this.add.text(cx,py+26,'SFIDE',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'900',color:'#ff3355'}).setOrigin(0.5).setDepth(402));
-    E(this.add.rectangle(cx,py+44,pw*0.7,1,C.magenta,0.5).setDepth(402));
+    const pw=Math.min(370,W*0.94), py=H*0.05, ph=H*0.9, px=cx-pw/2;
+    const _pan=uiPanel(this,px,py,pw,ph,'SFIDE',C.magenta,401); _pan.els.forEach(E);
+    E(uiHazard(this,px+24,_pan.top,pw-48,C.magenta,402));
 
     const drawList=(title,list,col,yStart)=>{
       E(this.add.text(cx-pw/2+20,yStart,title,{fontFamily:TITLE_FONT,fontSize:'13px',color:hexStr(col),fontStyle:'900'}).setOrigin(0,0.5).setDepth(402));
@@ -1351,7 +1340,7 @@ class Menu extends Phaser.Scene{
       });
       return yy;
     };
-    let y=py+64;
+    let y=_pan.top+18;
     y=drawList('◆ GIORNALIERE  (reset a mezzanotte)', d.daily.list, C.cyan, y)+8;
     y=drawList('★ SETTIMANALI  (reset lunedì)', d.weekly.list, C.gold, y)+10;
 
@@ -1363,16 +1352,15 @@ class Menu extends Phaser.Scene{
     E(this.add.rectangle(cx-bw/2,y+34,Math.max(1,bw*Phaser.Math.Clamp(prog/goal,0,1)),10,ready?C.green:C.magenta).setOrigin(0,0.5).setDepth(403));
     E(this.add.text(cx,y+50,ready?('PRONTO! vai su CREDITI per generare il buono'):(prog+' / '+goal+'  →  '+(goal/10000)+'€ di sconto'),{fontSize:'12px',color:ready?'#5df08a':'#b9d8ce',fontStyle:'800'}).setOrigin(0.5).setDepth(403));
 
-    const close=E(this.add.rectangle(cx,py+ph-30,Math.min(200,W*0.55),44,0x0e1f1a).setStrokeStyle(2,C.player).setDepth(402).setInteractive({useHandCursor:true}));
-    E(this.add.text(cx,py+ph-30,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
-    close.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); });
+    const _cw=Math.min(200,W*0.55);
+    uiCta(this,cx-_cw/2,py+ph-58,_cw,44,'CHIUDI',C.player,402,()=>{ els.forEach(o=>o.destroy&&o.destroy()); }).els.forEach(E);
   }
   openProfile(){
     const W=this.scale.width,H=this.scale.height,cx=W/2, d=Profile.data;
     const els=[]; const E=o=>{els.push(o);return o;};
     E(this.add.rectangle(0,0,W,H,0x040907,0.96).setOrigin(0).setDepth(400).setInteractive());
-    const pw=Math.min(370,W*0.94), py=H*0.05, ph=H*0.9;
-    E(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,401));
+    const pw=Math.min(370,W*0.94), py=H*0.05, ph=H*0.9, px=cx-pw/2;
+    const _pan=uiPanel(this,px,py,pw,ph,'PROFILO',C.player,401); _pan.els.forEach(E);
 
     // header: operator portrait + name + wallet strip
     const op=OP(GAME.char), PORT={vyre:'port_vyre',nova:'port_nova',oracle:'port_oracle',aegis:'port_aegis',wraith:'port_wraith'};
@@ -1383,10 +1371,8 @@ class Menu extends Phaser.Scene{
     // wallet chips row
     const wchips=[['CR ATTUALI',d.credits,C.gold],['LIFETIME',d.lifetime||0,C.cyan],['TRASFERITI',d.transferred||0,C.magenta]];
     const wcw=(pw-40)/3;
-    wchips.forEach((c,i)=>{ const x=cx-pw/2+20+i*wcw+wcw/2, yy=py+104;
-      E(cyberFrame(this,x-wcw/2+3,yy-16,wcw-6,34,c[2],401));
-      E(this.add.text(x,yy-6,c[0],{fontFamily:TITLE_FONT,fontSize:'8px',color:'#7fa79b',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
-      E(this.add.text(x,yy+8,''+c[1],{fontFamily:TITLE_FONT,fontSize:'13px',color:hexStr(c[2]),fontStyle:'900'}).setOrigin(0.5).setDepth(402));
+    wchips.forEach((c,i)=>{ const x=cx-pw/2+20+i*wcw;
+      uiStat(this,x+3,py+88,wcw-6,34,c[0],c[1],c[2],401).forEach(E);
     });
     E(this.add.text(cx,py+134,'STATISTICHE COMPLETE',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
 
@@ -1419,20 +1405,17 @@ class Menu extends Phaser.Scene{
     zone.on('pointerup',()=>sp=null); zone.on('pointerout',()=>sp=null);
     if(contentH>vH) E(this.add.text(cx,vBot+4,'▲ scorri ▼',{fontFamily:TITLE_FONT,fontSize:'12px',color:'#7fa79b',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
 
-    const close=E(this.add.rectangle(cx,py+ph-30,Math.min(200,W*0.55),42,0x0e1f1a).setStrokeStyle(2,C.player).setDepth(405).setInteractive({useHandCursor:true}));
-    E(this.add.text(cx,py+ph-30,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(406));
-    close.on('pointerdown',()=>{ SFX.ui(); maskG.destroy(); els.forEach(o=>o.destroy()); });
+    const _cw=Math.min(200,W*0.55);
+    uiCta(this,cx-_cw/2,py+ph-58,_cw,42,'CHIUDI',C.player,405,()=>{ maskG.destroy(); els.forEach(o=>o.destroy&&o.destroy()); }).els.forEach(E);
   }
 
   openSettings(){
     const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
     E(this.add.rectangle(0,0,W,H,0x040907,0.94).setOrigin(0).setDepth(400).setInteractive());
-    const pw=Math.min(370,W*0.94), py=H*0.06, ph=H*0.88;
-    E(cyberFrame(this,cx-pw/2,py,pw,ph,C.cyan,401));
-    E(this.add.text(cx,py+26,'OPZIONI',{fontFamily:TITLE_FONT,fontSize:'18px',fontStyle:'900',color:'#3df2b4'}).setOrigin(0.5).setDepth(402));
-    E(this.add.rectangle(cx,py+44,pw*0.7,1,C.cyan,0.5).setDepth(402));
+    const pw=Math.min(370,W*0.94), py=H*0.06, ph=H*0.88, px=cx-pw/2;
+    const _pan=uiPanel(this,px,py,pw,ph,'OPZIONI',C.player,401); _pan.els.forEach(E);
 
-    let yy=py+70;
+    let yy=_pan.top+16;
     // --- EFFETTI GRAFICI ---
     E(this.add.text(cx,yy,'EFFETTI GRAFICI',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(402));
     E(this.add.text(cx,yy+16,'i giocatori restano sempre 100',{fontSize:'13px',color:'#7fa79b'}).setOrigin(0.5).setDepth(402));
@@ -1476,9 +1459,8 @@ class Menu extends Phaser.Scene{
     E(this.add.text(cx+half/2+3,yy,'❓ COME SI GIOCA',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#b9d8ce',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
     gBox.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); this.scene.start('Tutorial'); });
 
-    const close=E(this.add.rectangle(cx,py+ph-30,Math.min(200,W*0.55),44,0x0e1f1a).setStrokeStyle(2,C.player).setDepth(402).setInteractive({useHandCursor:true}));
-    E(this.add.text(cx,py+ph-30,'CHIUDI',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#3df2b4',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
-    close.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); });
+    const _cw=Math.min(200,W*0.55);
+    uiCta(this,cx-_cw/2,py+ph-58,_cw,44,'CHIUDI',C.player,402,()=>{ els.forEach(o=>o.destroy&&o.destroy()); }).els.forEach(E);
   }
 }
 
