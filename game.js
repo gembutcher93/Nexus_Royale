@@ -399,6 +399,7 @@ class Boot extends Phaser.Scene{
       this.load.image(k,'assets/'+k+'.png');
     });
     for(let i=0;i<24;i++) this.load.image('car'+i,'assets/car'+i+'.png');
+    for(let i=0;i<5;i++) this.load.image('tree'+i,'assets/tree'+i+'.png');
     ['sw_tl','sw_t','sw_tr','sw_l','sw_c','sw_r','sw_bl','sw_b','sw_br','sw_f'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
@@ -2084,31 +2085,48 @@ class Game extends Phaser.Scene{
   drawRoads(){
     const cols=this.GC, rows=this.GR, cw=WORLD_W/cols, ch=WORLD_H/rows;
     const ROAD=150;
-    // La carreggiata resta NERA: e' il fondo. Sopra ci va solo il marciapiede.
     const SWK=0.5, SWW=Math.round(96*SWK);      // fascia marciapiede = 48px
+    // ---- carreggiata NERA con un filo di BLU CYBERPUNK ----
     const gAsf=this.add.graphics().setDepth(-19);
-    gAsf.fillStyle(0x090a0c,1); gAsf.fillRect(0,0,WORLD_W,WORLD_H);
+    gAsf.fillStyle(0x080a10,1); gAsf.fillRect(0,0,WORLD_W,WORLD_H);
+    // leggera tinta bluastra sull'asfalto delle strade (le fasce ROAD)
+    gAsf.fillStyle(0x0e1830,0.55);
+    for(let i=0;i<=cols;i++){ const x=i*cw; gAsf.fillRect(x-ROAD/2,0,ROAD,WORLD_H); }
+    for(let j=0;j<=rows;j++){ const y=j*ch; gAsf.fillRect(0,y-ROAD/2,WORLD_W,ROAD); }
     let frames=0;
     for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){
       const bx=i*cw+ROAD/2, by=j*ch+ROAD/2, bw=cw-ROAD, bh=ch-ROAD;
-      if(this.megaLots && this.megaLots[i+'_'+j]) continue;   // ci sta sopra una megastruttura
+      if(this.megaLots && this.megaLots[i+'_'+j]) continue;
       if(bw<SWW*2+40||bh<SWW*2+40){
-        // lotto troppo stretto per la cornice: lastricato pieno, mai un buco nero
         if(this.textures.exists('sw_f') && bw>10 && bh>10)
           this.add.tileSprite(bx,by,bw,bh,'sw_f').setOrigin(0,0).setDepth(-18).setTileScale(0.5,0.5);
         continue;
       }
       const tint=this.ndCol? this.ndCol(bx+bw/2,by+bh/2) : 0xff3355;
-      // marciapiede: cornice rossa attorno al lotto
+      // 1) RIEMPIMENTO: lastricato bordeaux dentro tutta la piazzetta (niente piu' buco nero)
+      if(this.textures.exists('sw_f'))
+        this.add.tileSprite(bx,by,bw,bh,'sw_f').setOrigin(0,0).setDepth(-18.5).setTileScale(0.5,0.5);
+      // 2) cornice/bordo marciapiede sopra il riempimento
       const ok=this.tileFrame(bx,by,bw,bh,'sw_',SWK,0xffffff,-18);
-      if(ok) frames++;
-      else { // fallback procedurale, come prima
-        const SW=this.add.graphics().setDepth(-18);
-        SW.fillStyle(0x2a2a38,1); SW.fillRect(bx,by,bw,bh);
-        SW.lineStyle(2,0x2b4a42,0.9); SW.strokeRect(bx,by,bw,bh);
+      if(ok){ frames++;
+        // cordolo neon sul bordo esterno: elimina la fascia scura tra strada e marciapiede
+        const gc=this.add.graphics().setDepth(-17.8);
+        gc.lineStyle(2,tint,0.8); gc.strokeRect(bx+1,by+1,bw-2,bh-2);
+        gc.lineStyle(5,tint,0.12); gc.strokeRect(bx+1,by+1,bw-2,bh-2);
       }
+      else { const SW=this.add.graphics().setDepth(-18);
+        SW.fillStyle(0x2a2a38,1); SW.fillRect(bx,by,bw,bh);
+        SW.lineStyle(2,0x2b4a42,0.9); SW.strokeRect(bx,by,bw,bh); }
     }
     const g=this.add.graphics().setDepth(-17);
+    // ---- LED laterali che illuminano la strada (effetto cyberpunk) ----
+    const gLed=this.add.graphics().setDepth(-17.5);
+    for(let i=0;i<=cols;i++){ const x=i*cw;
+      gLed.fillStyle(C.cyan,0.55); gLed.fillRect(x-ROAD/2+3,0,2,WORLD_H); gLed.fillRect(x+ROAD/2-5,0,2,WORLD_H);
+      gLed.fillStyle(C.cyan,0.12); gLed.fillRect(x-ROAD/2,0,6,WORLD_H); gLed.fillRect(x+ROAD/2-6,0,6,WORLD_H); }
+    for(let j=0;j<=rows;j++){ const y=j*ch;
+      gLed.fillStyle(C.magenta,0.45); gLed.fillRect(0,y-ROAD/2+3,WORLD_W,2); gLed.fillRect(0,y+ROAD/2-5,WORLD_W,2);
+      gLed.fillStyle(C.magenta,0.10); gLed.fillRect(0,y-ROAD/2,WORLD_W,6); gLed.fillRect(0,y+ROAD/2-6,WORLD_W,6); }
     // mezzeria: solo sui viali, non nei vicoli
     g.fillStyle(0xd8c14a,0.5);
     for(let i=1;i<cols;i++){ const x=i*cw-2;
@@ -2473,10 +2491,13 @@ class Game extends Phaser.Scene{
         const n=Math.max(4,Math.floor(maxW*maxH/26000));
         for(let k=0;k<n;k++){
           const tx=px+Phaser.Math.Between(24,maxW-24), ty=py+Phaser.Math.Between(24,maxH-24);
-          const rr=Phaser.Math.Between(14,30);
-          G.fillStyle(0x18402e,1); G.fillCircle(tx,ty,rr);
-          G.lineStyle(2,C.green,0.35); G.strokeCircle(tx,ty,rr);
-          // gli alberi sono ripari: hitbox tonda
+          const rr=Phaser.Math.Between(18,34);
+          if(this.textures.exists('tree0')){
+            const k='tree'+Phaser.Math.Between(0,4);
+            const t=this.textures.get(k).getSourceImage();
+            const sc=(rr*2)/Math.max(t.width,t.height);
+            this.add.image(tx,ty,k).setDisplaySize(t.width*sc,t.height*sc).setDepth(0.5);
+          } else { G.fillStyle(0x18402e,1); G.fillCircle(tx,ty,rr); G.lineStyle(2,C.green,0.35); G.strokeCircle(tx,ty,rr); }
           const bdy=this.walls.create(tx,ty,'px').setVisible(false);
           bdy.setDisplaySize(rr*1.4,rr*1.4); bdy.refreshBody();
           this.wallRects.push({x:tx-rr*0.7,y:ty-rr*0.7,w:rr*1.4,h:rr*1.4,type:'cover',dc:C.green});
