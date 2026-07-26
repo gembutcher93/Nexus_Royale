@@ -30,11 +30,32 @@ const FXQ={ low:{particles:0.25,glow:false,shake:false,signs:0,lights:6,trails:f
             med:{particles:0.55,glow:true, shake:true, signs:8, lights:16,trails:false},
             high:{particles:1,   glow:true, shake:true, signs:22,lights:26,trails:true} };
 function fxq(){ return FXQ[GAME.quality]||FXQ.high; }
+// Ogni skin e' un "guscio" via codice: tint sprite + glow colorato + (opz) particelle e scia.
+// fx: {tint, glow, glowStr, part:[colore], partN, trail:[colore], trailN, rank:true/false, req:'grado'}
 const SKINS=[
-  {id:'base',  name:'STANDARD',cost:0,    tint:0xffffff, halo:0,      desc:'Equipaggiamento di serie.'},
-  {id:'neon',  name:'NEON',    cost:900,  tint:0xffffff, halo:1,      desc:'Contorni al neon pulsanti.'},
-  {id:'chrome',name:'CHROME',  cost:1800, tint:0xdfe6ff, halo:0.4,    desc:'Corazza cromata riflettente.'},
-  {id:'void',  name:'VOID',    cost:3200, tint:0x6b5aa8, halo:0.7,    desc:'Lega oscura, aura viola.'},
+  {id:'base',   name:'STANDARD', cost:0,    desc:'Equipaggiamento di serie.', fx:{}},
+  {id:'neon',   name:'NEON',     cost:900,  desc:'Contorni al neon pulsanti.', fx:{glow:0x3df2b4,glowStr:0.9}},
+  // --- intermedie 1800 ---
+  {id:'chrome', name:'CHROME',   cost:1800, desc:'Metallo cromato riflettente.', fx:{tint:0xc8d4ec,glow:0xafbfe0,glowStr:0.35,metal:1}},
+  {id:'phantom',name:'PHANTOM',  cost:1800, desc:'Spettro con doppia scia.', fx:{alpha:0.6,glow:0x9cdcff,glowStr:0.5,trail:0x9cdcff,trailN:3}},
+  {id:'shadow', name:'SHADOW',   cost:1800, desc:'Aura di fumo e bagliore rosso.', fx:{tint:0x2a1830,glow:0x14001e,glowStr:0.9,glow2:0xff1e3c,glow2Str:0.4}},
+  {id:'holo',   name:'HOLOGRAM', cost:1800, desc:'Glitch olografico instabile.', fx:{holo:1,glow:0x7a78ff,glowStr:0.5}},
+  // --- elaborate 3200 ---
+  {id:'void',   name:'VOID',     cost:3200, desc:'Lega oscura, aura viola e particelle.', fx:{tint:0x5a3c96,glow:0x9650ff,glowStr:0.8,part:0xb478ff,partN:14}},
+  {id:'toxic',  name:'TOXIC',    cost:3200, desc:'Reattore tossico, scia verde.', fx:{tint:0x78dc3c,glow:0x78ff3c,glowStr:0.7,trail:0x78ff3c,trailN:3,part:0xa0ff5a,partN:10}},
+  {id:'frost',  name:'FROST',    cost:3200, desc:'Nucleo criogenico, cristalli.', fx:{tint:0xb4e6ff,glow:0x8cdcff,glowStr:0.6,part:0xd2f0ff,partN:10}},
+  {id:'ember',  name:'EMBER',    cost:3200, desc:'Brace incandescente, faville.', fx:{tint:0x3c140a,glow:0xff7814,glowStr:0.75,part:0xff9628,partN:14}},
+  {id:'plasma', name:'PLASMA',   cost:3200, desc:'Energia al plasma, doppia scia.', fx:{glow:0xc878ff,glowStr:0.6,trail:0xff32b4,trailN:2,trail2:0x3cf0ff,trail2N:2}},
+  {id:'inferno',name:'INFERNO',  cost:3200, desc:'Fuoco rosso e scintille.', fx:{tint:0xff4632,glow:0xff5a1e,glowStr:0.8,part:0xff9628,partN:12}},
+  {id:'solar',  name:'SOLAR',    cost:3200, desc:'Nucleo solare, raggi dorati.', fx:{tint:0xffd76e,glow:0xffd250,glowStr:0.8,rays:0xffdc64}},
+  // --- RANK: bloccate, sbloccabili solo in classifica (non comprabili) ---
+  {id:'r_ferro', name:'FERRO',   cost:-1, rank:1, req:'FERRO',   desc:'Grado Ferro.',   fx:{metal:1,mDark:0x1e1e24,mMid:0x5a5a64,mLight:0x9696a0,glow:0x5a5a64,glowStr:0.3}},
+  {id:'r_bronzo',name:'BRONZO',  cost:-1, rank:1, req:'BRONZO',  desc:'Grado Bronzo.',  fx:{metal:1,mDark:0x321e0f,mMid:0x965a28,mLight:0xdca05a,glow:0xb46e32,glowStr:0.4}},
+  {id:'r_argento',name:'ARGENTO',cost:-1, rank:1, req:'ARGENTO', desc:'Grado Argento.', fx:{metal:1,mDark:0x3c4250,mMid:0x96a5be,mLight:0xebf5ff,glow:0xbecde6,glowStr:0.45}},
+  {id:'r_oro',   name:'ORO',     cost:-1, rank:1, req:'ORO',     desc:'Grado Oro.',     fx:{metal:1,mDark:0x50370a,mMid:0xc89628,mLight:0xffe178,glow:0xffcd46,glowStr:0.7}},
+  {id:'r_platino',name:'PLATINO',cost:-1, rank:1, req:'PLATINO', desc:'Grado Platino.', fx:{metal:1,mDark:0x46597a,mMid:0x96b9e1,mLight:0xe1f0ff,glow:0x96cdff,glowStr:0.7,ring:0xb4e1ff}},
+  {id:'r_hero',  name:'HERO',    cost:-1, rank:1, req:'HERO',    desc:'Grado Hero.',    fx:{tint:0xfff0be,glow:0xfff0b4,glowStr:0.8,wings:0xfffadc}},
+  {id:'r_matrix',name:'HACKER MATRIX',cost:-1,rank:1,req:'HACKER MATRIX',desc:'Grado supremo.',fx:{tint:0x0a3c14,glow:0x1eff5a,glowStr:0.6,matrix:1}},
 ];
 const SKIN=id=>SKINS.find(s=>s.id===id)||SKINS[0];
 
@@ -142,7 +163,7 @@ const Profile={
   unlockedOp(id){ return this.data.unlocked.indexOf(id)>=0; },
   unlock(id,cost){ if(this.unlockedOp(id)) return true; if(this.data.credits>=cost){ this.data.credits-=cost; this.data.unlocked.push(id); this.save(); return true; } return false; },
   unlockedSkin(id){ return (this.data.skins||['base']).indexOf(id)>=0; },
-  unlockSkin(id,cost){ if(!this.data.skins) this.data.skins=['base']; if(this.unlockedSkin(id)) return true; if(this.data.credits>=cost){ this.data.credits-=cost; this.data.skins.push(id); this.save(); return true; } return false; },
+  unlockSkin(id,cost){ if(!this.data.skins) this.data.skins=['base']; if(this.unlockedSkin(id)) return true; if(cost<0) return false; if(this.data.credits>=cost){ this.data.credits-=cost; this.data.skins.push(id); this.save(); return true; } return false; },
   record(res){ const d=this.data;
     d.matches++; d.kills+=res.kills; if(res.win) d.wins++; if(res.placement<d.best) d.best=res.placement;
     if(res.kills>(d.bestKills||0)) d.bestKills=res.kills;
@@ -401,6 +422,9 @@ class Boot extends Phaser.Scene{
     for(let i=0;i<24;i++) this.load.image('car'+i,'assets/car'+i+'.png');
     for(let i=0;i<5;i++) this.load.image('tree'+i,'assets/tree'+i+'.png');
     ['sw_tl','sw_t','sw_tr','sw_l','sw_c','sw_r','sw_bl','sw_b','sw_br','sw_f'].forEach(k=>{
+      this.load.image(k,'assets/'+k+'.png');
+    });
+    ['nf_bed','nf_sofa','nf_chair','nf_desk','nf_arm','nf_cab','nf_cab2','nf_cab3','ifloor0','ifloor1','ifloor2','ifloor3','ifloor4','ifloor5','ifloor6','ifloor7','ntree0','ntree1','ntree2','ntree3','ntree4','ntree5','ntree6','ntree7','nfountain','bldT0','bldT1','bldT2','bldT3','bldT4','bldT5','bldT_big','bldT_tall'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
     ['fl_n','wl_c','wl_v','wl_h','fan1','fan2','fan3','fan4','sol1','sol2','fur1','fur2','fur3','fur4','fur5'].forEach(k=>{
@@ -1601,21 +1625,9 @@ class Loadout extends Phaser.Scene{
     this.ultRow=row(ty,'ULTIMATE',C.gold,()=>{ const o=OP(GAME.char); SFX.ui();
       this.openInfoPopup('ULTIMATE \u00b7 '+(o.ultName||''), ULT_DESC[o.ult]||'In arrivo.', C.gold); });
 
-    // ---- skin, come bottoni-banner piccoli ----
-    this.add.text(ix,skinY-10,'SKIN',{fontFamily:UI.MONO,fontSize:'12px',color:UI.faint}).setOrigin(0,0.5).setDepth(3);
+    // ---- un solo bottone SKIN: apre la finestrella catalogo+anteprima ----
     this.skinBtns=[];
-    const sgw=Math.floor((iw-8*(SKINS.length-1))/SKINS.length);
-    SKINS.forEach((sk,i)=>{ const x=ix+i*(sgw+8);
-      const selG=this.add.graphics().setDepth(3);
-      this.add.text(x+sgw/2,skinY+18,sk.name,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#e6fbf3',fontStyle:'700'}).setOrigin(0.5).setDepth(4);
-      const sub=this.add.text(x+sgw/2,skinY+40,'',{fontFamily:UI.MONO,fontSize:'12px',color:UI.faint}).setOrigin(0.5).setDepth(4);
-      this.add.rectangle(x+sgw/2,skinY+skinH/2,sgw,skinH,0xffffff,0.001).setDepth(5).setInteractive({useHandCursor:true})
-        .on('pointerdown',()=>{ SFX.ui();
-          if(Profile.unlockedSkin(sk.id)) GAME.skin=sk.id;
-          else if(Profile.unlockSkin(sk.id,sk.cost)){ GAME.skin=sk.id; SFX.pickup(); }
-          else this.flash('SERVONO '+sk.cost+' CREDITI');
-          this.refresh(); });
-      this.skinBtns.push({sub,sk,selG,x,sy:skinY,w:sgw,h:skinH}); });
+    uiCta(this,ix,skinY,iw,skinH,'\u25c6  SKIN: '+SKIN(GAME.skin).name,C.magenta,3,()=>{ this.openSkins(); }).els.forEach(o=>{});
 
     // ---- ENTRA IN PARTITA ----
     const bbw=Math.min(346,W*0.92);
@@ -1628,6 +1640,68 @@ class Loadout extends Phaser.Scene{
     this.refresh();
   }
   flash(m){ this.flashTxt.setText(m).setAlpha(1); this.tweens.add({targets:this.flashTxt,alpha:0,duration:1400}); }
+  // FINESTRELLA SKIN: personaggio in vista di gioco + catalogo; l'anteprima si aggiorna dal vivo
+  openSkins(){
+    const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
+    E(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(600).setInteractive());
+    const pw=Math.min(380,W*0.96), ph=Math.min(H*0.9,720), px=cx-pw/2, py=H*0.5-ph/2;
+    const pan=uiPanel(this,px,py,pw,ph,'SKIN',C.magenta,601); pan.els.forEach(E);
+    E(this.add.text(W-px-14,py+16,'\u2715',{fontFamily:UI.MONO,fontSize:'18px',color:UI.dim}).setOrigin(1,0.5).setDepth(603)
+      .setInteractive({useHandCursor:true}).on('pointerdown',()=>{ tk&&tk.remove(); els.forEach(o=>o.destroy&&o.destroy()); }));
+
+    // --- palco anteprima: sprite del personaggio vista dall'alto come in gioco ---
+    const stageY=pan.top+90, spr=SKIN(GAME.skin);
+    E(this.add.ellipse(cx,stageY+40,150,40,0x000000,0.4).setDepth(602));
+    const charKey='spr_'+({vyre:'vyre',nova:'nova',oracle:'oracle',aegis:'aegis',wraith:'wraith'}[GAME.char]||'vyre');
+    let preview=[];
+    const drawPreview=(sk)=>{
+      preview.forEach(o=>o.destroy&&o.destroy()); preview=[];
+      const fx=sk.fx||{}, S=3.0;
+      const add=o=>{ preview.push(o); els.push(o); return o; };
+      // glow dietro
+      if(fx.glow) { const g=add(this.add.image(cx,stageY,'glow').setTint(fx.glow).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(150,150).setAlpha(0.3*(fx.glowStr||0.6)).setDepth(602));
+        this.tweens.add({targets:g,alpha:0.5*(fx.glowStr||0.6),duration:650,yoyo:true,repeat:-1}); }
+      if(fx.rays||fx.wings){ const g=add(this.add.image(cx,stageY,'glow').setTint(fx.rays||fx.wings).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(200,200).setAlpha(0.25).setDepth(602)); this.tweens.add({targets:g,angle:360,duration:8000,repeat:-1}); }
+      // sprite tinta
+      const im=add(this.add.image(cx,stageY, this.textures.exists(charKey)?charKey:'spr_vyre').setDepth(603).setScale(S));
+      im.setTint(fx.tint!=null?fx.tint:0xffffff);
+      if(fx.alpha!=null) im.setAlpha(fx.alpha);
+      if(fx.holo) this.tweens.add({targets:im,alpha:{from:0.5,to:1},duration:400,yoyo:true,repeat:-1});
+      // particelle
+      if(fx.part) for(let i=0;i<(fx.partN||8);i++){ const a=Math.random()*Math.PI*2, r=Phaser.Math.Between(40,70);
+        const pt=add(this.add.circle(cx+Math.cos(a)*r,stageY+Math.sin(a)*r,Phaser.Math.Between(2,4),fx.part,0.9).setDepth(604));
+        this.tweens.add({targets:pt,x:cx+Math.cos(a+1)*r,y:stageY+Math.sin(a+1)*r,duration:2000,yoyo:true,repeat:-1}); }
+      if(fx.matrix){ for(let i=0;i<10;i++){ const mx=cx-60+i*13;
+        const tx=add(this.add.text(mx,stageY-60+Math.random()*40,'01',{fontFamily:UI.MONO,fontSize:'12px',color:'#3dff6e'}).setDepth(604).setAlpha(0.8));
+        this.tweens.add({targets:tx,y:tx.y+80,alpha:0,duration:Phaser.Math.Between(1200,2400),repeat:-1}); } }
+    };
+    drawPreview(spr);
+    const nameT=E(this.add.text(cx,stageY+70,spr.name,{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'700',color:'#fff'}).setOrigin(0.5).setDepth(603));
+    const descT=E(this.add.text(cx,stageY+94,spr.desc||'',{fontFamily:UI.MONO,fontSize:'11px',color:UI.faint,align:'center',wordWrap:{width:pw-60}}).setOrigin(0.5,0).setDepth(603));
+
+    // --- griglia catalogo skin (scroll semplice) ---
+    const gridTop=stageY+130, cols=4, cellW=(pw-48)/cols, cellH=50;
+    SKINS.forEach((sk,i)=>{
+      const gx=px+24+(i%cols)*cellW, gy=gridTop+Math.floor(i/cols)*(cellH+6);
+      const owned=Profile.unlockedSkin(sk.id), locked=sk.rank, sel=(GAME.skin===sk.id);
+      const g=E(this.add.graphics().setDepth(602));
+      const col = sel?C.magenta : (locked?0x2b2340 : (owned?0x1b3a33:0x152622));
+      g.fillStyle(col, sel?0.9:1); g.fillRoundedRect(gx,gy,cellW-6,cellH,6);
+      g.lineStyle(1, sel?C.magenta:(locked?0x5a4a80:0x2b4a42),1); g.strokeRoundedRect(gx,gy,cellW-6,cellH,6);
+      E(this.add.text(gx+(cellW-6)/2,gy+15,sk.name,{fontFamily:TITLE_FONT,fontSize:'9px',fontStyle:'700',color:locked?'#8a7ab0':'#e6fbf3',align:'center',wordWrap:{width:cellW-12}}).setOrigin(0.5).setDepth(603));
+      const tag = locked?'\ud83d\udd12'+(sk.req||'') : (owned?(sel?'ATTIVA':'OK') : sk.cost+'');
+      E(this.add.text(gx+(cellW-6)/2,gy+36,tag,{fontFamily:UI.MONO,fontSize:'9px',color:locked?'#8a7ab0':(owned?(sel?'#ff3355':'#7fa79b'):'#ffc247')}).setOrigin(0.5).setDepth(603));
+      E(this.add.rectangle(gx+(cellW-6)/2,gy+cellH/2,cellW-6,cellH,0xffffff,0.001).setDepth(604).setInteractive({useHandCursor:true})
+        .on('pointerdown',()=>{ SFX.ui();
+          if(locked){ this.flash&&this.flash('SBLOCCA COL RANK'); drawPreview(sk); nameT.setText(sk.name); descT.setText(sk.desc||''); return; }
+          if(owned){ GAME.skin=sk.id; }
+          else if(Profile.unlockSkin(sk.id,sk.cost)){ GAME.skin=sk.id; SFX.pickup(); }
+          else { this.flash&&this.flash('SERVONO '+sk.cost+' CR'); drawPreview(sk); nameT.setText(sk.name); descT.setText(sk.desc||''); return; }
+          tk&&tk.remove(); els.forEach(o=>o.destroy&&o.destroy()); this.openSkins(); this.refresh(); }));
+    });
+    let tk=null;
+  }
+
   openInfoPopup(title,body,col){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
     const c=col||C.player;
     E(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(500).setInteractive());
@@ -2006,8 +2080,9 @@ class Game extends Phaser.Scene{
     const dark=(v,f)=>{ const r=((v>>16)&255)*f,g=((v>>8)&255)*f,b=(v&255)*f;
       return (Math.round(r)<<16)|(Math.round(g)<<8)|Math.round(b); };
     // pavimento
-    if(this.textures.exists('fl_n')){
-      this.add.tileSprite(x+wth,y+wth,w-2*wth,h-2*wth,'fl_n').setOrigin(0,0)
+    if(this.textures.exists('ifloor0')||this.textures.exists('fl_n')){
+      const fk=this.textures.exists('ifloor0')?('ifloor'+Phaser.Math.Between(0,3)):'fl_n';
+      this.add.tileSprite(x+wth,y+wth,w-2*wth,h-2*wth,fk).setOrigin(0,0)
         .setDepth(0.44).setTint(dark(c,0.38)).setTileScale(0.55);
     }
     const bar=(bx,by,bw,bh,horiz)=>{ if(bw<=0||bh<=0) return;
@@ -2220,7 +2295,24 @@ class Game extends Phaser.Scene{
     }
   }
 
+  // Palazzo chiuso col TETTO PRONTO di Gem (vista dall'alto), ricolorato per distretto.
+  // Sceglie la sprite in base alla proporzione del lotto; se il lotto e' grande usa il grande.
+  realBuilding(x,y,w,h,col){
+    if(!this.textures.exists('bldT1')) return false;
+    const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
+      return (m(r)<<16)|(m(g)<<8)|m(b); };
+    const tint=mix(col||0x33e1ff,0.5);
+    let key;
+    if(w>300&&h>150) key='bldT_big';
+    else if(h>w*1.7) key='bldT_tall';
+    else key=Phaser.Utils.Array.GetRandom(['bldT0','bldT1','bldT2','bldT3','bldT4','bldT5']);
+    // riempio il lotto: la sprite si adatta (puo' allungarsi un po', sono tetti astratti)
+    this.add.image(x,y,key).setOrigin(0,0).setDisplaySize(w,h).setDepth(0.6).setTint(tint);
+    return true;
+  }
   tileBuilding(x,y,w,h,col){
+    // prima prova i palazzi pronti di Gem, poi il nine-slice come ripiego
+    if(this.realBuilding(x,y,w,h,col)) return true;
     if(!this.textures.exists('b_tl')) return false;
     const S=Math.max(24,Math.min(100,Math.floor(Math.min(w,h)/2)));
     const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
@@ -2341,21 +2433,45 @@ class Game extends Phaser.Scene{
     // nativa e i mobili grandi si compongono AFFIANCANDO piu' copie (rx x ry).
     // fur3 e' 128x64 (2:1) -> ruotata in verticale e' un letto singolo; due
     // affiancate fanno il matrimoniale. fur1/2/4/5 sono quadrate.
-    const NAT={fur1:[1,1],fur2:[1,1],fur3:[2,1],fur4:[1,1],fur5:[1,1]};
-    const CAT=[
-      {k:'fur3', u:46, rx:2, ry:1, rot:true,  n:'letto matrimoniale'},
-      {k:'fur3', u:46, rx:1, ry:1, rot:true,  n:'letto singolo'},
-      {k:'fur3', u:52, rx:1, ry:1, rot:false, n:'bancone'},
-      {k:'fur3', u:44, rx:2, ry:1, rot:false, n:'tavolo lungo'},
-      {k:'fur1', u:54, rx:1, ry:1, rot:false, n:'schermo'},
-      {k:'fur2', u:50, rx:1, ry:1, rot:false, n:'tavolino'},
-      {k:'fur4', u:44, rx:1, ry:1, rot:false, n:'sedia'},
-      {k:'fur5', u:42, rx:1, ry:1, rot:false, n:'sgabello'},
+    // mobili reali di Gem (proporzioni native mantenute)
+    const RF=(k)=>{ const t=this.textures.get(k).getSourceImage(); return {k,w:t.width,h:t.height,real:1}; };
+    const hasNF=this.textures.exists('nf_bed');
+    const CAT = hasNF ? [
+      {...RF('nf_bed'),  s:0.95}, {...RF('nf_sofa'), s:0.9}, {...RF('nf_desk'), s:0.85},
+      {...RF('nf_chair'),s:0.7},  {...RF('nf_arm'),  s:0.8}, {...RF('nf_cab'),  s:0.8},
+      {...RF('nf_cab2'), s:0.8},  {...RF('nf_cab3'), s:0.8},
+    ] : [
+      {k:'fur3',u:46,rx:2,ry:1,rot:true},{k:'fur3',u:52,rx:1,ry:1,rot:false},
+      {k:'fur1',u:54,rx:1,ry:1,rot:false},{k:'fur4',u:44,rx:1,ry:1,rot:false},
     ];
+    const NAT={fur1:[1,1],fur2:[1,1],fur3:[2,1],fur4:[1,1],fur5:[1,1]};
     const target=Math.max(3,Math.min(9,Math.round((iw*ih)/16000)));
     let tries=0;
     while(placed.length<target && tries++<70){
       const it=CAT[Math.floor(Math.random()*CAT.length)];
+      // --- MOBILI REALI di Gem: proporzione nativa, mai stirati ---
+      if(it.real){
+        const scl=(it.s||0.85), maxside=52*(it.s||0.85);
+        const k2=maxside/Math.max(it.w,it.h);
+        let fw=Math.round(it.w*k2), fh=Math.round(it.h*k2);
+        if(fw>iw-8||fh>ih-8) continue;
+        const big=fw*fh>3000;
+        let px,py;
+        if(big){ const side=Math.floor(Math.random()*4);
+          if(side===0){ px=ix+Math.random()*(iw-fw); py=iy; }
+          else if(side===1){ px=ix+Math.random()*(iw-fw); py=iy+ih-fh; }
+          else if(side===2){ px=ix; py=iy+Math.random()*(ih-fh); }
+          else { px=ix+iw-fw; py=iy+Math.random()*(ih-fh); }
+        } else { px=ix+Math.random()*(iw-fw); py=iy+Math.random()*(ih-fh); }
+        const r={x:px,y:py,w:fw,h:fh};
+        if(!free(r)) continue;
+        placed.push(r);
+        this.add.image(px+fw/2,py+fh/2,it.k).setOrigin(0.5).setDisplaySize(fw,fh).setDepth(0.55).setAlpha(0.97);
+        const body=this.walls.create(px+fw/2,py+fh/2,'px').setVisible(false);
+        body.setDisplaySize(fw-6,fh-6); body.refreshBody();
+        this.wallRects.push({x:px+3,y:py+3,w:fw-6,h:fh-6,type:'cover',dc:c});
+        continue;
+      }
       const nat=NAT[it.k];                       // proporzione nativa della tessera
       // dimensione di UNA copia, proporzione rispettata
       let uw=it.u*nat[0], uh=it.u*nat[1];
@@ -2574,8 +2690,8 @@ class Game extends Phaser.Scene{
             const tx=Phaser.Math.Clamp(ccx+Phaser.Math.Between(-55,55),px+16,px+maxW-16);
             const ty=Phaser.Math.Clamp(ccy+Phaser.Math.Between(-55,55),py+16,py+maxH-16);
             const rr=Phaser.Math.Between(20,40);
-            if(this.textures.exists('tree0')){
-              const tk='tree'+Phaser.Math.Between(0,4);
+            if(this.textures.exists('ntree0')||this.textures.exists('tree0')){
+              const tk=this.textures.exists('ntree0')?('ntree'+Phaser.Math.Between(0,7)):('tree'+Phaser.Math.Between(0,4));
               const t=this.textures.get(tk).getSourceImage();
               const sc=(rr*2)/Math.max(t.width,t.height);
               // ombra sotto l'albero
@@ -2743,11 +2859,53 @@ class Game extends Phaser.Scene{
       op, abReady:0, ultReady:0, marked:0,
       ai:{state:'wander',tx:p.x,ty:p.y,retarget:0,strafe:1,think:0,tgt:null,lt:null} };
     s.unit=u; this.physics.add.collider(s,this.walls);
-    if(isPlayer){ const sk=SKIN(GAME.skin); u.skin=sk; s.setTint(sk.tint);
-      if(sk.halo>0 && fxq().glow){ const hl=this.add.image(p.x,p.y,'glow').setTint(op.col).setBlendMode(Phaser.BlendModes.ADD)
-          .setDisplaySize(46,46).setAlpha(0.22*sk.halo).setDepth(1);
-        this.tweens.add({targets:hl,alpha:0.4*sk.halo,duration:700,yoyo:true,repeat:-1}); u.skinHalo=hl; } }
+    if(isPlayer){ const sk=SKIN(GAME.skin); u.skin=sk; this.applySkinFx(u,sk); }
     this.units.push(u); return u;
+  }
+
+  // Applica il "guscio" di una skin all'unita': tint, glow, particelle, scia, extra.
+  // Un solo metodo, vale per qualunque personaggio (l'effetto e' indipendente dalla sprite).
+  applySkinFx(u,sk){
+    const fx=(sk&&sk.fx)||{}, s=u.s, p={x:s.x,y:s.y}, q=fxq();
+    u.skinFx=fx; u.skinParts=[]; u.skinTrail=[];
+    // tint base sprite
+    s.setTint(fx.tint!=null?fx.tint:0xffffff);
+    if(fx.alpha!=null) s.setAlpha(fx.alpha);
+    if(!q.glow) return;                    // qualita' bassa: solo tint, niente effetti pesanti
+    const mkGlow=(col,str,sz)=>{ const g=this.add.image(p.x,p.y,'glow').setTint(col).setBlendMode(Phaser.BlendModes.ADD)
+        .setDisplaySize(sz||48,sz||48).setAlpha(0.22*str).setDepth(1);
+      this.tweens.add({targets:g,alpha:0.42*str,duration:650,yoyo:true,repeat:-1}); return g; };
+    if(fx.glow) u.skinHalo=mkGlow(fx.glow,fx.glowStr||0.6,fx.matrix?58:48);
+    if(fx.glow2) u.skinHalo2=mkGlow(fx.glow2,fx.glow2Str||0.4,40);
+    // anello orbitante (platino)
+    if(fx.ring){ const ring=this.add.image(p.x,p.y,'glow').setTint(fx.ring).setBlendMode(Phaser.BlendModes.ADD)
+        .setDisplaySize(64,50).setAlpha(0.3).setDepth(1); u.skinRing=ring; }
+    // raggi (solar) / ali (hero): un glow largo pulsante
+    if(fx.rays) u.skinRays=mkGlow(fx.rays,0.5,72);
+    if(fx.wings) u.skinWings=mkGlow(fx.wings,0.6,70);
+    // particelle fluttuanti
+    if(fx.part){ const pn=Math.round((fx.partN||8)*(q.particles||0.5)); for(let i=0;i<pn;i++){
+      const pt=this.add.circle(p.x,p.y,Phaser.Math.Between(1,3),fx.part,0.9).setDepth(7);
+      pt._a=Math.random()*Math.PI*2; pt._r=Phaser.Math.Between(14,26); pt._sp=Phaser.Math.FloatBetween(0.02,0.06);
+      u.skinParts.push(pt); } }
+  }
+  // aggiornamento per-frame degli effetti skin (chiamato da syncGuns)
+  updateSkinFx(u){
+    const s=u.s, fx=u.skinFx; if(!fx) return; const t=this.time.now;
+    if(u.skinHalo) u.skinHalo.setPosition(s.x,s.y);
+    if(u.skinHalo2) u.skinHalo2.setPosition(s.x,s.y);
+    if(u.skinRays){ u.skinRays.setPosition(s.x,s.y).setAngle(t*0.05); }
+    if(u.skinWings) u.skinWings.setPosition(s.x,s.y);
+    if(u.skinRing){ u.skinRing.setPosition(s.x,s.y).setAngle(t*0.12); }
+    // holo: sfarfallio dell'alpha sprite
+    if(fx.holo){ s.setAlpha(0.55+0.35*Math.abs(Math.sin(t*0.012))); }
+    // particelle in orbita
+    if(u.skinParts) u.skinParts.forEach(pt=>{ pt._a+=pt._sp; pt.setPosition(s.x+Math.cos(pt._a)*pt._r, s.y+Math.sin(pt._a)*pt._r - (fx.part&&(fx.tint===0x3c140a||fx.tint===0xff4632)? (t*0.03)%20 : 0)); });
+    // scia: lascia copie sbiadite dietro
+    if(fx.trail && fxq().trails && (t- (u._lastTrail||0))>60){ u._lastTrail=t;
+      const mk=(col)=>{ const g=this.add.image(s.x,s.y,s.texture.key).setTint(col).setAlpha(0.35).setDepth(5).setRotation(s.rotation).setScale(s.scaleX,s.scaleY);
+        this.tweens.add({targets:g,alpha:0,duration:280,onComplete:()=>g.destroy()}); };
+      mk(fx.trail); if(fx.trail2) mk(fx.trail2); }
   }
 
   /* ------------- combat ------------- */
@@ -3301,9 +3459,13 @@ class Game extends Phaser.Scene{
     if(u.fireT>t) fr=5;
     else fr = moving ? (1+Math.floor(t/110)%4) : 0;
     if(fr!==u.frame){ u.frame=fr; u.s.setTexture(u.charKey+'_'+fr); }
-    const base = u.isPlayer && u.skin ? u.skin.tint : 0xffffff;
-    u.s.setTint(u.outside?0xff6688:base);
-    if(u.skinHalo){ u.skinHalo.setPosition(u.s.x,u.s.y+4); } }); }
+    if(u.isPlayer && u.skinFx){
+      if(u.outside) u.s.setTint(0xff6688);
+      else u.s.setTint(u.skinFx.tint!=null?u.skinFx.tint:0xffffff);
+      this.updateSkinFx(u);
+    } else {
+      u.s.setTint(u.outside?0xff6688:0xffffff);
+    } }); }
 
   updateZoneState(delta){ const z=this.zone; z.timer-=delta;
     if(z.state==='wait'){ if(z.timer<=0){ this.advanceZone(); z.state='shrink'; z.timer=this.cfg.shrink; z.sr=z.r; z.scx=z.cx; z.scy=z.cy; } }
