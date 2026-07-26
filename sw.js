@@ -1,5 +1,5 @@
 /* Cache offline. ALZA LA VERSIONE ogni volta che modifichi i file. */
-const CACHE='nexus-royale-v66';
+const CACHE='nexus-royale-v67';
 const ASSETS=['./index.html','./assets/tree0.png','./assets/tree1.png','./assets/tree2.png','./assets/tree3.png','./assets/tree4.png','./assets/car0.png','./assets/car1.png','./assets/car2.png','./assets/car3.png','./assets/car4.png','./assets/car5.png','./assets/car6.png','./assets/car7.png','./assets/car8.png','./assets/car9.png','./assets/car10.png','./assets/car11.png','./assets/car12.png','./assets/car13.png','./assets/car14.png','./assets/car15.png','./assets/car16.png','./assets/car17.png','./assets/car18.png','./assets/car19.png','./assets/car20.png','./assets/car21.png','./assets/car22.png','./assets/car23.png','./game.js','./assets_fallback.js','./manifest.json',
   './assets/splash.jpg','./assets/intro.mp4','./assets/logo.png',
   './assets/op_vyre.png','./assets/op_nova.png','./assets/op_oracle.png',

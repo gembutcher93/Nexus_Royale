@@ -1096,25 +1096,44 @@ class Menu extends Phaser.Scene{
     const inner=(py+ph-16)-pan.top;
     const swH=Math.max(58,Math.min(80,Math.floor((inner-64)/2)));
     let ty=pan.top+2;
+    // altezza compressa: ora ci sono 3 righe di banner invece di 2
+    const swH3=Math.max(48,Math.min(70,Math.floor((inner-96)/3)));
+
+    this.add.text(ix,ty,'MONDO',{fontFamily:UI.MONO,fontSize:'13px',color:UI.faint}).setOrigin(0,0.5).setDepth(2);
+    ty+=16;
+    // RANDOM attivo (procedurale) + RANKED bloccato (mappa dipinta, in arrivo)
+    uiSwitch(this,ix,ty,{w:iw,h:swH3,title:'RANDOM',sub:'MAPPA MUTEVOLE',col:C.player,depth:2,on:true,onTap:()=>{}});
+    { // RANKED bloccato
+      const bx=ix+gap, by=ty, bw=iw, bh=swH3, cut=15, g=this.add.graphics().setDepth(2);
+      g.fillStyle(0x0c1512,1);
+      g.beginPath(); g.moveTo(bx,by); g.lineTo(bx+bw-cut,by); g.lineTo(bx+bw,by+cut);
+      g.lineTo(bx+bw,by+bh); g.lineTo(bx+cut,by+bh); g.lineTo(bx,by+bh-cut); g.closePath(); g.fillPath();
+      g.lineStyle(1,0x2b4a42,1); g.strokePath();
+      this.add.text(bx+17,by+bh/2-9,'RANKED',{fontFamily:TITLE_FONT,fontSize:'17px',fontStyle:'700',color:'#3a5a50'}).setOrigin(0,0.5).setDepth(3);
+      this.add.text(bx+17,by+bh/2+11,'\ud83d\udd12 DECRYPT...',{fontFamily:UI.MONO,fontSize:'11px',color:'#3a5a50'}).setOrigin(0,0.5).setDepth(3);
+      this.add.rectangle(bx+bw/2,by+bh/2,bw,bh,0xffffff,0.001).setDepth(4).setInteractive({useHandCursor:true})
+        .on('pointerdown',()=>{ SFX.ui(); this.openRankedLocked(); });
+    }
+    ty+=swH3+14;
 
     this.add.text(ix,ty,'MODALITA\u0300',{fontFamily:UI.MONO,fontSize:'13px',color:UI.faint}).setOrigin(0,0.5).setDepth(2);
     ty+=16;
     this.swMode=[];
     [['royale','ROYALE','100 GIOCATORI'],['blitz','BLITZ','30 GIOCATORI']].forEach((m,i)=>{
-      const bt=uiSwitch(this,ix+i*gap,ty,{w:iw,h:swH,title:m[1],sub:m[2],col:C.player,depth:2,
+      const bt=uiSwitch(this,ix+i*gap,ty,{w:iw,h:swH3,title:m[1],sub:m[2],col:C.player,depth:2,
         on:GAME.match===m[0], onTap:()=>{ GAME.match=m[0]; this.swMode.forEach((o,k)=>o.set(k===i)); }});
       this.swMode.push(bt);
     });
-    ty+=swH+16;
+    ty+=swH3+14;
     this.add.text(ix,ty,'MIRA',{fontFamily:UI.MONO,fontSize:'13px',color:UI.faint}).setOrigin(0,0.5).setDepth(2);
     ty+=16;
     this.swAim=[];
     [['auto','AUTO','PUNTI x1.0'],['manual','MANUALE','PUNTI x1.5']].forEach((m,i)=>{
-      const bt=uiSwitch(this,ix+i*gap,ty,{w:iw,h:swH,title:m[1],sub:m[2],col:C.magenta,depth:2,
+      const bt=uiSwitch(this,ix+i*gap,ty,{w:iw,h:swH3,title:m[1],sub:m[2],col:C.magenta,depth:2,
         on:GAME.mode===m[0], onTap:()=>{ GAME.mode=m[0]; this.swAim.forEach((o,k)=>o.set(k===i)); }});
       this.swAim.push(bt);
     });
-    ty+=swH+10;
+    ty+=swH3+8;
     if(ty < py+ph-14) uiHazard(this,ix,ty,iw*2+8,C.magenta,2);
 
     // ---- azioni, ancorate al fondo ----
@@ -1190,6 +1209,27 @@ class Menu extends Phaser.Scene{
   }
 
   refresh(){ this.credTxt.setText('💠 '+Profile.data.credits); }
+  openRankedLocked(){
+    const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
+    E(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(500).setInteractive());
+    const pw=Math.min(360,W*0.9), ph=Math.min(360,H*0.46), py=H*0.5-ph/2, px=cx-pw/2;
+    const pan=uiPanel(this,px,py,pw,ph,'ACCESSO NEGATO',C.magenta,501); pan.els.forEach(E);
+    E(uiHazard(this,px+24,pan.top,pw-48,C.magenta,502));
+    let y=pan.top+22;
+    E(this.add.text(cx,y,'\ud83d\udd12',{fontSize:'40px'}).setOrigin(0.5).setDepth(502)); y+=54;
+    E(this.add.text(cx,y,'NEXUS CITY',{fontFamily:TITLE_FONT,fontSize:'20px',fontStyle:'700',color:'#3df2b4'}).setOrigin(0.5).setDepth(502)); y+=30;
+    E(this.add.text(cx,y,'La mappa classificata e\u2019 ancora cifrata.\nModalita\u2019 RANKED in fase di digitalizzazione.',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#b9d8ce',align:'center',lineSpacing:5,wordWrap:{width:pw-56}}).setOrigin(0.5,0).setDepth(502)); y+=64;
+    // barra di "decrypt" finta che avanza
+    const barW=pw-80, barX=cx-barW/2;
+    E(this.add.rectangle(barX,y,barW,10,0x0e1f1a).setOrigin(0,0.5).setStrokeStyle(1,C.magenta).setDepth(502));
+    const fill=E(this.add.rectangle(barX+1,y,1,7,C.magenta).setOrigin(0,0.5).setDepth(503));
+    const pct=E(this.add.text(cx,y+22,'DECRYPT 00%',{fontFamily:UI.MONO,fontSize:'12px',color:'#ff3355'}).setOrigin(0.5).setDepth(503));
+    let prog=0; const tk=this.time.addEvent({delay:60,loop:true,callback:()=>{
+      prog=Math.min(37,prog+Phaser.Math.FloatBetween(0.2,1.4));    // si ferma al 37%: "in corso"
+      fill.width=(barW-2)*(prog/100); pct.setText('DECRYPT '+String(Math.floor(prog)).padStart(2,'0')+'%'); }});
+    const cw=Math.min(220,W*0.6);
+    uiCta(this,cx-cw/2,py+ph-58,cw,44,'ANNULLA',C.player,502,()=>{ tk.remove(); els.forEach(o=>o.destroy&&o.destroy()); }).els.forEach(E);
+  }
   openChallenge(){ const W=this.scale.width,H=this.scale.height,cx=W/2; const els=[]; const E=o=>{els.push(o);return o;};
     E(this.add.rectangle(0,0,W,H,0x040907,1).setOrigin(0).setDepth(400).setInteractive());
     const pw=Math.min(360,W*0.92), py=H*0.07, ph=H*0.86, px=cx-pw/2;
@@ -1920,12 +1960,21 @@ class Game extends Phaser.Scene{
   planMegas(){
     const cols=this.GC, rows=this.GR, cw=WORLD_W/cols, ch=WORLD_H/rows, ROAD=150;
     this.megas=[]; this.megaLots={};
-    const KINDS=['ospedale','uffici','scuola'];
+    const KINDS=['ospedale','uffici','scuola','magazzino','magazzino'];
     const used=(i,j)=>this.megaLots[i+'_'+j];
-    const target=Phaser.Math.Between(4,6);
+    const target=Phaser.Math.Between(6,9);             // piu' strutture grandi = piu' variabilita'
     let guard=0;
-    while(this.megas.length<target && guard++<200){
-      const a=Math.random()<0.45?2:1, b=Math.random()<0.45?2:1;
+    // 1 volta su 3, un ENORME distretto-magazzino (fino a 3x3): il "grande casellato unico"
+    if(Math.random()<0.34){
+      const a=Phaser.Math.Between(2,3), b=Phaser.Math.Between(2,3);
+      const i=Phaser.Math.Between(0,cols-a), j=Phaser.Math.Between(0,rows-b);
+      for(let u=0;u<a;u++)for(let v=0;v<b;v++) this.megaLots[(i+u)+'_'+(j+v)]=1;
+      this.megas.push({x:i*cw+ROAD/2,y:j*ch+ROAD/2,w:a*cw-ROAD,h:b*ch-ROAD,kind:'magazzino'});
+    }
+    while(this.megas.length<target && guard++<240){
+      const big=Math.random()<0.3;
+      const a=big?Phaser.Math.Between(2,3):(Math.random()<0.5?2:1);
+      const b=big?Phaser.Math.Between(2,3):(Math.random()<0.5?2:1);
       if(a===1&&b===1) continue;                       // deve occupare piu' di un lotto
       const i=Phaser.Math.Between(0,cols-a), j=Phaser.Math.Between(0,rows-b);
       let free=true;
@@ -2068,6 +2117,14 @@ class Game extends Phaser.Scene{
           put('fur3',px,ry,bw,Math.min(bh,rh),true);
         }
         if(rh>170&&rw>120) put('fur1',rx+rw-54,ry+rh-54,50,50,false);
+      } else if(kind==='magazzino'){
+        // scaffalature lunghe parallele + casse: sembra un deposito
+        const shelfW=Math.min(rw-16,120), sh=18;
+        for(let yy=ry+10; yy+sh<ry+rh-8; yy+=sh+34){
+          put('fur3',rx+8,yy,shelfW,sh,false);
+          // qualche cassa accanto
+          if(Math.random()<0.6) put('fur4',rx+shelfW-40,yy-2,22,22,false);
+        }
       } else if(kind==='uffici'){
         const n=Math.max(1,Math.min(4,Math.floor((rw*rh)/14000)));
         for(let k=0;k<n;k++){
@@ -2105,9 +2162,9 @@ class Game extends Phaser.Scene{
       const tint=this.ndCol? this.ndCol(bx+bw/2,by+bh/2) : 0xff3355;
       // 1) RIEMPIMENTO: lastricato bordeaux dentro tutta la piazzetta (niente piu' buco nero)
       if(this.textures.exists('sw_f'))
-        this.add.tileSprite(bx,by,bw,bh,'sw_f').setOrigin(0,0).setDepth(-18.5).setTileScale(0.5,0.5);
+        this.add.tileSprite(bx,by,bw,bh,'sw_f').setOrigin(0,0).setDepth(-18.5).setTileScale(0.5,0.5).setTint(tint);
       // 2) cornice/bordo marciapiede sopra il riempimento
-      const ok=this.tileFrame(bx,by,bw,bh,'sw_',SWK,0xffffff,-18);
+      const ok=this.tileFrame(bx,by,bw,bh,'sw_',SWK,tint,-18);
       if(ok){ frames++;
         // cordolo neon sul bordo esterno: elimina la fascia scura tra strada e marciapiede
         const gc=this.add.graphics().setDepth(-17.8);
@@ -2486,23 +2543,57 @@ class Game extends Phaser.Scene{
 
       if(tipo==='parco'){
         const G=this.gDecor;
-        G.fillStyle(0x0d2019,0.95); G.fillRect(px,py,maxW,maxH);
-        G.lineStyle(2,C.green,0.30); G.strokeRect(px,py,maxW,maxH);
-        const n=Math.max(4,Math.floor(maxW*maxH/26000));
-        for(let k=0;k<n;k++){
-          const tx=px+Phaser.Math.Between(24,maxW-24), ty=py+Phaser.Math.Between(24,maxH-24);
-          const rr=Phaser.Math.Between(18,34);
-          if(this.textures.exists('tree0')){
-            const k='tree'+Phaser.Math.Between(0,4);
-            const t=this.textures.get(k).getSourceImage();
-            const sc=(rr*2)/Math.max(t.width,t.height);
-            this.add.image(tx,ty,k).setDisplaySize(t.width*sc,t.height*sc).setDepth(0.5);
-          } else { G.fillStyle(0x18402e,1); G.fillCircle(tx,ty,rr); G.lineStyle(2,C.green,0.35); G.strokeCircle(tx,ty,rr); }
-          const bdy=this.walls.create(tx,ty,'px').setVisible(false);
-          bdy.setDisplaySize(rr*1.4,rr*1.4); bdy.refreshBody();
-          this.wallRects.push({x:tx-rr*0.7,y:ty-rr*0.7,w:rr*1.4,h:rr*1.4,type:'cover',dc:C.green});
+        // prato: base verde scura con chiazze piu' chiare (non un rettangolo piatto)
+        G.fillStyle(0x0d2019,0.96); G.fillRect(px,py,maxW,maxH);
+        G.fillStyle(0x11301f,0.6);
+        for(let b=0;b<8;b++){ const bx2=px+Math.random()*maxW, by2=py+Math.random()*maxH;
+          G.fillEllipse(bx2,by2,Phaser.Math.Between(60,140),Phaser.Math.Between(40,90)); }
+        // vialetti curvi che attraversano il parco (in lastricato chiaro)
+        G.fillStyle(0x2a3a34,0.5);
+        const pathY=py+maxH*Phaser.Math.FloatBetween(0.35,0.65);
+        for(let xx=px+10;xx<px+maxW-10;xx+=14){ const wob=Math.sin((xx-px)/60)*maxH*0.12;
+          G.fillRect(xx,pathY+wob-5,14,10); }
+        const pathX=px+maxW*Phaser.Math.FloatBetween(0.35,0.65);
+        for(let yy=py+10;yy<py+maxH-10;yy+=14){ const wob=Math.cos((yy-py)/60)*maxW*0.12;
+          G.fillRect(pathX+wob-5,yy,10,14); }
+        // laghetto neon in una meta' del parco
+        if(Math.random()<0.6){ const lx=px+maxW*Phaser.Math.FloatBetween(0.25,0.6), ly=py+maxH*Phaser.Math.FloatBetween(0.3,0.65);
+          const lw=maxW*0.28, lh=maxH*0.22;
+          G.fillStyle(0x0f3340,0.9); G.fillEllipse(lx,ly,lw,lh);
+          G.lineStyle(3,C.cyan,0.5); G.strokeEllipse(lx,ly,lw,lh);
+          // il laghetto e' un ostacolo
+          this.wallRects.push({x:lx-lw/2,y:ly-lh/2,w:lw,h:lh,type:'water',dc:C.waterEdge});
+          const wb=this.walls.create(lx,ly,'px').setVisible(false); wb.setDisplaySize(lw*0.8,lh*0.8); wb.refreshBody(); wb.isWater=true;
         }
-        G.lineStyle(10,C.magenta,0.10); G.lineBetween(px+10,py+maxH-10,px+maxW-10,py+10);
+        // ALBERI: tanti, a grappoli (boschetti), non sparsi uniformi
+        const clusters=Math.max(2,Math.floor(maxW*maxH/40000));
+        for(let cl=0; cl<clusters; cl++){
+          const ccx=px+Phaser.Math.Between(30,maxW-30), ccy=py+Phaser.Math.Between(30,maxH-30);
+          const inClu=Phaser.Math.Between(3,6);
+          for(let k=0;k<inClu;k++){
+            const tx=Phaser.Math.Clamp(ccx+Phaser.Math.Between(-55,55),px+16,px+maxW-16);
+            const ty=Phaser.Math.Clamp(ccy+Phaser.Math.Between(-55,55),py+16,py+maxH-16);
+            const rr=Phaser.Math.Between(20,40);
+            if(this.textures.exists('tree0')){
+              const tk='tree'+Phaser.Math.Between(0,4);
+              const t=this.textures.get(tk).getSourceImage();
+              const sc=(rr*2)/Math.max(t.width,t.height);
+              // ombra sotto l'albero
+              G.fillStyle(0x000000,0.28); G.fillEllipse(tx+3,ty+5,rr*1.6,rr*1.0);
+              this.add.image(tx,ty,tk).setDisplaySize(t.width*sc,t.height*sc).setDepth(0.5);
+            } else { G.fillStyle(0x18402e,1); G.fillCircle(tx,ty,rr); }
+            const bdy=this.walls.create(tx,ty,'px').setVisible(false);
+            bdy.setDisplaySize(rr*1.3,rr*1.3); bdy.refreshBody();
+            this.wallRects.push({x:tx-rr*0.65,y:ty-rr*0.65,w:rr*1.3,h:rr*1.3,type:'cover',dc:C.green});
+          }
+        }
+        // panchine/lampioni lungo i vialetti (piccoli ostacoli)
+        for(let b=0;b<Phaser.Math.Between(2,5);b++){
+          const bx2=px+Phaser.Math.Between(20,maxW-40), by2=pathY+Phaser.Math.Between(-30,30);
+          G.fillStyle(0x2b4a42,1); G.fillRect(bx2,by2,28,10);
+          G.fillStyle(C.gold,0.6); G.fillRect(bx2,by2,28,2);
+        }
+        G.lineStyle(2,C.green,0.35); G.strokeRect(px,py,maxW,maxH);
         continue;
       }
 
