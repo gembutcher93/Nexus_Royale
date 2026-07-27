@@ -2244,7 +2244,7 @@ class Game extends Phaser.Scene{
           this.add.tileSprite(bx,by,bw,bh,'sw_f').setOrigin(0,0).setDepth(-18).setTileScale(0.5,0.5);
         continue;
       }
-      cconst tint=0xffffff;
+      const tint=0xffffff;
       // 1) RIEMPIMENTO: lastricato bordeaux dentro tutta la piazzetta (niente piu' buco nero)
       if(this.textures.exists('sw_f'))
         this.add.tileSprite(bx,by,bw,bh,'sw_f').setOrigin(0,0).setDepth(-18.5).setTileScale(0.5,0.5).setTint(tint);
