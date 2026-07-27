@@ -1,0 +1,11 @@
+NEXUS ROYALE — DELTA V72 (skin cotte nel PNG)
+=============================================
+1) Copia TUTTE le PNG di questa cartella /assets dentro la tua cartella assets/
+   (sono 60: spr_<personaggio>_<skin>.png)
+2) Sostituisci nel progetto: game.js  sw.js  assets_fallback.js
+3) Svuota la cache / reinstalla la PWA (cache passata a v72)
+
+Cosa cambia: ogni skin ora e' DENTRO il PNG del personaggio (Chrome=argento,
+Void=viola, Inferno=rosso, ecc). Quello che vedi nell'anteprima = quello in partita.
+Le skin RANK (ferro/oro/hero/matrix...) restano ancora a effetto-codice: se ti
+piace il risultato le cuocio anche quelle.

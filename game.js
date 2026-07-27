@@ -410,6 +410,10 @@ class Boot extends Phaser.Scene{
     ['vyre','nova','oracle','aegis','wraith','bot'].forEach(id=>{
       this.load.image('spr_'+id,'assets/spr_'+id+'.png');
     });
+    // sprite-skin COTTE nel PNG: una per personaggio x skin comprabile (colore gia' dentro)
+    ['neon','chrome','phantom','shadow','hologram','void','toxic','frost','ember','plasma','inferno','solar'].forEach(sk=>{
+      ['vyre','nova','oracle','aegis','wraith'].forEach(id=> this.load.image('spr_'+id+'_'+sk,'assets/spr_'+id+'_'+sk+'.png'));
+    });
     ['vyre','nova','oracle','aegis','wraith'].forEach(id=>{
       this.load.image('chip_'+id,'assets/chip_'+id+'.png');
     });
@@ -428,6 +432,10 @@ class Boot extends Phaser.Scene{
       this.load.image(k,'assets/'+k+'.png');
     });
     ['fl_n','wl_c','wl_v','wl_h','fan1','fan2','fan3','fan4','sol1','sol2','fur1','fur2','fur3','fur4','fur5'].forEach(k=>{
+      this.load.image(k,'assets/'+k+'.png');
+    });
+    // strade sprite coi circuiti neon (Gem) — dritto + svincoli
+    ['road_h','road_x','road_t','road_cv'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
     // loot art: sprite armi reali + medkit + batteria scudo. Fallback = silhouette procedurali.
@@ -1663,8 +1671,10 @@ class Loadout extends Phaser.Scene{
         this.tweens.add({targets:g,alpha:0.5*(fx.glowStr||0.6),duration:650,yoyo:true,repeat:-1}); }
       if(fx.rays||fx.wings){ const g=add(this.add.image(cx,stageY,'glow').setTint(fx.rays||fx.wings).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(200,200).setAlpha(0.25).setDepth(602)); this.tweens.add({targets:g,angle:360,duration:8000,repeat:-1}); }
       // sprite tinta
-      const im=add(this.add.image(cx,stageY, this.textures.exists(charKey)?charKey:'spr_vyre').setDepth(603).setScale(S));
-      im.setTint(fx.tint!=null?fx.tint:0xffffff);
+      const _bk=charKey+'_'+((sk&&sk.id)||'base');
+      const _uk=(sk&&sk.id!=='base'&&this.textures.exists(_bk))?_bk:(this.textures.exists(charKey)?charKey:'spr_vyre');
+      const im=add(this.add.image(cx,stageY,_uk).setDepth(603).setScale(S));
+      im.setTint(_uk===_bk?0xffffff:(fx.tint!=null?fx.tint:0xffffff));
       if(fx.alpha!=null) im.setAlpha(fx.alpha);
       if(fx.holo) this.tweens.add({targets:im,alpha:{from:0.5,to:1},duration:400,yoyo:true,repeat:-1});
       // particelle
@@ -2251,26 +2261,41 @@ class Game extends Phaser.Scene{
         SW.lineStyle(2,0x2b4a42,0.9); SW.strokeRect(bx,by,bw,bh); }
     }
     const g=this.add.graphics().setDepth(-17);
-    // ---- LED laterali che illuminano la strada (effetto cyberpunk) ----
-    const gLed=this.add.graphics().setDepth(-17.5);
-    for(let i=0;i<=cols;i++){ const x=i*cw;
-      gLed.fillStyle(C.cyan,0.55); gLed.fillRect(x-ROAD/2+3,0,2,WORLD_H); gLed.fillRect(x+ROAD/2-5,0,2,WORLD_H);
-      gLed.fillStyle(C.cyan,0.12); gLed.fillRect(x-ROAD/2,0,6,WORLD_H); gLed.fillRect(x+ROAD/2-6,0,6,WORLD_H); }
-    for(let j=0;j<=rows;j++){ const y=j*ch;
-      gLed.fillStyle(C.magenta,0.45); gLed.fillRect(0,y-ROAD/2+3,WORLD_W,2); gLed.fillRect(0,y+ROAD/2-5,WORLD_W,2);
-      gLed.fillStyle(C.magenta,0.10); gLed.fillRect(0,y-ROAD/2,WORLD_W,6); gLed.fillRect(0,y+ROAD/2-6,WORLD_W,6); }
-    // mezzeria: solo sui viali, non nei vicoli
-    g.fillStyle(0xd8c14a,0.5);
-    for(let i=1;i<cols;i++){ const x=i*cw-2;
-      for(let y=20;y<WORLD_H;y+=118) g.fillRect(x,y,4,54); }
-    for(let j=1;j<rows;j++){ const y=j*ch-2;
-      for(let x=20;x<WORLD_W;x+=118) g.fillRect(x,y,54,4); }
-    // attraversamenti agli incroci
-    g.fillStyle(0xd7ddff,0.30);
-    for(let i=1;i<cols;i++)for(let j=1;j<rows;j++){
-      const x=i*cw, y=j*ch;
-      for(let k=-2;k<=2;k++){ g.fillRect(x-70,y+k*15-3,30,7); g.fillRect(x+40,y+k*15-3,30,7);
-                              g.fillRect(x+k*15-3,y-70,7,30); g.fillRect(x+k*15-3,y+40,7,30); }
+    // ===== STRADE SPRITE coi circuiti neon (Gem) al posto di asfalto piatto + LED =====
+    if(this.textures.exists('road_h')){
+      const src=this.textures.get('road_h').getSourceImage();
+      const tsc=ROAD/src.height;                 // scala texture -> carreggiata ROAD (150)
+      // bande orizzontali (una tileSprite per fila di strada)
+      for(let j=0;j<=rows;j++){ const y=j*ch;
+        this.add.tileSprite(WORLD_W/2,y,WORLD_W,ROAD,'road_h').setTileScale(tsc,tsc).setDepth(-18.72); }
+      // bande verticali: stessa texture ruotata 90° (width=WORLD_H perche' poi ruota)
+      for(let i=0;i<=cols;i++){ const x=i*cw;
+        this.add.tileSprite(x,WORLD_H/2,WORLD_H,ROAD,'road_h').setTileScale(tsc,tsc).setAngle(90).setDepth(-18.70); }
+      // svincoli: curva (road_cv) ai 4 ANGOLI mappa, X a 4 vie (road_x) su tutti gli altri crocevia.
+      // JUNC un filo piu' largo della carreggiata per coprire i giunti dei dritti.
+      // road_cv nativa connette SINISTRA+SOTTO. Rotazioni (setAngle orario):
+      //   angolo alto-sx(R+B)=270  alto-dx(L+B)=0  basso-sx(R+T)=180  basso-dx(L+T)=90
+      const JUNC=ROAD+22;
+      const hasX=this.textures.exists('road_x'), hasCV=this.textures.exists('road_cv');
+      for(let i=0;i<=cols;i++)for(let j=0;j<=rows;j++){
+        const L=(i===0),R=(i===cols),T=(j===0),B=(j===rows);
+        let key='road_x', ang=0;
+        if(hasCV){
+          if(T&&L){key='road_cv';ang=270;} else if(T&&R){key='road_cv';ang=0;}
+          else if(B&&L){key='road_cv';ang=180;} else if(B&&R){key='road_cv';ang=90;}
+        }
+        if(key==='road_x'&&!hasX) key='road_h';
+        this.add.image(i*cw,j*ch,key).setDisplaySize(JUNC,JUNC).setAngle(ang).setDepth(-18.5); }
+    } else {
+      // --- fallback vecchio stile (LED) se le strade sprite non ci sono ---
+      const gLed=this.add.graphics().setDepth(-17.5);
+      for(let i=0;i<=cols;i++){ const x=i*cw;
+        gLed.fillStyle(C.cyan,0.55); gLed.fillRect(x-ROAD/2+3,0,2,WORLD_H); gLed.fillRect(x+ROAD/2-5,0,2,WORLD_H); }
+      for(let j=0;j<=rows;j++){ const y=j*ch;
+        gLed.fillStyle(C.magenta,0.45); gLed.fillRect(0,y-ROAD/2+3,WORLD_W,2); gLed.fillRect(0,y+ROAD/2-5,WORLD_W,2); }
+      g.fillStyle(0xd8c14a,0.5);
+      for(let i=1;i<cols;i++){ const x=i*cw-2; for(let y=20;y<WORLD_H;y+=118) g.fillRect(x,y,4,54); }
+      for(let j=1;j<rows;j++){ const y=j*ch-2; for(let x=20;x<WORLD_W;x+=118) g.fillRect(x,y,54,4); }
     }
     // lampioni
     let lights=0;
@@ -2868,8 +2893,10 @@ class Game extends Phaser.Scene{
   applySkinFx(u,sk){
     const fx=(sk&&sk.fx)||{}, s=u.s, p={x:s.x,y:s.y}, q=fxq();
     u.skinFx=fx; u.skinParts=[]; u.skinTrail=[];
-    // tint base sprite
-    s.setTint(fx.tint!=null?fx.tint:0xffffff);
+    // sprite-skin COTTA nel PNG se esiste: usa quella e NON tintare (il colore e' gia' nel PNG)
+    const _bk='spr_'+GAME.char+'_'+((sk&&sk.id)||'base');
+    if(sk && sk.id!=='base' && this.textures.exists(_bk)){ s.setTexture(_bk); s.setTint(0xffffff); }
+    else s.setTint(fx.tint!=null?fx.tint:0xffffff);
     if(fx.alpha!=null) s.setAlpha(fx.alpha);
     if(!q.glow) return;                    // qualita' bassa: solo tint, niente effetti pesanti
     const mkGlow=(col,str,sz)=>{ const g=this.add.image(p.x,p.y,'glow').setTint(col).setBlendMode(Phaser.BlendModes.ADD)
