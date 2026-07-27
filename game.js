@@ -2226,66 +2226,33 @@ class Game extends Phaser.Scene{
 
   drawRoads(){
     const cols=this.GC, rows=this.GR, cw=WORLD_W/cols, ch=WORLD_H/rows;
-    const ROAD=150;
-    const SWK=0.5, SWW=Math.round(96*SWK);      // fascia marciapiede = 48px
-    // ---- carreggiata NERA con un filo di BLU CYBERPUNK ----
-    const gAsf=this.add.graphics().setDepth(-19);
-    gAsf.fillStyle(0x080a10,1); gAsf.fillRect(0,0,WORLD_W,WORLD_H);
-    // leggera tinta bluastra sull'asfalto delle strade (le fasce ROAD)
-    gAsf.fillStyle(0x0e1830,0.55);
-    for(let i=0;i<=cols;i++){ const x=i*cw; gAsf.fillRect(x-ROAD/2,0,ROAD,WORLD_H); }
-    for(let j=0;j<=rows;j++){ const y=j*ch; gAsf.fillRect(0,y-ROAD/2,WORLD_W,ROAD); }
-    let frames=0;
-    for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){
-      const bx=i*cw+ROAD/2, by=j*ch+ROAD/2, bw=cw-ROAD, bh=ch-ROAD;
-      if(this.megaLots && this.megaLots[i+'_'+j]) continue;
-      if(bw<SWW*2+40||bh<SWW*2+40){
-        if(this.textures.exists('sw_f') && bw>10 && bh>10)
-          this.add.tileSprite(bx,by,bw,bh,'sw_f').setOrigin(0,0).setDepth(-18).setTileScale(0.5,0.5);
-        continue;
-      }
-      const tint=0xffffff;
-      // 1) RIEMPIMENTO: lastricato bordeaux dentro tutta la piazzetta (niente piu' buco nero)
-      if(this.textures.exists('sw_f'))
-        this.add.tileSprite(bx,by,bw,bh,'sw_f').setOrigin(0,0).setDepth(-18.5).setTileScale(0.5,0.5).setTint(tint);
-      // 2) cornice/bordo marciapiede sopra il riempimento
-      const ok=this.tileFrame(bx,by,bw,bh,'sw_',SWK,tint,-18);
-      if(ok){ frames++;
-        // cordolo neon sul bordo esterno: elimina la fascia scura tra strada e marciapiede
-        const gc=this.add.graphics().setDepth(-17.8);
-        gc.lineStyle(2,tint,0.8); gc.strokeRect(bx+1,by+1,bw-2,bh-2);
-        gc.lineStyle(5,tint,0.12); gc.strokeRect(bx+1,by+1,bw-2,bh-2);
-      }
-      else { const SW=this.add.graphics().setDepth(-18);
-        SW.fillStyle(0x2a2a38,1); SW.fillRect(bx,by,bw,bh);
-        SW.lineStyle(2,0x2b4a42,0.9); SW.strokeRect(bx,by,bw,bh); }
-    }
+    // carreggiata = larghezza NATIVA del tile strada (i tile di Gem si agganciano gia' a questa misura)
+    const ROAD=this.textures.exists('road_h')? this.textures.get('road_h').getSourceImage().height : 150;
+    // ---- LAYER DI FONDO: terreno grigio (sw_f) su TUTTO il mondo; le strade ci vanno SOPRA
+    //      (niente piu' buchi neri, niente marciapiedi di bordo: il bordo lo da' gia' la strada) ----
+    if(this.textures.exists('sw_f'))
+      this.add.tileSprite(0,0,WORLD_W,WORLD_H,'sw_f').setOrigin(0,0).setDepth(-19).setTileScale(0.5,0.5);
+    else { const gAsf=this.add.graphics().setDepth(-19); gAsf.fillStyle(0x11151b,1); gAsf.fillRect(0,0,WORLD_W,WORLD_H); }
     const g=this.add.graphics().setDepth(-17);
     // ===== STRADE SPRITE coi circuiti neon (Gem) al posto di asfalto piatto + LED =====
     if(this.textures.exists('road_h')){
-      const src=this.textures.get('road_h').getSourceImage();
-      const tsc=ROAD/src.height;                 // scala texture -> carreggiata ROAD (150)
-      // bande orizzontali (una tileSprite per fila di strada)
+      // dritti a MISURA NATIVA: tileSprite scala 1, banda alta = altezza nativa del tile (ROAD)
       for(let j=0;j<=rows;j++){ const y=j*ch;
-        this.add.tileSprite(WORLD_W/2,y,WORLD_W,ROAD,'road_h').setTileScale(tsc,tsc).setDepth(-18.72); }
-      // bande verticali: stessa texture ruotata 90° (width=WORLD_H perche' poi ruota)
+        this.add.tileSprite(WORLD_W/2,y,WORLD_W,ROAD,'road_h').setDepth(-18.72); }
       for(let i=0;i<=cols;i++){ const x=i*cw;
-        this.add.tileSprite(x,WORLD_H/2,WORLD_H,ROAD,'road_h').setTileScale(tsc,tsc).setAngle(90).setDepth(-18.70); }
-      // svincoli: curva (road_cv) ai 4 ANGOLI mappa, X a 4 vie (road_x) su tutti gli altri crocevia.
-      // JUNC un filo piu' largo della carreggiata per coprire i giunti dei dritti.
-      // road_cv nativa connette SINISTRA+SOTTO. Rotazioni (setAngle orario):
-      //   angolo alto-sx(R+B)=270  alto-dx(L+B)=0  basso-sx(R+T)=180  basso-dx(L+T)=90
-      const JUNC=ROAD+22;
+        this.add.tileSprite(x,WORLD_H/2,WORLD_H,ROAD,'road_h').setAngle(90).setDepth(-18.70); }
+      // svincoli a MISURA NATIVA (si agganciano sui bordi grigi): X (road_x) ai crocevia interni,
+      // curva (road_cv) ai 4 ANGOLI mappa. road_cv nativa connette SINISTRA+SOTTO.
+      // rotazioni orarie: alto-sx=270  alto-dx=0  basso-sx=180  basso-dx=90
       const hasX=this.textures.exists('road_x'), hasCV=this.textures.exists('road_cv');
       for(let i=0;i<=cols;i++)for(let j=0;j<=rows;j++){
         const L=(i===0),R=(i===cols),T=(j===0),B=(j===rows);
-        let key='road_x', ang=0;
+        let key=hasX?'road_x':'road_h', ang=0;
         if(hasCV){
           if(T&&L){key='road_cv';ang=270;} else if(T&&R){key='road_cv';ang=0;}
           else if(B&&L){key='road_cv';ang=180;} else if(B&&R){key='road_cv';ang=90;}
         }
-        if(key==='road_x'&&!hasX) key='road_h';
-        this.add.image(i*cw,j*ch,key).setDisplaySize(JUNC,JUNC).setAngle(ang).setDepth(-18.5); }
+        this.add.image(i*cw,j*ch,key).setAngle(ang).setDepth(-18.5); }
     } else {
       // --- fallback vecchio stile (LED) se le strade sprite non ci sono ---
       const gLed=this.add.graphics().setDepth(-17.5);
