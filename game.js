@@ -2248,7 +2248,8 @@ class Game extends Phaser.Scene{
       const TS=120;                                   // lato tile = carreggiata
       const GX=Math.max(2,Math.round(cw/TS)), GY=Math.max(2,Math.round(ch/TS)); // tile per cella
       const NX=Math.ceil(WORLD_W/TS), NY=Math.ceil(WORLD_H/TS);
-      const put=(k,tx,ty,ang)=>{ const im=this.add.image(tx*TS+TS/2,ty*TS+TS/2,k).setDepth(-18.7);
+      const put=(k,tx,ty,ang)=>{ const im=this.add.image(tx*TS+TS/2,ty*TS+TS/2,k).setDepth(-18.7)
+          .setDisplaySize(TS+2,TS+2);          // +2px: i tile si sovrappongono, niente fessure
         if(ang) im.setAngle(ang); return im; };
       this.roadTile=(tx,ty)=>((tx%GX)===0)||((ty%GY)===0);
       for(let ty=0;ty<NY;ty++)for(let tx=0;tx<NX;tx++){

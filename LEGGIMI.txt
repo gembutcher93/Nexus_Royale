@@ -1,14 +1,10 @@
-NEXUS ROYALE — DELTA V77 (strade col tileset nuovo)
-====================================================
-1) Copia in assets/ le 11 PNG nt_*.png
+NEXUS ROYALE — DELTA V78 (fix fessure tra le tile)
+===================================================
+1) SOVRASCRIVI in assets/ le 11 PNG nt_*.png (sono state RIGENERATE)
 2) Sostituisci: game.js  sw.js  assets_fallback.js
-3) Svuota cache / reinstalla PWA (cache = v77)
+3) Svuota cache / reinstalla PWA (cache = v78)
 
-Sistema nuovo (1 TILE = 1 LARGHEZZA STRADA, tile 120px):
-- incroci = nt_x (il tuo t30, ha gia' i 4 angolini smussati dentro) posato INTERO
-- strade dritte = nt_str (t07, marciapiede su entrambi i lati) -> il neon aggancia da solo
-- T sui bordi mappa = nt_t (t22)
-- isolati = nt_side (t19)
-- strisce pedonali = nt_ped (t08) prima di ogni incrocio
-Caricati e pronti all'uso anche: nt_cor (t16 angolino L), nt_t2 (t26 T senza marciapiede),
-nt_edge (t10), nt_round (t17 rotatoria), nt_pad (t28 VTOL) per le varianti coi caseggiati grandi.
+Il problema: nel ritaglio dal foglio avevo incluso il bordo TRASPARENTE attorno a
+ogni tile -> ogni tile era un pelo piu' piccolo di 120px e restava la fessura scura.
+Fix: (1) ritaglio esatto sui soli pixel pieni + alpha forzata a 255 fino al bordo,
+     (2) posa con 2px di sovrapposizione -> le tile combaciano senza fessure.
