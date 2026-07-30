@@ -1,15 +1,14 @@
-NEXUS ROYALE — DELTA V76 (interni: arredamento vero)
-=====================================================
-Sostituisci: game.js  sw.js    (cache -> v76, svuota cache/PWA)
+NEXUS ROYALE — DELTA V77 (strade col tileset nuovo)
+====================================================
+1) Copia in assets/ le 11 PNG nt_*.png
+2) Sostituisci: game.js  sw.js  assets_fallback.js
+3) Svuota cache / reinstalla PWA (cache = v77)
 
-FIX principale: prima OGNI mobile veniva forzato a max ~52px di lato
-(riga vecchia: maxside=52*s) -> scrivanie e armadi minuscoli. Ora scala NATIVA 1.05.
-
-Nuovo sistema (furnishReal):
-- mobili ATTACCATI AI MURI col fronte verso l'INTERNO (centro stanza libero)
-- verso nativo: letto/divano/scrivania/mobili guardano in BASSO; sedia ufficio in ALTO
-  -> rotazione calcolata, ante/fronti mai piu' contro il muro
-- stanze A TEMA: camera (letto+armadi+poltrona) / salotto (divano+poltrona+scrivania)
-  ufficio (griglia scrivania+sedia + armadi) / magazzino (armadi lungo tutti i muri)
-- stanze grandi -> tema ufficio o magazzino (i "cameroni")
-- collisioni: ogni mobile e' copertura solida, spazio davanti alla porta lasciato libero
+Sistema nuovo (1 TILE = 1 LARGHEZZA STRADA, tile 120px):
+- incroci = nt_x (il tuo t30, ha gia' i 4 angolini smussati dentro) posato INTERO
+- strade dritte = nt_str (t07, marciapiede su entrambi i lati) -> il neon aggancia da solo
+- T sui bordi mappa = nt_t (t22)
+- isolati = nt_side (t19)
+- strisce pedonali = nt_ped (t08) prima di ogni incrocio
+Caricati e pronti all'uso anche: nt_cor (t16 angolino L), nt_t2 (t26 T senza marciapiede),
+nt_edge (t10), nt_round (t17 rotatoria), nt_pad (t28 VTOL) per le varianti coi caseggiati grandi.

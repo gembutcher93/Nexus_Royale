@@ -428,6 +428,9 @@ class Boot extends Phaser.Scene{
     ['sw_tl','sw_t','sw_tr','sw_l','sw_c','sw_r','sw_bl','sw_b','sw_br','sw_f'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
+    ['nt_asf','nt_str','nt_ped','nt_edge','nt_cor','nt_side','nt_t','nt_t2','nt_x','nt_round','nt_pad'].forEach(k=>{
+      this.load.image(k,'assets/'+k+'.png');
+    });
     ['nf_bed','nf_sofa','nf_chair','nf_desk','nf_arm','nf_cab','nf_cab2','nf_cab3','ifloor0','ifloor1','ifloor2','ifloor3','ifloor4','ifloor5','ifloor6','ifloor7','ntree0','ntree1','ntree2','ntree3','ntree4','ntree5','ntree6','ntree7','nfountain','bldT0','bldT1','bldT2','bldT3','bldT4','bldT5','bldT_big','bldT_tall'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
@@ -2238,6 +2241,36 @@ class Game extends Phaser.Scene{
 
   drawRoads(){
     const cols=this.GC, rows=this.GR, cw=WORLD_W/cols, ch=WORLD_H/rows;
+    // ===== TILESET NUOVO (Street_and_walkside): 1 TILE = 1 LARGHEZZA STRADA =====
+    // Gli incroci di Gem (nt_x) hanno GIA' dentro i 4 angolini smussati: si posano interi,
+    // e le strade dritte (nt_str, marciapiede su entrambi i lati) agganciano il neon da sole.
+    if(this.textures.exists('nt_x')){
+      const TS=120;                                   // lato tile = carreggiata
+      const GX=Math.max(2,Math.round(cw/TS)), GY=Math.max(2,Math.round(ch/TS)); // tile per cella
+      const NX=Math.ceil(WORLD_W/TS), NY=Math.ceil(WORLD_H/TS);
+      const put=(k,tx,ty,ang)=>{ const im=this.add.image(tx*TS+TS/2,ty*TS+TS/2,k).setDepth(-18.7);
+        if(ang) im.setAngle(ang); return im; };
+      this.roadTile=(tx,ty)=>((tx%GX)===0)||((ty%GY)===0);
+      for(let ty=0;ty<NY;ty++)for(let tx=0;tx<NX;tx++){
+        const rx=(tx%GX)===0, ry=(ty%GY)===0;
+        const lastX=(tx+GX>=NX), lastY=(ty+GY>=NY);
+        if(rx&&ry){
+          // incrocio: X piena, oppure T sui bordi mappa (una strada non prosegue)
+          if(lastX&&!lastY)      put('nt_t',tx,ty,270);
+          else if(lastY&&!lastX) put('nt_t',tx,ty,180);
+          else                   put('nt_x',tx,ty,0);
+        }
+        else if(rx) put('nt_str',tx,ty,90);           // strada verticale
+        else if(ry) put('nt_str',tx,ty,0);            // strada orizzontale
+        else        put('nt_side',tx,ty,0);           // marciapiede/isolato
+      }
+      // strisce pedonali subito prima di ogni incrocio
+      for(let ty=0;ty<NY;ty++)for(let tx=0;tx<NX;tx++){
+        if((tx%GX)===0 && (ty%GY)===1 && ty+1<NY) put('nt_ped',tx,ty,90).setDepth(-18.66);
+        if((ty%GY)===0 && (tx%GX)===1 && tx+1<NX) put('nt_ped',tx,ty,0).setDepth(-18.66);
+      }
+      return;
+    }
     // carreggiata = larghezza NATIVA del tile strada (i tile di Gem si agganciano gia' a questa misura)
     const ROAD=this.textures.exists('road_h')? this.textures.get('road_h').getSourceImage().height : 150;
     // ---- LAYER DI FONDO: terreno grigio (sw_f) su TUTTO il mondo; le strade ci vanno SOPRA
