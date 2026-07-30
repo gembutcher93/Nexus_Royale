@@ -3128,20 +3128,39 @@ class Game extends Phaser.Scene{
       } else { this.toast('SENTENZA · nessun bersaglio',0x8a86c8); P.ultReady=this.time.now+3000; }
     }
     else if(op.ult==='SATURATE'){
-      // ground marker windup, then a rain of shots over the aimed area
-      const dist=420, tx=P.s.x+Math.cos(P.aim)*dist, ty=P.s.y+Math.sin(P.aim)*dist, R=150;
-      const mark=this.add.circle(tx,ty,R,0xff2ea6,0.12).setStrokeStyle(3,0xff2ea6,0.9).setDepth(9); if(this.toWorld) this.toWorld(mark);
-      this.tweens.add({targets:mark,alpha:0.3,duration:300,yoyo:true,repeat:3});
-      this.toast('SATURAZIONE · in arrivo',0xff2ea6);
-      this.time.delayedCall(1000,()=>{ mark.destroy();
-        let hits=0;
-        for(let i=0;i<14;i++){ this.time.delayedCall(i*90,()=>{
-          const ox=tx+Phaser.Math.Between(-R,R), oy=ty+Phaser.Math.Between(-R,R);
-          this.explode(ox,oy,26,70,P);
-          if(this.FX.glow){ const f=this.add.image(ox,oy,'glow').setTint(0xff2ea6).setBlendMode(Phaser.BlendModes.ADD).setDepth(11).setDisplaySize(50,50); if(this.toWorld) this.toWorld(f);
-            this.tweens.add({targets:f,alpha:0,scale:0.3,duration:300,onComplete:()=>f.destroy()}); }
-        }); }
-      });
+      // Nova: zoom-out + tocca il punto sulla mappa (come la mira di Oracle), poi pioggia di colpi esplosivi LI'.
+      // riuso il flag portalAiming: durante la mira il gioco toglie gia' l'alone nero (fog) e blocca il fuoco.
+      this.portalAiming=true;
+      this.cameras.main.stopFollow();
+      this.tweens.add({targets:this.cameras.main,zoom:LIVE_ZOOM*0.4,duration:400,ease:'Sine.out'});
+      if(this.fog){ this.fog.setVisible(false); this.fogBack.clear(); }   // vedi tutta l'area mentre scegli
+      this.toast('SATURAZIONE \u00b7 tocca dove bombardare',0xff2ea6);
+      const restoreCam=()=>{ this.cameras.main.startFollow(P.s,true,0.12,0.12);
+        this.tweens.add({targets:this.cameras.main,zoom:(SCOPED[P.weapon]?0.62:LIVE_ZOOM),duration:400,ease:'Sine.inOut'});
+        if(this.fog) this.fog.setVisible(true); };
+      const fireAt=(tx,ty)=>{ const R=150;
+        const mark=this.add.circle(tx,ty,R,0xff2ea6,0.12).setStrokeStyle(3,0xff2ea6,0.9).setDepth(9); if(this.toWorld) this.toWorld(mark);
+        this.tweens.add({targets:mark,alpha:0.3,duration:300,yoyo:true,repeat:3});
+        this.toast('SATURAZIONE \u00b7 in arrivo',0xff2ea6);
+        this.time.delayedCall(1000,()=>{ mark.destroy();
+          for(let i=0;i<14;i++){ this.time.delayedCall(i*90,()=>{
+            const ox=tx+Phaser.Math.Between(-R,R), oy=ty+Phaser.Math.Between(-R,R);
+            this.explode(ox,oy,26,70,P);
+            if(this.FX.glow){ const f=this.add.image(ox,oy,'glow').setTint(0xff2ea6).setBlendMode(Phaser.BlendModes.ADD).setDepth(11).setDisplaySize(50,50); if(this.toWorld) this.toWorld(f);
+              this.tweens.add({targets:f,alpha:0,scale:0.3,duration:300,onComplete:()=>f.destroy()}); }
+          }); }
+        });
+      };
+      const handler=(pointer)=>{
+        if(!this.portalAiming) return; this.portalAiming=false;
+        const wx=this.cameras.main.worldView.x+pointer.x/this.cameras.main.zoom;
+        const wy=this.cameras.main.worldView.y+pointer.y/this.cameras.main.zoom;
+        const tx=Phaser.Math.Clamp(wx,60,WORLD_W-60), ty=Phaser.Math.Clamp(wy,60,WORLD_H-60);
+        restoreCam(); fireAt(tx,ty);
+      };
+      this.input.once('pointerdown',handler);
+      // sicurezza: auto-annulla dopo 5s se non tocca
+      this.time.delayedCall(5000,()=>{ if(this.portalAiming){ this.portalAiming=false; restoreCam(); this.toast('SATURAZIONE \u00b7 annullata',0x8a86c8); this.input.off('pointerdown',handler); } });
     }
     else if(op.ult==='SWARM'){
       // 2-3 decoys that wander and distract AI + full cloak + empowered exit

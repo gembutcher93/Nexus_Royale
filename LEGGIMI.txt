@@ -1,12 +1,7 @@
-NEXUS ROYALE — DELTA V74 (strade native + terreno grigio di fondo)
-==================================================================
-1) Copia in assets/ :  road_h.png  road_x.png  road_cv.png  (versioni NATIVE, kerb intatti)
-2) Sostituisci:  game.js  sw.js  assets_fallback.js
-3) IMPORTANTE: assicurati che il tuo sw_f.png (grigio) sia in assets/  -> e' il TERRENO di fondo
-4) Svuota cache / reinstalla PWA (cache = v74)
-
-Cosa cambia:
-- Terreno GRIGIO (sw_f) come layer di fondo su tutto il mondo, strade SOPRA -> niente buchi neri
-- Tolti i marciapiedi di bordo (sw_b/l/r/t + angoli): il bordo lo da' gia' la strada (kerb grigio)
-- Strade a MISURA NATIVA: X, dritti e curve si agganciano sui bordi grigi (niente piu' scalatura sbagliata)
-- Fix bug: prima gli incroci erano rimpiccioliti (braccio ~41px) mentre i dritti erano larghi -> non combaciavano
+NEXUS ROYALE — DELTA V75 (Nova ultimate mirata)
+================================================
+Sostituisci: game.js  sw.js   (cache -> v75, svuota cache/PWA)
+Cosa cambia: la SATURAZIONE di Nova ora non parte piu' in automatico:
+ -> premi Ultimate = zoom-out + l'area si apre (via l'alone nero, come Oracle)
+ -> tocchi il punto sulla mappa -> il bombardamento cade LI'
+ -> la visuale torna normale. Se non tocchi entro 5s = annullata.
