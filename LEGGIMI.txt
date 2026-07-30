@@ -1,7 +1,15 @@
-NEXUS ROYALE — DELTA V75 (Nova ultimate mirata)
-================================================
-Sostituisci: game.js  sw.js   (cache -> v75, svuota cache/PWA)
-Cosa cambia: la SATURAZIONE di Nova ora non parte piu' in automatico:
- -> premi Ultimate = zoom-out + l'area si apre (via l'alone nero, come Oracle)
- -> tocchi il punto sulla mappa -> il bombardamento cade LI'
- -> la visuale torna normale. Se non tocchi entro 5s = annullata.
+NEXUS ROYALE — DELTA V76 (interni: arredamento vero)
+=====================================================
+Sostituisci: game.js  sw.js    (cache -> v76, svuota cache/PWA)
+
+FIX principale: prima OGNI mobile veniva forzato a max ~52px di lato
+(riga vecchia: maxside=52*s) -> scrivanie e armadi minuscoli. Ora scala NATIVA 1.05.
+
+Nuovo sistema (furnishReal):
+- mobili ATTACCATI AI MURI col fronte verso l'INTERNO (centro stanza libero)
+- verso nativo: letto/divano/scrivania/mobili guardano in BASSO; sedia ufficio in ALTO
+  -> rotazione calcolata, ante/fronti mai piu' contro il muro
+- stanze A TEMA: camera (letto+armadi+poltrona) / salotto (divano+poltrona+scrivania)
+  ufficio (griglia scrivania+sedia + armadi) / magazzino (armadi lungo tutti i muri)
+- stanze grandi -> tema ufficio o magazzino (i "cameroni")
+- collisioni: ogni mobile e' copertura solida, spazio davanti alla porta lasciato libero

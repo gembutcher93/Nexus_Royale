@@ -2182,6 +2182,18 @@ class Game extends Phaser.Scene{
   // arreda un elenco di stanze. kind cambia il mobilio: ospedale = letti in fila,
   // uffici = scrivanie e schermi, scuola = banchi.
   furnishRooms(rooms,c,kind){
+    // se ci sono i mobili reali di Gem, uso il sistema a muro/a tema
+    if(this.textures.exists('nf_bed')){
+      const TH={ospedale:'camera',uffici:'ufficio',scuola:'ufficio',magazzino:'magazzino'};
+      rooms.forEach(r0=>{
+        const rx=r0[0]+14, ry=r0[1]+14, rw=r0[2]-28, rh=r0[3]-28;
+        if(rw<90||rh<90) return;
+        const theme=TH[kind] || ((rw*rh>150000)?Phaser.Utils.Array.GetRandom(['ufficio','magazzino'])
+                                              :Phaser.Utils.Array.GetRandom(['camera','salotto','ufficio']));
+        this.furnishReal(rx,ry,rw,rh,theme,null);
+      });
+      return;
+    }
     if(!this.textures.exists('fur1')) return;
     const put=(k,px,py,pw,ph,rot)=>{
       const im=this.add.image(px+pw/2,py+ph/2,k).setOrigin(0.5).setDepth(0.55)
@@ -2410,12 +2422,96 @@ class Game extends Phaser.Scene{
   // ---- ARREDI degli interni: mobili grandi, allungati, addossati ai muri, CON COLLISIONE ----
   // Le tessere UI sono astratte: allungandole prendono la forma del mobile (letto, tavolo,
   // bancone, armadio). Ogni mobile registra un corpo statico, quindi fa da riparo.
+  // ---- ARREDAMENTO REALE: mobili alla scala NATIVA, attaccati ai muri col fronte
+  // verso l'INTERNO della stanza (cosi' il centro resta libero), a TEMA per stanza.
+  // VERSO NATIVO delle sprite di Gem: letto/divano/scrivania/mobili guardano in BASSO (S=180),
+  // la sedia da ufficio guarda in ALTO (N=0). rot = (target - nativo + 360) % 360
+  furnishReal(ix,iy,iw,ih,theme,noGo){
+    const FS=1.05;                                  // scala nativa (NON rimpicciolire)
+    const NATIVE={nf_chair:0};                      // default 180 (guardano in basso)
+    const nat=k=>(NATIVE[k]!==undefined?NATIVE[k]:180);
+    const dim=k=>{ const t=this.textures.get(k).getSourceImage(); return [Math.round(t.width*FS),Math.round(t.height*FS)]; };
+    const placed=[];
+    const fits=(r)=>{
+      if(r.x<ix||r.y<iy||r.x+r.w>ix+iw||r.y+r.h>iy+ih) return false;
+      if(noGo && r.x<noGo.x+noGo.w && r.x+r.w>noGo.x && r.y<noGo.y+noGo.h && r.y+r.h>noGo.y) return false;
+      return !placed.some(o=> r.x<o.x+o.w+8 && r.x+r.w+8>o.x && r.y<o.y+o.h+8 && r.y+r.h+8>o.y);
+    };
+    // mette il mobile contro il muro `side`, col fronte verso l'interno
+    const atWall=(k,side,along)=>{
+      if(!this.textures.exists(k)) return false;
+      let [w,h]=dim(k);
+      const target={T:180,B:0,L:90,R:270}[side];     // dove deve guardare (dentro la stanza)
+      let rot=(target-nat(k)+360)%360;
+      if(rot===90||rot===270){ const t=w; w=h; h=t; } // ruotato: ingombro scambiato
+      let x,y;
+      if(side==='T'){ x=ix+along; y=iy+2; }
+      else if(side==='B'){ x=ix+along; y=iy+ih-h-2; }
+      else if(side==='L'){ x=ix+2; y=iy+along; }
+      else { x=ix+iw-w-2; y=iy+along; }
+      const r={x,y,w,h};
+      if(!fits(r)) return false;
+      placed.push(r);
+      this.add.image(x+w/2,y+h/2,k).setOrigin(0.5).setAngle(rot).setDepth(0.55).setAlpha(0.97);
+      const body=this.walls.create(x+w/2,y+h/2,'px').setVisible(false);
+      body.setDisplaySize(Math.max(4,w-6),Math.max(4,h-6)); body.refreshBody();
+      this.wallRects.push({x:x+3,y:y+3,w:w-6,h:h-6,type:'cover'});
+      return true;
+    };
+    // postazione ufficio: scrivania al muro + sedia davanti (guarda la scrivania)
+    const desk=(side,along)=>{
+      if(!atWall('nf_desk',side,along)) return false;
+      const d=placed[placed.length-1], [cw,chh]=dim('nf_chair');
+      let cx,cy,rot;
+      if(side==='T'){ cx=d.x+d.w/2-cw/2; cy=d.y+d.h+6; rot=0; }
+      else if(side==='B'){ cx=d.x+d.w/2-cw/2; cy=d.y-chh-6; rot=180; }
+      else if(side==='L'){ cx=d.x+d.w+6; cy=d.y+d.h/2-cw/2; rot=90; }
+      else { cx=d.x-chh-6; cy=d.y+d.h/2-cw/2; rot=270; }
+      const sw=(rot===90||rot===270)?chh:cw, sh=(rot===90||rot===270)?cw:chh;
+      const r={x:cx,y:cy,w:sw,h:sh};
+      if(fits(r)){ placed.push(r);
+        this.add.image(cx+sw/2,cy+sh/2,'nf_chair').setOrigin(0.5).setAngle(rot).setDepth(0.56).setAlpha(0.97); }
+      return true;
+    };
+    const R=(a,b)=>Phaser.Math.Between(a,b);
+    if(theme==='camera'){
+      atWall('nf_bed','T',Math.max(4,R(10,Math.max(11,iw-Math.round(200*FS)-10))));
+      atWall(Phaser.Utils.Array.GetRandom(['nf_cab2','nf_cab3']),'L',R(10,Math.max(11,ih-120)));
+      atWall('nf_arm','B',R(10,Math.max(11,iw-120)));
+      atWall('nf_cab','R',R(10,Math.max(11,ih-90)));
+    } else if(theme==='ufficio'){
+      const step=Math.round(190*FS);
+      for(let a=8;a+step<iw;a+=step){ desk('T',a); desk('B',a); }
+      for(let b=8;b+100<ih;b+=Math.round(110*FS)) atWall('nf_cab3','R',b);
+    } else if(theme==='magazzino'){
+      const s=Math.round(95*FS);
+      for(let a=6;a+80<iw;a+=s){ atWall('nf_cab2','T',a); atWall('nf_cab3','B',a); }
+      for(let b=6;b+80<ih;b+=s){ atWall('nf_cab','L',b); atWall('nf_cab2','R',b); }
+    } else {  // salotto
+      atWall('nf_sofa','B',R(8,Math.max(9,iw-Math.round(225*FS)-8)));
+      atWall('nf_arm','L',R(8,Math.max(9,ih-110)));
+      desk('T',R(8,Math.max(9,iw-Math.round(150*FS))));
+      atWall('nf_cab','R',R(8,Math.max(9,ih-90)));
+    }
+    return placed.length;
+  }
+
   furnish(x,y,w,h,wth,gy,gap,col){
     if(!this.textures.exists('fur1')) return;
     const c=col||0x9fd8ff;
     const ix=x+wth+10, iy=y+wth+10, iw=w-2*wth-20, ih=h-2*wth-20;
     if(iw<80||ih<80) return;
     const doorY0=gy-40, doorY1=gy+gap+40;            // corridoio davanti al varco: libero
+    // --- mobili reali di Gem: sistema a muro, a tema, scala nativa ---
+    if(this.textures.exists('nf_bed')){
+      const noGo={x:x+w-wth-110,y:doorY0,w:130,h:doorY1-doorY0};
+      const area=iw*ih;
+      let theme;
+      if(area>150000) theme=Phaser.Utils.Array.GetRandom(['ufficio','magazzino']);
+      else theme=Phaser.Utils.Array.GetRandom(['camera','salotto','ufficio']);
+      this.furnishReal(ix,iy,iw,ih,theme,noGo);
+      return;
+    }
     const placed=[];
     const free=(r)=>{
       if(r.x+r.w > x+w-wth-110 && r.y+r.h>doorY0 && r.y<doorY1) return false;   // corridoio d'ingresso libero   // non davanti alla porta
