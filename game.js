@@ -5,7 +5,7 @@ let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v87';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v88';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -2059,6 +2059,7 @@ class Game extends Phaser.Scene{
     // ZAINO + build: vanno sulla telecamera dell'INTERFACCIA, altrimenti seguono lo zoom
     // del mondo (col rifle si ingrandivano e il tocco finiva in un punto diverso dal disegno)
     [this.invG,this.invTxt,this.invHint,this.buildTxt].forEach(o=>{ if(o) ui.push(o); });
+    if(this.feedTxt) this.feedTxt.forEach(t=>ui.push(t));
     if(this.invSlotTxt) this.invSlotTxt.forEach(t=>{ if(t) ui.push(t); });
     this.uiCam=this.cameras.add(0,0,this.scale.width,this.scale.height);
     this.cameras.main.ignore(ui);
@@ -3202,8 +3203,34 @@ class Game extends Phaser.Scene{
     const s=this.add.image(x,y,'glow').setTint(0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(12).setDisplaySize(30,30); if(this.toWorld) this.toWorld(s);
     this.tweens.add({targets:s,alpha:0,scale:0.2,duration:130,onComplete:()=>s.destroy()}); }
 
+  bestWeaponKey(){ let best=null,bt=-1;
+    for(const k in WEAPONS){ if(WEAPONS[k].tier>bt){ bt=WEAPONS[k].tier; best=k; } } return best; }
+  unitName(u){ if(!u) return 'ZONA'; if(u.isPlayer) return 'TU';
+    if(!u._nick){ const A=['VEX','KORR','NYX','ZAID','RHEA','ODIN','KALI','SABLE','JETT','MIRA','DRAX','LUNA','ONYX','RAVE','TALON','ZEN'];
+      u._nick=A[Phaser.Math.Between(0,A.length-1)]+'-'+Phaser.Math.Between(10,99); }
+    return u._nick; }
+  addFeed(killer,victim,wk){
+    if(!this.feed) this.feed=[];
+    const w=(wk!==undefined&&WEAPONS[wk])?WEAPONS[wk].name.toUpperCase():'';
+    this.feed.unshift({t:this.time.now, a:this.unitName(killer), b:this.unitName(victim), w:w,
+      me:(killer&&killer.isPlayer)||(victim&&victim.isPlayer)});
+    if(this.feed.length>5) this.feed.pop();
+  }
+  drawFeed(){
+    if(!this.feedTxt) return; const now=this.time.now, list=(this.feed||[]).filter(f=>now-f.t<7000);
+    this.feedTxt.forEach((t,i)=>{ const f=list[i];
+      if(!f){ t.setVisible(false); return; }
+      t.setVisible(true).setText(f.a+'  \u25b8  '+f.b+(f.w?('  \u00b7 '+f.w):''))
+       .setColor(f.me?'#ffc247':'#8fb9ad').setAlpha(Math.max(0.25,1-(now-f.t)/7000));
+    });
+  }
   killUnit(u,by){
     if(!u.alive) return; u.alive=false; this.aliveCount--;
+    this.addFeed(by,u,by?by.weapon:undefined);
+    if(u.isBoss){ for(let i=0;i<3;i++) this.mkLoot(u.s.x+Phaser.Math.Between(-40,40),u.s.y+Phaser.Math.Between(-40,40),
+        i===0?'weapon':(i===1?'heal':'shield'), i===0?this.bestWeaponKey():null);
+      this.toast('\u2620 BOSS ABBATTUTO \u00b7 loot raro',0xffc247); }
+    if(u.isPlayer){ this.killedBy={name:this.unitName(by), wpn:(by&&WEAPONS[by.weapon])?WEAPONS[by.weapon].name.toUpperCase():'ZONA'}; }
     this.dropRemains(u.s.x,u.s.y);
     if(u.markG){ u.markG.destroy(); u.markG=null; }
     const visible = u.isPlayer || this.inView(u.s.x,u.s.y,80);
@@ -3552,7 +3579,7 @@ class Game extends Phaser.Scene{
     this.hud.zone=this.add.text(W-this.mm.size/2-12,this.mm.y+this.mm.size+14,'',{fontSize:'13px',color:'#ff8a9c',fontStyle:'800'}).setOrigin(0.5,0).setScrollFactor(0).setDepth(151);
     this.mmImg=this.add.image(this.mm.x,this.mm.y,'mmTex').setOrigin(0).setDisplaySize(this.mm.size,this.mm.size).setScrollFactor(0).setDepth(149).setAlpha(GAME.mmAlpha);
     this.mmGfx=this.add.graphics().setScrollFactor(0).setDepth(150).setAlpha(GAME.mmAlpha);
-    this.muteBtn=this.add.text(this.mm.x-26,26,SFX.on?'\u266a':'\u266a\u0338',{fontFamily:TITLE_FONT,fontSize:'20px',color:SFX.on?'#3df2b4':'#54706a',fontStyle:'900',backgroundColor:'#08120e',padding:{x:8,y:6}}).setOrigin(0.5,0).setScrollFactor(0).setDepth(208).setInteractive({useHandCursor:true});
+    this.muteBtn=this.add.text(this.mm.x+6,26,SFX.on?'\u266a':'\u266a\u0338',{fontFamily:TITLE_FONT,fontSize:'20px',color:SFX.on?'#3df2b4':'#54706a',fontStyle:'900',backgroundColor:'#08120e',padding:{x:8,y:6}}).setOrigin(0.5,0).setScrollFactor(0).setDepth(208).setInteractive({useHandCursor:true});
     this.muteBtn.on('pointerdown',()=>{ const on=SFX.toggle(); this.muteBtn.setText(on?'\u266a':'\u266a\u0338').setColor(on?'#3df2b4':'#54706a'); if(on&&this.phase==='live') SFX.music(true); });
     // weapon swap: spostato a META' SCHERMO sulla destra (zona "OK" del pollice),
     // ben separato dal tasto abilita' che resta nel terzo basso.
@@ -3590,6 +3617,10 @@ class Game extends Phaser.Scene{
     this.ultLbl=this.add.text(ux,uy+46,(OP(GAME.char).ultName||'').toUpperCase(),{fontSize:'12px',fontStyle:'800',color:'#ffc247'}).setOrigin(0.5).setScrollFactor(0).setDepth(183);
     // ultimate button is handled inside onTouchDown (like the ability button), so no separate zone needed
     this.hud.toast=this.add.text(W/2,this.scale.height*0.34,'',{fontSize:'22px',fontStyle:'900',color:'#fff'}).setOrigin(0.5).setScrollFactor(0).setDepth(160).setAlpha(0);
+    this.feedTxt=[]; for(let i=0;i<5;i++) this.feedTxt.push(
+      this.add.text(this.mm.x+this.mm.size, this.mm.y+this.mm.size+10+i*15,'',
+        {fontFamily:UI.MONO,fontSize:'11px',color:'#8fb9ad'}).setOrigin(1,0)
+        .setScrollFactor(0).setDepth(206).setVisible(false));
     this.hud.killfeed=this.add.text(W/2,this.scale.height*0.42,'',{fontSize:'26px',fontStyle:'900',color:'#ff3355'}).setOrigin(0.5).setScrollFactor(0).setDepth(160).setAlpha(0);
     this.hudEls=[this.hud.bars,this.hud.hpTxt,this.hud.shTxt,this.hud.wpn,this.hud.alive,this.hud.kills,this.hud.zone,this.mmGfx,this.mmImg,this.muteBtn,this.abG,this.abIcon,this.abLbl,this.ultG,this.ultIcon,this.ultLbl];
   }
@@ -3902,7 +3933,7 @@ class Game extends Phaser.Scene{
     if(Phaser.Input.Keyboard.JustDown(this.keys.Q)) this.activateAbility();
     if(Phaser.Input.Keyboard.JustDown(this.keys.E)) this.activateUltimate();
     SFX.setListener(P.s.x,P.s.y);
-    this.invUpdateHold(); this.drawInventory(); this.updateCityProps();
+    this.invUpdateHold(); this.drawInventory(); this.updateCityProps(); this.drawFeed();
     this.drawZone(); this.updateZoneState(delta); this.updateHUD(); this.drawSticks();
   }
 
@@ -3928,11 +3959,23 @@ class Game extends Phaser.Scene{
 
   updateBots(time){
     this.units.forEach(u=>{ if(u.isPlayer||!u.alive) return; const ai=u.ai,s=u.s,w=WEAPONS[u.weapon];
+      // ---- PERSONALITA' (assegnata una volta): cambia raggio di ingaggio, coraggio e velocita' ----
+      if(!ai.kind){ const r=Phaser.Math.Between(1,100);
+        if(r<=18){ ai.kind='camper';   ai.see=0.72; ai.brave=1.25; ai.spd=0.62; }   // sta fermo, aspetta, non scappa
+        else if(r<=38){ ai.kind='vigliacco'; ai.see=1.10; ai.brave=0.45; ai.spd=1.18; } // ti vede da lontano ma scappa
+        else if(r<=46){ ai.kind='cacciatore'; ai.see=1.25; ai.brave=1.15; ai.spd=1.08; } // ti cerca
+        else { ai.kind='normale'; ai.see=1; ai.brave=1; ai.spd=1; }
+        if(Phaser.Math.Between(1,100)<=4){ ai.kind='boss'; ai.see=1.3; ai.brave=1.6; ai.spd=1.0;
+          u.hp=u.maxhp=Math.round(u.maxhp*1.8); u.shield=u.maxshield=Math.round((u.maxshield||50)*1.6);
+          u.isBoss=true; u.s.setTint(0xffc247); u.s.setScale(u.s.scaleX*1.18); }
+      }
       const dz=Phaser.Math.Distance.Between(s.x,s.y,this.zone.cx,this.zone.cy);
       if(dz>this.zone.r-140) ai.state='flee';
+      // il vigliacco scappa anche quando e' messo male; il camper e il boss quasi mai
+      if(ai.state!=='flee' && u.hp < u.maxhp*(0.42/ai.brave) && Phaser.Math.Between(1,100)<=3) ai.state='flee';
       // heavy scans only a few times per second (staggered)
       if(time>ai.think){ ai.think=time+280+Phaser.Math.Between(0,140);
-        let tgt=null,td=(SCOPED[u.weapon]?w.range:Math.min(w.range,600))*1.05; this.units.forEach(o=>{ if(o===u||!o.alive) return; if(o.cloak>time) return;
+        let tgt=null,td=(SCOPED[u.weapon]?w.range:Math.min(w.range,600))*1.05*(ai.see||1); this.units.forEach(o=>{ if(o===u||!o.alive) return; if(o.cloak>time) return;
           const d=Phaser.Math.Distance.Between(s.x,s.y,o.s.x,o.s.y);
           // fair vision: a bot can only see the PLAYER within the shared vision circle
           if(o.isPlayer && d>this.visionRadius()+VIS_PAD) return;
@@ -3944,7 +3987,7 @@ class Game extends Phaser.Scene{
       }
       let tgt=ai.tgt; if(tgt&&!tgt.alive){ tgt=ai.tgt=null; }
       let lt=ai.lt; if(lt&&!lt.active){ lt=ai.lt=null; }
-      let vx=0,vy=0; const spd=150;
+      let vx=0,vy=0; const spd=150*(ai.spd||1);
       if(ai.state==='flee'){ const a=Phaser.Math.Angle.Between(s.x,s.y,this.zone.cx,this.zone.cy); vx=Math.cos(a); vy=Math.sin(a);
         if(tgt){ s.setRotation(Phaser.Math.Angle.Between(s.x,s.y,tgt.s.x,tgt.s.y)); this.botShoot(u,tgt); } }
       else if(tgt){ const a=Phaser.Math.Angle.Between(s.x,s.y,tgt.s.x,tgt.s.y); s.setRotation(a);
@@ -4011,7 +4054,9 @@ class Game extends Phaser.Scene{
     const W=this.scale.width,H=this.scale.height,cx=W/2;
     this.add.rectangle(0,0,W,H,0x040907,0.88).setOrigin(0).setScrollFactor(0).setDepth(300);
     this.add.text(cx,H*0.12,win?'#1 · VITTORIA':'ELIMINATO',{fontFamily:TITLE_FONT,fontSize:Math.min(34,W*0.08)+'px',fontStyle:'900',color:win?'#ffc247':'#ff3355'}).setOrigin(0.5).setScrollFactor(0).setDepth(301).setShadow(0,0,win?'#ff3355':'#000',20);
-    const rows=[['Piazzamento','#'+r.place+' / '+TOTAL_PLAYERS],['Eliminazioni',r.kills],['Punti piazzamento',r.placePts],['Punti uccisioni',r.killPts],['Moltiplicatore','×'+r.mult+(GAME.mode==='manual'?' (manuale)':' (auto)')]];
+    const rows=[['Piazzamento','#'+r.place+' / '+TOTAL_PLAYERS],
+      ...(!win&&this.killedBy?[['Ucciso da',this.killedBy.name+' \u00b7 '+this.killedBy.wpn]]:[]),
+      ['Eliminazioni',r.kills],['Punti piazzamento',r.placePts],['Punti uccisioni',r.killPts],['Moltiplicatore','×'+r.mult+(GAME.mode==='manual'?' (manuale)':' (auto)')]];
     rows.forEach((row,i)=>{ const y=H*0.24+i*32;
       this.add.text(cx-Math.min(150,W*0.4),y,row[0],{fontSize:'14px',color:'#7fa79b'}).setOrigin(0,0.5).setScrollFactor(0).setDepth(301);
       this.add.text(cx+Math.min(150,W*0.4),y,''+row[1],{fontSize:'14px',color:'#e6fbf3',fontStyle:'800'}).setOrigin(1,0.5).setScrollFactor(0).setDepth(301); });
