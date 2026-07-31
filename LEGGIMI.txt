@@ -1,20 +1,25 @@
-NEXUS ROYALE — DELTA V80 (fix scontri fuori visuale + buio regolabile)
-======================================================================
-Sostituisci SOLO: game.js  sw.js   (cache -> v80, svuota cache/PWA)
+NEXUS ROYALE — DELTA V81 (zaino + audio spaziale + UI in gioco)
+================================================================
+Sostituisci SOLO: game.js  sw.js    (cache -> v81, svuota cache/PWA)
 
-IL BUG: il controllo di visibilita' usava il RETTANGOLO DELLO SCHERMO (inView),
-non il cerchio di visuale. Lo schermo e' molto piu' largo del cerchio -> bot e
-giocatore si sparavano stando nel buio. In piu' i bot col mirino saltavano del
-tutto il controllo.
+--- 1) ZAINO ---
+Barra "ZAINO" sotto la minimappa: mostra armi x/4, medkit, batterie. Toccala per aprire.
+  TOCCA un'arma      = la equipaggi (quella vecchia torna nello zaino)
+  TOCCA medkit/batt  = la usi (1 secondo, barra di avanzamento sotto la barra zaino)
+  TIENI PREMUTO      = la butti a terra (anellino rosso che si riempie, ~0.4s)
+Raccolta: se hai posto l'arma entra nello zaino AL VOLO (niente prompt).
+Se le 4 armi sono piene: la barra LAMPEGGIA DI ROSSO e ti resta il prompt di scambio.
+Medkit/batterie: se sei sotto meta' vita/scudo li usi SUBITO da terra (resta la frenesia),
+altrimenti entrano nello zaino (max 3 per tipo).
+Manopole righe 13-16 di game.js: INV_WPN=4, INV_CONS=3, INV_USE_MS=1000, INV_HOLD_MS=420
 
-FIX (ora vale per tutti, mirini inclusi):
-- i bot ingaggiano il giocatore SOLO se la distanza sta nel cerchio di visuale
-- la MIRA ASSISTITA non aggancia piu' bersagli fuori dal cerchio
-- l'acquisizione bersaglio dei bot usa lo stesso margine
+--- 2) AUDIO SPAZIALE ---
+Il synth ora e' posizionale: PANNING destra/sinistra + attenuazione con la distanza
+(+ suono piu' cupo se lontano). Gli spari dei bot si sentono da dove partono: senti
+prima di vedere, che e' quello che serve col cerchio di visuale.
+Manopola: SFX.AUD_R (1100) = oltre questa distanza non si sente piu' nulla.
 
-MANOPOLE per il buio -> righe 10-12 di game.js:
-  FOG_ALPHA  0.72  quanto e' scuro il buio fuori dal cerchio (prima 0.97)
-  FOG_EDGE   0.60  quanto e' scuro l'anello di sfumatura (prima 0.85)
-  VIS_PAD    30    margine oltre il cerchio entro cui ci si puo' ancora ingaggiare
-Cambia i numeri, salva, svuota cache. Piu' bassi = piu' chiaro.
-ATTENZIONE: se alzi VIS_PAD di molto torni ad avere scontri fuori dal cerchio.
+--- 3) UI IN GIOCO ---
+I bottoni abilita' e ultimate non sono piu' cerchi generici: ora usano la forma
+OTTAGONALE con angoli tagliati + staffe angolari e la palette del menu
+(mint #3df2b4 / ambra #ffc247), coerenti col resto dell'interfaccia.

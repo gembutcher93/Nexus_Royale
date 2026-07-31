@@ -10,6 +10,10 @@ const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); esp
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
 const FOG_EDGE=0.60;       // quanto e' scuro l'anello di sfumatura (era 0.85)
 const VIS_PAD=30;          // margine oltre il cerchio entro cui ci si puo' ancora ingaggiare
+const INV_WPN=4;           // armi che stanno nello zaino
+const INV_CONS=3;          // medkit / batterie per tipo
+const INV_USE_MS=1000;     // tempo per usare un consumabile dallo zaino (1s)
+const INV_HOLD_MS=420;     // quanto tenere premuto per BUTTARE un oggetto          // margine oltre il cerchio entro cui ci si puo' ancora ingaggiare
 // ===================================================================================
 const VISION_MULT={base:1, rifle:1.5, oracle:2.0};
 const TITLE_FONT='"Chakra Petch", "Segoe UI", system-ui, sans-serif';
@@ -372,24 +376,43 @@ const SCOPED={rifle:1, railgun:1};
 // ---- tiny synth (no audio files) ----
 const SFX={
   ctx:null, master:null, on:true, musicTimer:null, step:0,
+  lx:0, ly:0, AUD_R:1100,          // posizione ascoltatore + raggio oltre il quale non si sente
+  setListener(x,y){ this.lx=x; this.ly=y; },
+  // da una posizione nel mondo ricava volume (distanza) e panning (destra/sinistra)
+  place(vol,x,y){ if(x===undefined||y===undefined) return {v:vol,pan:0,muf:0};
+    const dx=x-this.lx, dy=y-this.ly, d=Math.hypot(dx,dy);
+    if(d>this.AUD_R) return null;                    // troppo lontano: non si sente
+    const att=Math.pow(1-d/this.AUD_R,1.7);          // piu' lontano = piu' piano
+    const pan=Math.max(-1,Math.min(1,dx/420));       // destra/sinistra
+    return {v:Math.max(0.0006,vol*att), pan:pan, muf:d/this.AUD_R};
+  },
+  chain(g,pan){ // collega passando da un panner stereo
+    try{ if(this.ctx.createStereoPanner){ const p=this.ctx.createStereoPanner(); p.pan.value=pan||0; g.connect(p); p.connect(this.master); return; } }catch(e){}
+    g.connect(this.master);
+  },
   init(){ if(this.ctx) return; try{ const AC=window.AudioContext||window.webkitAudioContext; this.ctx=new AC();
     this.master=this.ctx.createGain(); this.master.gain.value=0.5; this.master.connect(this.ctx.destination); }catch(e){ this.ctx=null; } },
   resume(){ this.init(); try{ if(this.ctx&&this.ctx.state==='suspended') this.ctx.resume(); }catch(e){} },
-  tone(freq,dur,type,vol,slideTo){ if(!this.on||!this.ctx) return; try{ const t=this.ctx.currentTime,
+  tone(freq,dur,type,vol,slideTo,x,y){ if(!this.on||!this.ctx) return;
+    let pan=0; if(x!==undefined){ const P=this.place(vol||0.2,x,y); if(!P) return; vol=P.v; pan=P.pan; }
+    try{ const t=this.ctx.currentTime,
     o=this.ctx.createOscillator(), g=this.ctx.createGain(); o.type=type||'square'; o.frequency.setValueAtTime(freq,t);
     if(slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(40,slideTo),t+dur);
     g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.2,t+0.006);
-    g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(this.master); o.start(t); o.stop(t+dur+0.02); }catch(e){} },
-  noise(dur,vol,filt){ if(!this.on||!this.ctx) return; try{ const t=this.ctx.currentTime, n=Math.floor(this.ctx.sampleRate*dur),
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); this.chain(g,pan); o.start(t); o.stop(t+dur+0.02); }catch(e){} },
+  noise(dur,vol,filt,x,y){ if(!this.on||!this.ctx) return;
+    let pan=0; if(x!==undefined){ const P=this.place(vol||0.2,x,y); if(!P) return; vol=P.v; pan=P.pan; filt=(filt||1400)*(1-0.72*P.muf); }
+    try{ const t=this.ctx.currentTime, n=Math.floor(this.ctx.sampleRate*dur),
     buf=this.ctx.createBuffer(1,n,this.ctx.sampleRate), d=buf.getChannelData(0); for(let i=0;i<n;i++) d[i]=Math.random()*2-1;
     const s=this.ctx.createBufferSource(); s.buffer=buf; const g=this.ctx.createGain();
     g.gain.setValueAtTime(vol||0.2,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
     const f=this.ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=filt||1400;
-    s.connect(f); f.connect(g); g.connect(this.master); s.start(t); s.stop(t+dur); }catch(e){} },
-  shoot(tier){ this.tone(340-tier*22,0.07,'square',0.10,170); this.noise(0.045,0.05,2400); },
-  hit(){ this.tone(920,0.05,'sine',0.13); },
-  kill(){ this.tone(190,0.18,'sawtooth',0.18,90); this.noise(0.12,0.10,900); },
-  explode(){ this.noise(0.32,0.26,700); this.tone(80,0.32,'sawtooth',0.16,40); },
+    s.connect(f); f.connect(g); this.chain(g,pan); s.start(t); s.stop(t+dur); }catch(e){} },
+  shoot(tier,x,y){ this.tone(340-tier*22,0.07,'square',0.10,170,x,y); this.noise(0.045,0.05,2400,x,y); },
+  hit(x,y){ this.tone(920,0.05,'sine',0.13,null,x,y); },
+  kill(x,y){ this.tone(190,0.18,'sawtooth',0.18,90,x,y); this.noise(0.12,0.10,900,x,y); },
+  explode(x,y){ this.noise(0.32,0.26,700,x,y); this.tone(80,0.32,'sawtooth',0.16,40,x,y); },
+  step(x,y){ this.noise(0.05,0.028,700,x,y); },
   pickup(){ this.tone(520,0.05,'triangle',0.13); this.tone(800,0.07,'triangle',0.11); },
   zone(){ this.tone(150,0.5,'sawtooth',0.11,120); },
   ui(){ this.tone(440,0.05,'square',0.09); },
@@ -1811,6 +1834,7 @@ class Game extends Phaser.Scene{
     this.cameras.main.setBackgroundColor(C.bg);
 
     this.physics.add.overlap(this.bullets,this.walls,(b,w)=>this.onBulletWall(b,w));
+    this.useUntil=0; this.useKind=null; this.invInit();
     this.physics.add.overlap(this.player.s,this.loot,(s,l)=>this.pickup(this.player,l));
 
     // vignette (screen space)
@@ -1989,6 +2013,18 @@ class Game extends Phaser.Scene{
     g.beginPath(); g.moveTo(x+c,y); g.lineTo(x+w-c,y); g.lineTo(x+w,y+c); g.lineTo(x+w,y+h-c);
     g.lineTo(x+w-c,y+h); g.lineTo(x+c,y+h); g.lineTo(x,y+h-c); g.lineTo(x,y+c); g.closePath(); g.fillPath();
     g.lineStyle(1.5,col,0.9); g.strokePath();
+  }
+  hudOct(g,cx,cy,r){ const c=r*0.42; g.beginPath();
+    g.moveTo(cx-r+c,cy-r); g.lineTo(cx+r-c,cy-r); g.lineTo(cx+r,cy-r+c); g.lineTo(cx+r,cy+r-c);
+    g.lineTo(cx+r-c,cy+r); g.lineTo(cx-r+c,cy+r); g.lineTo(cx-r,cy+r-c); g.lineTo(cx-r,cy-r+c);
+    g.closePath(); }
+  hudBtnShape(g,cx,cy,r,col,lineA,fillA){
+    if(fillA){ g.fillStyle(UI.deep,fillA); this.hudOct(g,cx,cy,r); g.fillPath(); }
+    g.lineStyle(2,col,lineA); this.hudOct(g,cx,cy,r); g.strokePath();
+    // staffe angolari come nel menu
+    const L=r*0.5; g.lineStyle(2.5,col,Math.min(1,lineA+0.15));
+    g.beginPath(); g.moveTo(cx-r,cy-r*0.18); g.lineTo(cx-r,cy-r+r*0.42); g.lineTo(cx-r+r*0.42,cy-r); g.strokePath();
+    g.beginPath(); g.moveTo(cx+r,cy+r*0.18); g.lineTo(cx+r,cy+r-r*0.42); g.lineTo(cx+r-r*0.42,cy+r); g.strokePath();
   }
   hudBrackets(g,x,y,w,h,col,len){
     const L=len||14; g.lineStyle(2.5,col,1);
@@ -3097,7 +3133,7 @@ class Game extends Phaser.Scene{
       this.tweens.add({targets:f,alpha:0,scale:0.3,duration:110,onComplete:()=>f.destroy()});
     }
     if(u.isPlayer && this.FX.shake) this.cameras.main.shake(w.b==='explosive'?90:40,0.0022);
-    if(u.isPlayer) SFX.shoot(w.tier);
+    if(u.isPlayer) SFX.shoot(w.tier); else SFX.shoot(w.tier,u.s.x,u.s.y);
   }
   onBulletWall(b,wall){
     if(!b.active) return;
@@ -3190,13 +3226,58 @@ class Game extends Phaser.Scene{
 
   pickup(u,l){
     if(!l.active) return;
-    if(l.dataType==='heal'){ if(u.hp>=u.maxhp) return; u.hp=Math.min(u.maxhp,u.hp+40); if(u.isPlayer) SFX.pickup(); l.destroy(); return; }
-    if(l.dataType==='shield'){ if(u.shield>=u.maxshield) return; u.shield=Math.min(u.maxshield,u.shield+40); if(u.isPlayer) SFX.pickup(); l.destroy(); return; }
-    // weapon
-    if(u.isPlayer){ this._wprompt={loot:l,t:this.time.now}; return; } // player chooses via swap prompt
+    if(l.dataType==='heal'||l.dataType==='shield'){
+      const isH=(l.dataType==='heal');
+      if(!u.isPlayer){ if(isH){ if(u.hp>=u.maxhp) return; u.hp=Math.min(u.maxhp,u.hp+40); }
+                       else { if(u.shield>=u.maxshield) return; u.shield=Math.min(u.maxshield,u.shield+40); } l.destroy(); return; }
+      // GIOCATORE: se sta male lo usa SUBITO da terra (mantiene la frenesia),
+      // altrimenti finisce nello zaino per usarlo quando serve.
+      const low = isH ? (u.hp < u.maxhp*0.5) : (u.shield < u.maxshield*0.5);
+      const inv=this.inv, cap=INV_CONS;
+      if(low){ if(isH) u.hp=Math.min(u.maxhp,u.hp+40); else u.shield=Math.min(u.maxshield,u.shield+40);
+        SFX.pickup(); l.destroy(); return; }
+      const arr=isH?inv.heals:inv.shields;
+      if(arr.length>=cap){ this.invFlash(); return; }         // zaino pieno: lampeggia
+      arr.push(1); SFX.pickup(); l.destroy(); this.toast((isH?'\u2795 MEDKIT':'\u26a1 BATTERIA')+' \u00b7 nello zaino',isH?0x3df2b4:0x33e1ff); return;
+    }
+    // ---- ARMI ----
+    if(u.isPlayer){
+      if(this.inv.weapons.length<INV_WPN){                    // c'e' posto: la prendi al volo
+        this.inv.weapons.push(l.payload); l.destroy(); SFX.pickup();
+        this.toast('\u2795 '+WEAPONS[l.payload].name.toUpperCase()+' \u00b7 nello zaino',WEAPONS[l.payload].col);
+        return;
+      }
+      this._wprompt={loot:l,t:this.time.now}; this.invFlash(); return;   // pieno: scambio o libera posto
+    }
     if(!l.airdrop && WEAPONS[l.payload].tier<=WEAPONS[u.weapon].tier) return;
     u.weapon=l.payload; l.destroy();
   }
+  // ---------- ZAINO ----------
+  invInit(){ this.inv={weapons:[this.player.weapon],heals:[],shields:[]}; this.invOpen=false; this.invFlashT=0; }
+  invFlash(){ this.invFlashT=this.time.now+900; SFX.ui(); }
+  invEquip(i){ const P=this.player, w=this.inv.weapons[i]; if(w===undefined||w===P.weapon) return;
+    const old=P.weapon; P.weapon=w; this.inv.weapons[i]=old; SFX.pickup();
+    this.toast('\u25b2 '+WEAPONS[w].name.toUpperCase(),WEAPONS[w].col); this.setPlayerZoom(); }
+  invDrop(kind,i){ const P=this.player;
+    if(kind==='w'){ const w=this.inv.weapons[i]; if(w===undefined) return;
+      if(this.inv.weapons.length<=1) return;                  // non restare disarmato
+      this.inv.weapons.splice(i,1);
+      if(P.weapon===w) P.weapon=this.inv.weapons[0];
+      this.mkLoot(P.s.x+Phaser.Math.Between(-16,16),P.s.y+Phaser.Math.Between(20,34),'weapon',w);
+      this.toast('\u2716 buttata '+WEAPONS[w].name.toUpperCase(),0xff3355); this.setPlayerZoom(); }
+    else { const arr=(kind==='h')?this.inv.heals:this.inv.shields; if(!arr.length) return; arr.pop();
+      this.mkLoot(P.s.x+Phaser.Math.Between(-16,16),P.s.y+Phaser.Math.Between(20,34),(kind==='h')?'heal':'shield',null);
+      this.toast('\u2716 buttato',0xff3355); }
+    SFX.ui(); }
+  invUse(kind){ const P=this.player, now=this.time.now;
+    if(this.useUntil>now) return;                              // sta gia' usando qualcosa
+    const arr=(kind==='h')?this.inv.heals:this.inv.shields; if(!arr.length) return;
+    if(kind==='h' && P.hp>=P.maxhp) return; if(kind==='s' && P.shield>=P.maxshield) return;
+    arr.pop(); this.useUntil=now+INV_USE_MS; this.useKind=kind;  // 1 secondo: lo stai aprendo
+    this.toast((kind==='h')?'\u2795 medkit...':'\u26a1 batteria...',(kind==='h')?0x3df2b4:0x33e1ff);
+    this.time.delayedCall(INV_USE_MS,()=>{ if(!P.alive) return;
+      if(kind==='h') P.hp=Math.min(P.maxhp,P.hp+45); else P.shield=Math.min(P.maxshield,P.shield+45);
+      SFX.pickup(); }); }
   doSwap(){
     if(!this._wprompt||!this._wprompt.loot.active) return; const l=this._wprompt.loot, P=this.player, old=P.weapon;
     P.weapon=l.payload; l.destroy(); this._wprompt=null;
@@ -3418,6 +3499,7 @@ class Game extends Phaser.Scene{
       this.input.on('pointerup',p=>this.onTouchUp(p)); }
   }
   onTouchDown(p){ if(this.phase!=='live') return;
+    if(this.invHitTest(p)) return;                     // zaino: barra o pannello aperto
     if(this.ultBtn && Math.hypot(p.x-this.ultBtn.x,p.y-this.ultBtn.y)<this.ultBtn.r+12){ this.activateUltimate(); return; }
     if(this.abBtn && Math.hypot(p.x-this.abBtn.x,p.y-this.abBtn.y)<this.abBtn.r+10){ this.activateAbility(); return; }
     if(this.swapBtn&&this.swapBtn.visible && Math.hypot(p.x-this.swapPos.x,p.y-this.swapPos.y)<this.swapPos.r+12){ this.doSwap(); return; }
@@ -3428,7 +3510,8 @@ class Game extends Phaser.Scene{
   onTouchMove(p){ const cl=(st)=>{ let dx=p.x-st.ox,dy=p.y-st.oy; const m=Math.hypot(dx,dy),mx=60; if(m>mx){dx=dx/m*mx;dy=dy/m*mx;} st.dx=dx/mx; st.dy=dy/mx; };
     if(p.id===this.moveStick.id&&this.moveStick.active) cl(this.moveStick);
     if(p.id===this.aimStick.id&&this.aimStick.active) cl(this.aimStick); }
-  onTouchUp(p){ if(p.id===this.moveStick.id) Object.assign(this.moveStick,{active:false,id:-1,dx:0,dy:0});
+  onTouchUp(p){ this.invRelease(p);
+    if(p.id===this.moveStick.id) Object.assign(this.moveStick,{active:false,id:-1,dx:0,dy:0});
     if(p.id===this.aimStick.id) Object.assign(this.aimStick,{active:false,id:-1,dx:0,dy:0}); }
   drawSticks(){ if(!this.isTouch) return; const g=this.stickG; g.clear();
     const ring=(st,col)=>{ if(!st.active) return; g.lineStyle(3,col,0.5); g.strokeCircle(st.ox,st.oy,60);
@@ -3463,6 +3546,16 @@ class Game extends Phaser.Scene{
     this.swapGlow={setVisible(){},setAlpha(){}}; // legacy no-op
     // ability button
     const ax=W-54, ay=this.scale.height-58; this.abBtn={x:ax,y:ay,r:40};
+    // ---- ZAINO: grafica + testi ----
+    this.invG=this.add.graphics().setScrollFactor(0).setDepth(205);
+    this.invTxt=this.add.text(0,0,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#3df2b4'})
+      .setOrigin(0.5).setScrollFactor(0).setDepth(206);
+    this.invSlotTxt=[]; for(let i=0;i<6;i++) this.invSlotTxt.push(
+      this.add.text(0,0,'',{fontFamily:TITLE_FONT,fontSize:'11px',fontStyle:'900',color:'#ffffff'})
+        .setOrigin(0.5).setScrollFactor(0).setDepth(207).setVisible(false));
+    this.invHint=this.add.text(0,0,'',{fontFamily:UI.MONO,fontSize:'10px',color:UI.faint})
+      .setOrigin(0.5).setScrollFactor(0).setDepth(207).setVisible(false);
+    if(this.hudEls){ this.hudEls.push(this.invG,this.invTxt,this.invHint); this.invSlotTxt.forEach(t=>this.hudEls.push(t)); }
     this.abG=this.add.graphics().setScrollFactor(0).setDepth(182);
     this.abIcon=this.add.text(ax,ay,OP(GAME.char).icon,{fontSize:'28px',fontStyle:'900',color:'#fff'}).setOrigin(0.5).setScrollFactor(0).setDepth(183);
     this.abLbl=this.add.text(ax,ay+46,OP(GAME.char).abName.toUpperCase(),{fontSize:'13px',fontStyle:'800',color:'#b9d8ce'}).setOrigin(0.5).setScrollFactor(0).setDepth(183);
@@ -3517,28 +3610,96 @@ class Game extends Phaser.Scene{
     ag.fillStyle(0x061310,0.75); ag.fillCircle(aax,aay,ar);
     ag.lineStyle(1.5,op.col,ready?0.9:0.35); ag.strokeCircle(aax,aay,ar);
     ag.lineStyle(1,op.col,ready?0.5:0.2); ag.strokeCircle(aax,aay,ar-7);
-    // reticle ticks
-    for(let i=0;i<8;i++){ const aa=i*Math.PI/4; ag.lineStyle(2,op.col,ready?0.85:0.3);
-      ag.beginPath(); ag.moveTo(aax+Math.cos(aa)*(ar-4),aay+Math.sin(aa)*(ar-4)); ag.lineTo(aax+Math.cos(aa)*(ar+4),aay+Math.sin(aa)*(ar+4)); ag.strokePath(); }
+    // corpo ottagonale in stile menu + staffe angolari
+    this.hudBtnShape(ag,aax,aay,ar,op.col,ready?0.85:0.35,ready?0.55:0.25);
     if(!ready){ const frac=Phaser.Math.Clamp(1-(this.player.abReady-tnow)/op.cd,0,1);
       ag.lineStyle(5,op.col,0.95); ag.beginPath(); ag.arc(aax,aay,ar-3,-Math.PI/2,-Math.PI/2+frac*Math.PI*2); ag.strokePath(); }
-    else { ag.lineStyle(3,op.col,0.30); ag.strokeCircle(aax,aay,ar+6); }
-    this.abIcon.setColor(ready?'#ffffff':'#6d8a80');
+    else { this.hudBtnShape(ag,aax,aay,ar+7,op.col,0.28,0); }
+    this.abIcon.setColor(ready?UI.ink:UI.faint);
 
     // ---- ULTIMATE button ----
     if(op.ult){
       const ux=this.ultBtn.x, uy=this.ultBtn.y, ur=this.ultBtn.r, uReady=tnow>=(this.player.ultReady||0);
       const ug=this.ultG; ug.clear();
-      ug.fillStyle(0x1a1400,0.8); ug.fillCircle(ux,uy,ur);
-      ug.lineStyle(2,C.gold,uReady?1:0.35); ug.strokeCircle(ux,uy,ur);
-      ug.lineStyle(1,C.gold,uReady?0.6:0.2); ug.strokeCircle(ux,uy,ur-7);
+      this.hudBtnShape(ug,ux,uy,ur,UI.amber,uReady?1:0.35,uReady?0.6:0.25);
       if(!uReady){ const frac=Phaser.Math.Clamp(1-((this.player.ultReady||0)-tnow)/op.ultCd,0,1);
-        ug.lineStyle(5,C.gold,0.95); ug.beginPath(); ug.arc(ux,uy,ur-3,-Math.PI/2,-Math.PI/2+frac*Math.PI*2); ug.strokePath(); }
-      else { ug.lineStyle(3,C.gold,0.4); ug.strokeCircle(ux,uy,ur+6);
-        // pulse when ready
-        ug.lineStyle(2,C.gold,0.3+0.2*Math.sin(tnow/200)); ug.strokeCircle(ux,uy,ur+10); }
+        ug.lineStyle(5,UI.amber,0.95); ug.beginPath(); ug.arc(ux,uy,ur-3,-Math.PI/2,-Math.PI/2+frac*Math.PI*2); ug.strokePath(); }
+      else { this.hudBtnShape(ug,ux,uy,ur+7,UI.amber,0.38,0);
+        ug.lineStyle(2,UI.amber,0.25+0.22*Math.sin(tnow/200)); this.hudOct(ug,ux,uy,ur+12); ug.strokePath(); }
       this.ultIcon.setColor(uReady?'#ffc247':'#6a6a4a');
     }
+  }
+  // ---------- ZAINO: barra, pannello, tocchi ----------
+  invSlots(){ // rettangoli dei posti nel pannello (coordinate schermo)
+    const W=this.scale.width, H=this.scale.height;
+    const pw=Math.min(430,W-28), ph=176, px=(W-pw)/2, py=H-ph-150;
+    const out={panel:{x:px,y:py,w:pw,h:ph},cells:[]};
+    const s=Math.min(74,(pw-50)/4), gap=(pw-4*s)/5;
+    for(let i=0;i<INV_WPN;i++) out.cells.push({kind:'w',i:i,x:px+gap+i*(s+gap),y:py+38,w:s,h:s});
+    const cw2=(pw-60)/2;
+    out.cells.push({kind:'h',i:0,x:px+20,y:py+38+s+12,w:cw2,h:40});
+    out.cells.push({kind:'s',i:0,x:px+40+cw2,y:py+38+s+12,w:cw2,h:40});
+    return out; }
+  invBarRect(){ const W=this.scale.width; const w=Math.min(300,W-120); return {x:(W-w)/2,y:96,w:w,h:30}; }
+  invHitTest(p){
+    const b=this.invBarRect();
+    if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h){ this.invOpen=!this.invOpen; SFX.ui(); return true; }
+    if(!this.invOpen) return false;
+    const L=this.invSlots();
+    for(const c of L.cells){ if(p.x>=c.x&&p.x<=c.x+c.w&&p.y>=c.y&&p.y<=c.y+c.h){
+      this._hold={cell:c,t:this.time.now,id:p.id,done:false}; return true; } }
+    const pn=L.panel;
+    if(p.x>=pn.x&&p.x<=pn.x+pn.w&&p.y>=pn.y&&p.y<=pn.y+pn.h) return true;   // dentro il pannello: assorbi
+    this.invOpen=false; return true;                                        // fuori: chiudi
+  }
+  invRelease(p){ const h=this._hold; if(!h||h.id!==p.id) return; this._hold=null;
+    if(h.done) return;                                    // gia' buttato col tieni-premuto
+    const c=h.cell;
+    if(c.kind==='w') this.invEquip(c.i); else this.invUse(c.kind); }
+  invUpdateHold(){ const h=this._hold; if(!h||h.done) return;
+    if(this.time.now-h.t>=INV_HOLD_MS){ h.done=true;
+      const c=h.cell; this.invDrop(c.kind==='w'?'w':(c.kind==='h'?'h':'s'), c.i); } }
+  drawInventory(){ if(!this.isTouch&&!this.invOpen&&!this.inv) return; const g=this.invG; if(!g) return; g.clear();
+    const now=this.time.now, P=this.player;
+    // --- barra "ZAINO" ---
+    const b=this.invBarRect(); const full=this.inv.weapons.length>=INV_WPN;
+    const warn=now<this.invFlashT && (Math.floor(now/140)%2===0);
+    const col=warn?C.red:(this.invOpen?C.gold:C.player);
+    this.hudPanel(g,b.x,b.y,b.w,b.h,col,0.6);
+    this.hudBrackets(g,b.x,b.y,b.w,b.h,col,10);
+    this.invTxt.setPosition(b.x+b.w/2,b.y+b.h/2)
+      .setText('ZAINO  '+this.inv.weapons.length+'/'+INV_WPN+'   \u2795'+this.inv.heals.length+'   \u26a1'+this.inv.shields.length)
+      .setColor(warn?'#ff3355':(this.invOpen?'#ffc247':'#3df2b4')).setVisible(true);
+    // --- barra di "sto usando" ---
+    if(this.useUntil>now){ const W=this.scale.width, fr=1-(this.useUntil-now)/INV_USE_MS;
+      g.fillStyle(0x061310,0.8); g.fillRect(W/2-90,b.y+b.h+8,180,10);
+      g.fillStyle(this.useKind==='h'?C.player:C.shield,1); g.fillRect(W/2-90,b.y+b.h+8,180*fr,10); }
+    if(!this.invOpen){ this.invSlotTxt.forEach(t=>t.setVisible(false)); return; }
+    // --- pannello ---
+    const L=this.invSlots(), pn=L.panel;
+    this.hudPanel(g,pn.x,pn.y,pn.w,pn.h,UI.amber,0.9);
+    this.hudBrackets(g,pn.x,pn.y,pn.w,pn.h,UI.amber,16);
+    let ti=0;
+    L.cells.forEach(c=>{
+      const held=this._hold&&this._hold.cell===c&&!this._hold.done;
+      let label='', on=false, cc=0x2a3a38;
+      if(c.kind==='w'){ const w=this.inv.weapons[c.i];
+        if(w!==undefined){ label=WEAPONS[w].name.toUpperCase(); cc=WEAPONS[w].col; on=(w===P.weapon); }
+        else label='\u2013'; }
+      else { const n=(c.kind==='h'?this.inv.heals:this.inv.shields).length;
+        label=(c.kind==='h'?'\u2795 MEDKIT ':'\u26a1 BATTERIA ')+n; cc=(c.kind==='h')?C.player:C.shield; on=n>0; }
+      g.fillStyle(0x08120f,on?0.9:0.5); g.fillRect(c.x,c.y,c.w,c.h);
+      g.lineStyle(on?2:1,cc,on?0.95:0.35); g.strokeRect(c.x,c.y,c.w,c.h);
+      if(c.kind==='w'&&this.inv.weapons[c.i]===P.weapon){ g.lineStyle(2,C.gold,0.9); g.strokeRect(c.x-3,c.y-3,c.w+6,c.h+6); }
+      if(held){ const fr=Math.min(1,(this.time.now-this._hold.t)/INV_HOLD_MS);
+        g.lineStyle(4,C.red,0.95); g.beginPath();
+        g.arc(c.x+c.w/2,c.y+c.h/2,Math.min(c.w,c.h)/2-2,-Math.PI/2,-Math.PI/2+fr*6.283); g.strokePath(); }
+      const t=this.invSlotTxt[ti++]; if(t) t.setPosition(c.x+c.w/2,c.y+c.h/2).setText(label)
+        .setColor(on?'#ffffff':'#5d7a72').setVisible(true).setFontSize(c.kind==='w'?'11px':'12px');
+    });
+    for(;ti<this.invSlotTxt.length;ti++) this.invSlotTxt[ti].setVisible(false);
+    this.invHint.setPosition(pn.x+pn.w/2,pn.y+pn.h-13)
+      .setText('tocca = usa/equipaggia   \u00b7   tieni premuto = butta').setVisible(true);
   }
   drawZone(){
     const g=this.zoneGfx; g.clear(); const z=this.zone;
@@ -3638,6 +3799,8 @@ class Game extends Phaser.Scene{
     if(Phaser.Input.Keyboard.JustDown(this.keys.F)) this.doSwap();
     if(Phaser.Input.Keyboard.JustDown(this.keys.Q)) this.activateAbility();
     if(Phaser.Input.Keyboard.JustDown(this.keys.E)) this.activateUltimate();
+    SFX.setListener(P.s.x,P.s.y);
+    this.invUpdateHold(); this.drawInventory();
     this.drawZone(); this.updateZoneState(delta); this.updateHUD(); this.drawSticks();
   }
 
