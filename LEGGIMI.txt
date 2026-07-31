@@ -1,10 +1,20 @@
-NEXUS ROYALE — DELTA V78 (fix fessure tra le tile)
-===================================================
-1) SOVRASCRIVI in assets/ le 11 PNG nt_*.png (sono state RIGENERATE)
-2) Sostituisci: game.js  sw.js  assets_fallback.js
-3) Svuota cache / reinstalla PWA (cache = v78)
+NEXUS ROYALE — DELTA V80 (fix scontri fuori visuale + buio regolabile)
+======================================================================
+Sostituisci SOLO: game.js  sw.js   (cache -> v80, svuota cache/PWA)
 
-Il problema: nel ritaglio dal foglio avevo incluso il bordo TRASPARENTE attorno a
-ogni tile -> ogni tile era un pelo piu' piccolo di 120px e restava la fessura scura.
-Fix: (1) ritaglio esatto sui soli pixel pieni + alpha forzata a 255 fino al bordo,
-     (2) posa con 2px di sovrapposizione -> le tile combaciano senza fessure.
+IL BUG: il controllo di visibilita' usava il RETTANGOLO DELLO SCHERMO (inView),
+non il cerchio di visuale. Lo schermo e' molto piu' largo del cerchio -> bot e
+giocatore si sparavano stando nel buio. In piu' i bot col mirino saltavano del
+tutto il controllo.
+
+FIX (ora vale per tutti, mirini inclusi):
+- i bot ingaggiano il giocatore SOLO se la distanza sta nel cerchio di visuale
+- la MIRA ASSISTITA non aggancia piu' bersagli fuori dal cerchio
+- l'acquisizione bersaglio dei bot usa lo stesso margine
+
+MANOPOLE per il buio -> righe 10-12 di game.js:
+  FOG_ALPHA  0.72  quanto e' scuro il buio fuori dal cerchio (prima 0.97)
+  FOG_EDGE   0.60  quanto e' scuro l'anello di sfumatura (prima 0.85)
+  VIS_PAD    30    margine oltre il cerchio entro cui ci si puo' ancora ingaggiare
+Cambia i numeri, salva, svuota cache. Piu' bassi = piu' chiaro.
+ATTENZIONE: se alzi VIS_PAD di molto torni ad avere scontri fuori dal cerchio.

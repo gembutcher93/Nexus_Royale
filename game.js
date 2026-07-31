@@ -6,6 +6,11 @@ let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
+// ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
+const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
+const FOG_EDGE=0.60;       // quanto e' scuro l'anello di sfumatura (era 0.85)
+const VIS_PAD=30;          // margine oltre il cerchio entro cui ci si puo' ancora ingaggiare
+// ===================================================================================
 const VISION_MULT={base:1, rifle:1.5, oracle:2.0};
 const TITLE_FONT='"Chakra Petch", "Segoe UI", system-ui, sans-serif';
 // design tokens (touch>=44px, type scale, 8pt spacing, 150-300ms motion)
@@ -1954,8 +1959,8 @@ class Game extends Phaser.Scene{
       const g=ctx.createRadialGradient(S/2,S/2,S*0.30, S/2,S/2,S*0.5);
       g.addColorStop(0,'rgba(2,3,10,0)');
       g.addColorStop(0.72,'rgba(2,3,10,0)');
-      g.addColorStop(0.9,'rgba(2,3,10,0.85)');
-      g.addColorStop(1,'rgba(2,3,10,0.97)');
+      g.addColorStop(0.9,'rgba(2,3,10,'+FOG_EDGE+')');
+      g.addColorStop(1,'rgba(2,3,10,'+FOG_ALPHA+')');
       ctx.fillStyle=g; ctx.fillRect(0,0,S,S);
       cv.refresh();
     }
@@ -1969,7 +1974,7 @@ class Game extends Phaser.Scene{
     const sx=(this.player.s.x-cam.worldView.x)*cam.zoom, sy=(this.player.s.y-cam.worldView.y)*cam.zoom;
     const r=this.visionRadius()*cam.zoom;
     const sc=r/184; this.fog.setPosition(sx,sy).setScale(sc);
-    const g=this.fogBack; g.clear(); g.fillStyle(0x02030a,0.97);
+    const g=this.fogBack; g.clear(); g.fillStyle(0x02030a,FOG_ALPHA);
     const R=256*sc;
     g.fillRect(0,0,W,Math.max(0,sy-R)); g.fillRect(0,sy+R,W,Math.max(0,H-(sy+R)));
     g.fillRect(0,Math.max(0,sy-R),Math.max(0,sx-R),Math.min(2*R,H)); g.fillRect(sx+R,Math.max(0,sy-R),Math.max(0,W-(sx+R)),Math.min(2*R,H));
@@ -2246,29 +2251,66 @@ class Game extends Phaser.Scene{
     // e le strade dritte (nt_str, marciapiede su entrambi i lati) agganciano il neon da sole.
     if(this.textures.exists('nt_x')){
       const TS=120;                                   // lato tile = carreggiata
-      const GX=Math.max(2,Math.round(cw/TS)), GY=Math.max(2,Math.round(ch/TS)); // tile per cella
+      const GX=Math.max(3,Math.round(cw/TS)), GY=Math.max(3,Math.round(ch/TS)); // tile per cella
       const NX=Math.ceil(WORLD_W/TS), NY=Math.ceil(WORLD_H/TS);
       const put=(k,tx,ty,ang)=>{ const im=this.add.image(tx*TS+TS/2,ty*TS+TS/2,k).setDepth(-18.7)
           .setDisplaySize(TS+2,TS+2);          // +2px: i tile si sovrappongono, niente fessure
         if(ang) im.setAngle(ang); return im; };
-      this.roadTile=(tx,ty)=>((tx%GX)===0)||((ty%GY)===0);
-      for(let ty=0;ty<NY;ty++)for(let tx=0;tx<NX;tx++){
-        const rx=(tx%GX)===0, ry=(ty%GY)===0;
-        const lastX=(tx+GX>=NX), lastY=(ty+GY>=NY);
-        if(rx&&ry){
-          // incrocio: X piena, oppure T sui bordi mappa (una strada non prosegue)
-          if(lastX&&!lastY)      put('nt_t',tx,ty,270);
-          else if(lastY&&!lastX) put('nt_t',tx,ty,180);
-          else                   put('nt_x',tx,ty,0);
+      // ---- 1) RETE STRADALE: principali che attraversano tutto + secondarie che
+      //         collegano due principali (i loro estremi diventano T) => caseggiati di misure diverse
+      const R=[]; for(let y=0;y<NY;y++){ R.push(new Array(NX).fill(false)); }
+      const majX=[], majY=[];
+      for(let x=0;x<NX;x+=GX){ majX.push(x); for(let y=0;y<NY;y++) R[y][x]=true; }
+      for(let y=0;y<NY;y+=GY){ majY.push(y); for(let x=0;x<NX;x++) R[y][x]=true; }
+      const rnd=()=>Phaser.Math.FloatBetween(0,1);
+      // secondarie verticali: dentro una fascia fra due principali, span completo fra due orizzontali
+      for(let i=0;i+1<majX.length;i++){
+        const span=majX[i+1]-majX[i]; if(span<6) continue;
+        for(let j=0;j+1<majY.length;j++){
+          if(rnd()>0.45) continue;
+          const x=majX[i]+Math.floor(span/2);
+          for(let y=majY[j];y<=majY[j+1]&&y<NY;y++) R[y][x]=true;
         }
-        else if(rx) put('nt_str',tx,ty,90);           // strada verticale
-        else if(ry) put('nt_str',tx,ty,0);            // strada orizzontale
-        else        put('nt_side',tx,ty,0);           // marciapiede/isolato
       }
-      // strisce pedonali subito prima di ogni incrocio
+      // secondarie orizzontali
+      for(let j=0;j+1<majY.length;j++){
+        const span=majY[j+1]-majY[j]; if(span<6) continue;
+        for(let i=0;i+1<majX.length;i++){
+          if(rnd()>0.45) continue;
+          const y=majY[j]+Math.floor(span/2);
+          for(let x=majX[i];x<=majX[i+1]&&x<NX;x++) R[y][x]=true;
+        }
+      }
+      this.roadTile=(tx,ty)=>!!(R[ty]&&R[ty][tx]);
+      // ---- 2) AUTOTILE: il pezzo lo decidono i vicini (niente rotazioni indovinate) ----
+      // nt_str nativa = strada EST-OVEST ; nt_t nativa = T chiusa a NORD (bracci E,O,S)
+      const isR=(x,y)=>(x>=0&&y>=0&&x<NX&&y<NY&&R[y][x]);
       for(let ty=0;ty<NY;ty++)for(let tx=0;tx<NX;tx++){
-        if((tx%GX)===0 && (ty%GY)===1 && ty+1<NY) put('nt_ped',tx,ty,90).setDepth(-18.66);
-        if((ty%GY)===0 && (tx%GX)===1 && tx+1<NX) put('nt_ped',tx,ty,0).setDepth(-18.66);
+        if(!R[ty][tx]){ put('nt_side',tx,ty,0); continue; }
+        const N=isR(tx,ty-1),S=isR(tx,ty+1),E=isR(tx+1,ty),W=isR(tx-1,ty);
+        const n=(N?1:0)+(S?1:0)+(E?1:0)+(W?1:0);
+        if(n===4) put('nt_x',tx,ty,0);
+        else if(n===3){                                   // T: ruoto verso il lato CHIUSO
+          const ang = !N?0 : (!E?90 : (!S?180:270));
+          put('nt_t',tx,ty,ang);
+        }
+        else if(n===2 && ((N&&E)||(E&&S)||(S&&W)||(W&&N))) put('nt_x',tx,ty,0);  // curva (angoli mappa): X, i bracci in piu' cadono fuori
+        else if(N||S) put('nt_str',tx,ty,90);             // verticale (anche vicolo cieco)
+        else put('nt_str',tx,ty,0);                       // orizzontale
+      }
+      // ---- 3) strisce pedonali sugli avvicinamenti agli incroci principali ----
+      for(const x of majX) for(const y of majY){
+        if(y+1<NY&&R[y+1][x]) put('nt_ped',x,y+1,90).setDepth(-18.66);
+        if(x+1<NX&&R[y][x+1]) put('nt_ped',x+1,y,0).setDepth(-18.66);
+      }
+      // ---- 4) LANDMARK: rotatoria su qualche incrocio grande, pad VTOL su qualche isolato ----
+      for(let i=1;i+1<majX.length;i++)for(let j=1;j+1<majY.length;j++){
+        if(rnd()<0.18) put('nt_round',majX[i],majY[j],0).setDepth(-18.6);
+      }
+      for(let i=0;i+1<majX.length;i++)for(let j=0;j+1<majY.length;j++){
+        if(rnd()>0.2) continue;
+        const px=majX[i]+2, py=majY[j]+2;
+        if(px<NX&&py<NY&&!R[py][px]) put('nt_pad',px,py,0).setDepth(-18.6);
       }
       return;
     }
@@ -3532,8 +3574,11 @@ class Game extends Phaser.Scene{
       if(!firing&&ml>0.1) aimAng=Math.atan2(mvy,mvx);
     } else {
       const w=WEAPONS[P.weapon]; const view=this.cameras.main.worldView; let best=null,bd=w.range;
+      const VR=this.visionRadius()+VIS_PAD;
       this.units.forEach(u=>{ if(u===P||!u.alive) return; if(!view.contains(u.s.x,u.s.y)) return;
-        const d=Phaser.Math.Distance.Between(P.s.x,P.s.y,u.s.x,u.s.y); if(d<bd){bd=d;best=u;} });
+        const d=Phaser.Math.Distance.Between(P.s.x,P.s.y,u.s.x,u.s.y);
+        if(d>VR) return;                       // fuori dal cerchio di visuale: non lo vedi, non gli spari
+        if(d<bd){bd=d;best=u;} });
       if(best){ aimAng=Phaser.Math.Angle.Between(P.s.x,P.s.y,best.s.x,best.s.y); firing=true; } else if(ml>0.1) aimAng=Math.atan2(mvy,mvx);
     }
     P.aim=aimAng; P.s.setRotation(aimAng); if(firing) this.shoot(P,aimAng);
@@ -3625,7 +3670,7 @@ class Game extends Phaser.Scene{
         let tgt=null,td=(SCOPED[u.weapon]?w.range:Math.min(w.range,600))*1.05; this.units.forEach(o=>{ if(o===u||!o.alive) return; if(o.cloak>time) return;
           const d=Phaser.Math.Distance.Between(s.x,s.y,o.s.x,o.s.y);
           // fair vision: a bot can only see the PLAYER within the shared vision circle
-          if(o.isPlayer && d>this.visionRadius()+30) return;
+          if(o.isPlayer && d>this.visionRadius()+VIS_PAD) return;
           if(d<td){td=d;tgt=o;} });
         ai.tgt=tgt;
         let lt=null,ld=300; if(w.tier<2||u.hp<60){ this.loot.getChildren().forEach(l=>{ if(!l.active) return; const d=Phaser.Math.Distance.Between(s.x,s.y,l.x,l.y); if(d<ld){ld=d;lt=l;} }); }
@@ -3666,8 +3711,9 @@ class Game extends Phaser.Scene{
     return x>v.x-m && x<v.right+m && y>v.y-m && y<v.bottom+m; }
 
   botShoot(u,tgt){ const w=WEAPONS[u.weapon]; const d=Phaser.Math.Distance.Between(u.s.x,u.s.y,tgt.s.x,tgt.s.y); if(d>w.range) return;
-    // fairness: a non-scoped bot can only fire at the player if it's on the player's screen
-    if(tgt.isPlayer && !SCOPED[u.weapon] && !this.inView(u.s.x,u.s.y,0)) return;
+    // regola: scontro col giocatore SOLO dentro il cerchio di visuale condiviso (mirini inclusi)
+    if(tgt.isPlayer && d>this.visionRadius()+VIS_PAD) return;
+    if(u.isPlayer && d>this.visionRadius()+VIS_PAD) return;
     // PERF: bot-vs-bot fights off screen are resolved abstractly (no bullets, no particles)
     if(!tgt.isPlayer && !this.inView(u.s.x,u.s.y) && !this.inView(tgt.s.x,tgt.s.y)){
       if(this.time.now-u.lastShot < w.rate) return; u.lastShot=this.time.now;
