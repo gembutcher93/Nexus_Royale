@@ -5,7 +5,7 @@ let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v90';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v91';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -14,6 +14,10 @@ const VIS_PAD=30;          // margine oltre il cerchio entro cui ci si puo' anco
 const INV_WPN=4;           // armi che stanno nello zaino
 const INV_CONS=3;          // medkit / batterie per tipo
 const INV_USE_MS=1000;     // tempo per usare un consumabile dallo zaino (1s)
+const NIGHT_STR=0.62;      // FORZA del filtro notte (0 = giorno, 1 = notte fonda). Prova 0.45-0.75
+const NIGHT_COL=0x2a4468;  // COLORE della notte (blu-notte). Piu' verde: 0x2c5450 · piu' viola: 0x3a3070
+const LAMP_N=180;          // quanti lampioni sparsi per la citta'
+const LAMP_R=190;          // raggio della bolla di luce di ogni lampione
 const INV_HOLD_MS=420;     // quanto tenere premuto per BUTTARE un oggetto          // margine oltre il cerchio entro cui ci si puo' ancora ingaggiare
 // ===================================================================================
 const VISION_MULT={base:1, rifle:1.5, oracle:2.0};
@@ -2384,6 +2388,22 @@ class Game extends Phaser.Scene{
         const px=majX[i]+2, py=majY[j]+2;
         if(px<NX&&py<NY&&!R[py][px]) put('nt_pad',px,py,0).setDepth(-18.6);
       }
+      // ---- LAMPIONI lungo le strade: sono le bolle di luce che bucano la notte ----
+      this.lamps=[];
+      const cand=[];
+      for(let ty=1;ty<NY-1;ty++)for(let tx=1;tx<NX-1;tx++){
+        if(!R[ty][tx]) continue;
+        // metto il lampione sul bordo strada/marciapiede (dove c'e' un isolato accanto)
+        if(!R[ty][tx+1]) cand.push({x:tx*TS+TS-14, y:ty*TS+TS/2});
+        else if(!R[ty+1]||!R[ty+1][tx]) cand.push({x:tx*TS+TS/2, y:ty*TS+TS-14});
+      }
+      Phaser.Utils.Array.Shuffle(cand);
+      const nL=Math.min(LAMP_N,cand.length);
+      for(let i=0;i<nL;i++){ const p=cand[i];
+        const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.gold]);
+        this.lamps.push({x:p.x,y:p.y,col:col,r:LAMP_R*Phaser.Math.FloatBetween(0.8,1.25)});
+        const b=this.add.circle(p.x,p.y,3.5,col,0.95).setDepth(-18.4); if(this.toWorld) this.toWorld(b);
+      }
       return;
     }
     // carreggiata = larghezza NATIVA del tile strada (i tile di Gem si agganciano gia' a questa misura)
@@ -3221,6 +3241,30 @@ class Game extends Phaser.Scene{
     const s=this.add.image(x,y,'glow').setTint(0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(12).setDisplaySize(30,30); if(this.toWorld) this.toWorld(s);
     this.tweens.add({targets:s,alpha:0,scale:0.2,duration:130,onComplete:()=>s.destroy()}); }
 
+  // ---- FILTRO NOTTE: uno strato scuro in MOLTIPLICA sopra tutto il mondo, cosi' strade,
+  // palazzi, interni e arredi finiscono sotto la STESSA luce (e i colori si uniformano).
+  // I lampioni ci bucano dei cerchi di luce sfumati. Manopole: NIGHT_STR / NIGHT_COL / LAMP_R.
+  drawNight(){
+    if(!this.nightG||NIGHT_STR<=0) return;
+    const cam=this.cameras.main, v=cam.worldView;
+    const g=this.nightG; g.clear();
+    // NIGHT_STR mescola tra bianco (nessun effetto) e NIGHT_COL (notte piena)
+    if(this._nightCol===undefined){
+      const t=Phaser.Math.Clamp(NIGHT_STR,0,1);
+      const r=Math.round(255+( ((NIGHT_COL>>16)&255) -255)*t);
+      const gg=Math.round(255+( ((NIGHT_COL>>8)&255)  -255)*t);
+      const b=Math.round(255+( (NIGHT_COL&255)        -255)*t);
+      this._nightCol=(r<<16)|(gg<<8)|b;
+    }
+    g.fillStyle(this._nightCol,1); g.fillRect(v.x-40,v.y-40,v.width+80,v.height+80);
+    // i lampioni schiariscono: buchi sfumati nello strato notte
+    const lg=this.lampG; lg.clear();
+    if(this.lamps) this.lamps.forEach(L=>{
+      if(L.x<v.x-L.r||L.x>v.right+L.r||L.y<v.y-L.r||L.y>v.bottom+L.r) return;
+      for(let k=4;k>=1;k--){ lg.fillStyle(L.col,0.055*k/4); lg.fillCircle(L.x,L.y,L.r*(k/4)); }
+      lg.fillStyle(0xfff0d0,0.10); lg.fillCircle(L.x,L.y,L.r*0.16);
+    });
+  }
   // Le sprite hanno sempre la stessa arma in mano: prolungo la canna di qualche pixel
   // e coloro la punta col colore dell'arma equipaggiata. Cosi' si capisce a colpo d'occhio
   // chi ha cosa, senza rifare le sprite.
@@ -3633,6 +3677,9 @@ class Game extends Phaser.Scene{
     // ability button
     const ax=W-54, ay=this.scale.height-58; this.abBtn={x:ax,y:ay,r:40};
     // ---- ZAINO: grafica + testi ----
+    this.nightG=this.add.graphics().setDepth(5.4).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    this.lampG=this.add.graphics().setDepth(5.5).setBlendMode(Phaser.BlendModes.ADD);
+    if(this.toWorld){ this.toWorld(this.nightG); this.toWorld(this.lampG); }
     this.muzG=this.add.graphics().setDepth(6); if(this.toWorld) this.toWorld(this.muzG);
     this.invG=this.add.graphics().setScrollFactor(0).setDepth(205);
     this.buildTxt=this.add.text(16,68,'BUILD '+BUILD,{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'900',
@@ -3975,7 +4022,7 @@ class Game extends Phaser.Scene{
     if(Phaser.Input.Keyboard.JustDown(this.keys.Q)) this.activateAbility();
     if(Phaser.Input.Keyboard.JustDown(this.keys.E)) this.activateUltimate();
     SFX.setListener(P.s.x,P.s.y);
-    this.invUpdateHold(); this.drawInventory(); this.updateCityProps(); this.drawFeed(); this.drawMuzzles();
+    this.invUpdateHold(); this.drawInventory(); this.updateCityProps(); this.drawFeed(); this.drawNight(); this.drawMuzzles();
     this.drawZone(); this.updateZoneState(delta); this.updateHUD(); this.drawSticks();
   }
 

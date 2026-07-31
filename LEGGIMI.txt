@@ -1,15 +1,23 @@
-NEXUS ROYALE — DELTA V90   (a schermo: BUILD v90)
-==================================================
+NEXUS ROYALE — DELTA V91  ·  CITTA' NOTTURNA   (a schermo: BUILD v91)
+=====================================================================
 Sostituisci: game.js  sw.js  index.html
 
-1) BUG SKIN RISOLTO — la skin si vedeva col paracadute e spariva all'atterraggio.
-   Ora viene RI-APPLICATA all'inizio partita (goLive), quindi resta per tutta la partita.
+IL PUNTO: il "miscuglio di stili" non si risolve rifacendo le tile, ma mettendole
+tutte sotto la STESSA LUCE. Ora c'e' un filtro notte su tutto il mondo: strade,
+palazzi, interni e arredi finiscono nella stessa palette e la citta' torna notturna.
 
-2) BOSS DORATO — non piu' una tinta rossastra: se esiste usa la variante SOLAR
-   (la skin dorata cotta) del personaggio, altrimenti un oro pieno. In piu' ha
-   un'AURA DORATA che lo segue, cosi' lo riconosci anche nel buio.
-   Resta il puntino oro sulla minimappa.
+1) FILTRO NOTTE — uno strato blu-notte in "moltiplica" sopra tutto il mondo.
+   Uniforma i colori di TUTTO senza toccare un solo asset.
 
-3) PARACADUTE NUOVO, VISTO DALL'ALTO — disegnato a codice (nessun asset da fare):
-   disco con 8 spicchi alternati, tre anelli neon concentrici, 8 funi/raggi e mozzo
-   centrale. Tema cyberpunk, colori del gioco. E' piu' grande (72px) e si legge bene.
+2) LAMPIONI RITROVATI — erano spariti! Il ramo nuovo delle strade usciva prima di
+   arrivare al codice che li disegnava: ecco perche' la mappa era piatta e chiara.
+   Ora sono di nuovo lungo le strade, sul bordo del marciapiede, e ognuno buca la
+   notte con una BOLLA DI LUCE sfumata (ciano / magenta / oro).
+
+3) LE MANOPOLE (righe 17-20 di game.js) — cambia, salva, ricarica:
+      NIGHT_STR = 0.62   forza della notte. 0 = giorno · 0.45 tenue · 0.75 notte fonda
+      NIGHT_COL = 0x2a4468  colore della notte (blu).
+                            piu' verde -> 0x2c5450 · piu' viola -> 0x3a3070
+      LAMP_N    = 180    quanti lampioni
+      LAMP_R    = 190    quanto e' grande la bolla di luce
+   Consiglio: prova prima NIGHT_STR a 0.5 e 0.7 e scegli, poi tara il colore.
