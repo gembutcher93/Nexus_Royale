@@ -1,22 +1,21 @@
-NEXUS ROYALE — DELTA V88   (leggerai BUILD v88 a schermo)
-==========================================================
+NEXUS ROYALE — DELTA V89   (a schermo: BUILD v89)
+==================================================
 Sostituisci: game.js  sw.js  index.html
 
-1) ICONA AUDIO spostata piu' a destra: non invade piu' la barra della salute.
+1) PUNTA DELL'ARMA sulla sprite — come avevi chiesto: la canna viene PROLUNGATA di
+   qualche pixel neri e la punta e' un puntino del COLORE dell'arma equipaggiata,
+   con un piccolo alone. La lunghezza cambia con l'arma:
+   pistola corta · smg/rifle media · fucili grossi lunga · cecchino la piu' lunga.
+   Vale per TUTTI (anche i bot): capisci a colpo d'occhio chi ha cosa in mano.
+   Segue la direzione di mira. Se vuoi piu'/meno lunghezza si cambia un numero.
 
-2) KILL FEED — sotto la minimappa compaiono le ultime 5 eliminazioni della partita
-   ("KORR-42 ▸ NYX-17 · SMG"), le tue in ORO, le altre in verde tenue, e sbiadiscono
-   dopo 7 secondi. Ogni bot ha ora un suo nome.
+2) BOSS piu' trovabile: probabilita' da 4% a 11%, e ora e' SEMPRE VISIBILE sulla
+   minimappa con un puntino ORO cerchiato -> diventa un obiettivo da cacciare
+   (e il rischio di trovarci gia' un altro bot sopra fa parte del gioco).
 
-3) CHI TI HA UCCISO — nella schermata di fine partita, se muori, ora c'e' la riga
-   "Ucciso da: NOME · ARMA".
+3) SCHERMATA FINE: la riga lunga che sforava ai lati e' ora
+   "skin, operatori o invia a InkAnimus".
 
-4) PERSONALITA' DEI BOT — non sono piu' tutti uguali:
-   CAMPER (18%)     si muove poco, aspetta in agguato, non scappa
-   VIGLIACCO (20%)  ti vede da lontano ma fugge, corre di piu'
-   CACCIATORE (8%)  ti cerca, raggio di ingaggio piu' lungo
-   NORMALE          come prima
-   BOSS (4%)        tinta ORO, piu' grande, quasi il doppio di vita e piu' scudo.
-                    Quando lo abbatti lascia LOOT RARO (arma top + cura + scudo)
-                    e ti avvisa con "BOSS ABBATTUTO".
-   La personalita' cambia raggio di vista, coraggio (quando scappa) e velocita'.
+NOTA sul replay di chi ti ha ucciso: per ora c'e' solo la riga "Ucciso da NOME · ARMA".
+Un vero killcam va fatto a parte (serve registrare le ultime posizioni): quando vuoi lo
+mettiamo in cantiere.

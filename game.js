@@ -5,7 +5,7 @@ let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v88';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v89';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -3203,6 +3203,26 @@ class Game extends Phaser.Scene{
     const s=this.add.image(x,y,'glow').setTint(0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(12).setDisplaySize(30,30); if(this.toWorld) this.toWorld(s);
     this.tweens.add({targets:s,alpha:0,scale:0.2,duration:130,onComplete:()=>s.destroy()}); }
 
+  // Le sprite hanno sempre la stessa arma in mano: prolungo la canna di qualche pixel
+  // e coloro la punta col colore dell'arma equipaggiata. Cosi' si capisce a colpo d'occhio
+  // chi ha cosa, senza rifare le sprite.
+  drawMuzzles(){
+    const g=this.muzG; if(!g) return; g.clear();
+    const cam=this.cameras.main, vw=cam.worldView, now=this.time.now;
+    this.units.forEach(u=>{ if(!u.alive||!u.s) return;
+      if(u.s.x<vw.x-60||u.s.x>vw.right+60||u.s.y<vw.y-60||u.s.y>vw.bottom+60) return;
+      if(!u.isPlayer && u.cloak>now) return;
+      const w=WEAPONS[u.weapon]; if(!w) return;
+      const a=u.s.rotation;
+      const base=17;                                  // dove finisce la canna nella sprite
+      const len=base+(SCOPED[u.weapon]?16:(w.tier>=3?11:(w.tier>=2?7:3)));  // piu' e' grossa, piu' e' lunga
+      const x0=u.s.x+Math.cos(a)*base,  y0=u.s.y+Math.sin(a)*base;
+      const x1=u.s.x+Math.cos(a)*len,   y1=u.s.y+Math.sin(a)*len;
+      g.lineStyle(4,0x0a0d10,0.95); g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y1); g.strokePath();  // canna nera
+      g.fillStyle(w.col,1); g.fillCircle(x1,y1,2.6);                                                   // punta colorata
+      g.fillStyle(w.col,0.25); g.fillCircle(x1,y1,5);
+    });
+  }
   bestWeaponKey(){ let best=null,bt=-1;
     for(const k in WEAPONS){ if(WEAPONS[k].tier>bt){ bt=WEAPONS[k].tier; best=k; } } return best; }
   unitName(u){ if(!u) return 'ZONA'; if(u.isPlayer) return 'TU';
@@ -3594,6 +3614,7 @@ class Game extends Phaser.Scene{
     // ability button
     const ax=W-54, ay=this.scale.height-58; this.abBtn={x:ax,y:ay,r:40};
     // ---- ZAINO: grafica + testi ----
+    this.muzG=this.add.graphics().setDepth(6); if(this.toWorld) this.toWorld(this.muzG);
     this.invG=this.add.graphics().setScrollFactor(0).setDepth(205);
     this.buildTxt=this.add.text(16,68,'BUILD '+BUILD,{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'900',
       color:'#ffc247',backgroundColor:'#000000'}).setScrollFactor(0).setDepth(230);
@@ -3656,7 +3677,9 @@ class Game extends Phaser.Scene{
     this.units.forEach(u=>{ if(u.isPlayer||!u.alive) return;
       if(u.scan>tnow){ mg.fillStyle(C.green,1); mg.fillCircle(x+u.s.x*sx,y+u.s.y*sy,2.5); }
       else if(revealAll){ mg.fillStyle(0x3df2b4,0.95); mg.fillCircle(x+u.s.x*sx,y+u.s.y*sy,2.5); }
-      else if(u.markedUntil>tnow){ mg.fillStyle(0x33e1ff,1); mg.fillCircle(x+u.s.x*sx,y+u.s.y*sy,2.5); } });
+      else if(u.markedUntil>tnow){ mg.fillStyle(0x33e1ff,1); mg.fillCircle(x+u.s.x*sx,y+u.s.y*sy,2.5); }
+      if(u.isBoss){ mg.fillStyle(0xffc247,1); mg.fillCircle(x+u.s.x*sx,y+u.s.y*sy,3.2);
+        mg.lineStyle(1,0xffc247,0.5); mg.strokeCircle(x+u.s.x*sx,y+u.s.y*sy,5.5); } });
     // player arrow
     const pxm=x+this.player.s.x*sx, pym=y+this.player.s.y*sy, a=this.player.aim;
     mg.fillStyle(C.player,1);
@@ -3933,7 +3956,7 @@ class Game extends Phaser.Scene{
     if(Phaser.Input.Keyboard.JustDown(this.keys.Q)) this.activateAbility();
     if(Phaser.Input.Keyboard.JustDown(this.keys.E)) this.activateUltimate();
     SFX.setListener(P.s.x,P.s.y);
-    this.invUpdateHold(); this.drawInventory(); this.updateCityProps(); this.drawFeed();
+    this.invUpdateHold(); this.drawInventory(); this.updateCityProps(); this.drawFeed(); this.drawMuzzles();
     this.drawZone(); this.updateZoneState(delta); this.updateHUD(); this.drawSticks();
   }
 
@@ -3965,7 +3988,7 @@ class Game extends Phaser.Scene{
         else if(r<=38){ ai.kind='vigliacco'; ai.see=1.10; ai.brave=0.45; ai.spd=1.18; } // ti vede da lontano ma scappa
         else if(r<=46){ ai.kind='cacciatore'; ai.see=1.25; ai.brave=1.15; ai.spd=1.08; } // ti cerca
         else { ai.kind='normale'; ai.see=1; ai.brave=1; ai.spd=1; }
-        if(Phaser.Math.Between(1,100)<=4){ ai.kind='boss'; ai.see=1.3; ai.brave=1.6; ai.spd=1.0;
+        if(Phaser.Math.Between(1,100)<=11){ ai.kind='boss'; ai.see=1.3; ai.brave=1.6; ai.spd=1.0;
           u.hp=u.maxhp=Math.round(u.maxhp*1.8); u.shield=u.maxshield=Math.round((u.maxshield||50)*1.6);
           u.isBoss=true; u.s.setTint(0xffc247); u.s.setScale(u.s.scaleX*1.18); }
       }
@@ -4068,7 +4091,7 @@ class Game extends Phaser.Scene{
     const boxY=H*0.635, boxW=Math.min(340,W*0.86);
     this.add.rectangle(cx,boxY,boxW,46,0x08120e,0.7).setStrokeStyle(1,0x1b3a33).setScrollFactor(0).setDepth(300);
     this.add.text(cx,boxY-10,'totale profilo:  💠 '+r.total,{fontFamily:TITLE_FONT,fontSize:'14px',color:'#ffc247',fontStyle:'900',padding:{top:4,bottom:2}}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
-    this.add.text(cx,boxY+11,'usali per skin/operatori o inviali a InkAnimus',{fontSize:'12px',color:'#7fa79b',align:'center'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
+    this.add.text(cx,boxY+11,'skin, operatori o invia a InkAnimus',{fontSize:'12px',color:'#7fa79b',align:'center'}).setOrigin(0.5).setScrollFactor(0).setDepth(301);
     const copy=this.add.rectangle(cx,H*0.78,Math.min(300,W*0.7),46,0x0e1f1a).setStrokeStyle(2,r.wasChallenge?C.magenta:C.gold).setScrollFactor(0).setDepth(301).setInteractive({useHandCursor:true});
     const copyT=this.add.text(cx,H*0.78,r.wasChallenge?'⚔  COPIA RISULTATO SFIDA':'⧉  COPIA CODICE',{fontSize:'14px',color:r.wasChallenge?'#ff3355':'#ffc247',fontStyle:'800'}).setOrigin(0.5).setScrollFactor(0).setDepth(302);
     if(r.wasChallenge && Profile.data._lastResult){
