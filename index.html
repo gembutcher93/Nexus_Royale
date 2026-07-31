@@ -22,10 +22,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
-<script src="assets_fallback.js"></script>
-<script src="game.js"></script>
+<script src="assets_fallback.js?v=84"></script>
+<script src="game.js?v=84"></script>
 <script>
-  if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
+  if('serviceWorker' in navigator){ window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      reg.update();                                   // controlla subito se c'e' una build nuova
+      reg.addEventListener('updatefound',()=>{ const w=reg.installing; if(!w) return;
+        w.addEventListener('statechange',()=>{        // build nuova pronta -> ricarica una volta sola
+          if(w.state==='installed' && navigator.serviceWorker.controller && !sessionStorage.getItem('nr_reloaded')){
+            sessionStorage.setItem('nr_reloaded','1'); location.reload(); } }); });
+    }).catch(()=>{});
+  }); }
 </script>
 </body>
 </html>

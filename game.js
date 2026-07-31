@@ -3259,7 +3259,8 @@ class Game extends Phaser.Scene{
   }
   // ---------- ZAINO ----------
   invInit(){ this.inv={weapons:[this.player.weapon],heals:[],shields:[]}; this.invOpen=false; this.invFlashT=0; }
-  invFlash(){ this.invFlashT=this.time.now+900; SFX.ui(); }
+  invFlash(){ const n=this.time.now; this.invFlashT=n+900;
+    if(!this._flashBip||n>this._flashBip){ this._flashBip=n+1000; SFX.ui(); } }
   invEquip(i){ const P=this.player, w=this.inv.weapons[i]; if(w===undefined||w===P.weapon) return;
     const old=P.weapon; P.weapon=w; this.inv.weapons[i]=old; SFX.pickup();
     this.toast('\u25b2 '+WEAPONS[w].name.toUpperCase(),WEAPONS[w].col); this.setPlayerZoom(); }
