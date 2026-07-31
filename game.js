@@ -5,7 +5,7 @@ let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v86';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v87';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -3552,7 +3552,7 @@ class Game extends Phaser.Scene{
     this.hud.zone=this.add.text(W-this.mm.size/2-12,this.mm.y+this.mm.size+14,'',{fontSize:'13px',color:'#ff8a9c',fontStyle:'800'}).setOrigin(0.5,0).setScrollFactor(0).setDepth(151);
     this.mmImg=this.add.image(this.mm.x,this.mm.y,'mmTex').setOrigin(0).setDisplaySize(this.mm.size,this.mm.size).setScrollFactor(0).setDepth(149).setAlpha(GAME.mmAlpha);
     this.mmGfx=this.add.graphics().setScrollFactor(0).setDepth(150).setAlpha(GAME.mmAlpha);
-    this.muteBtn=this.add.text(16+Math.min(200,this.scale.width-this.mm.size-76)+22,92,SFX.on?'\u266a':'\u266a\u0338',{fontFamily:TITLE_FONT,fontSize:'20px',color:SFX.on?'#3df2b4':'#54706a',fontStyle:'900',backgroundColor:'#08120e',padding:{x:8,y:6}}).setOrigin(0.5,0).setScrollFactor(0).setDepth(208).setInteractive({useHandCursor:true});
+    this.muteBtn=this.add.text(this.mm.x-26,26,SFX.on?'\u266a':'\u266a\u0338',{fontFamily:TITLE_FONT,fontSize:'20px',color:SFX.on?'#3df2b4':'#54706a',fontStyle:'900',backgroundColor:'#08120e',padding:{x:8,y:6}}).setOrigin(0.5,0).setScrollFactor(0).setDepth(208).setInteractive({useHandCursor:true});
     this.muteBtn.on('pointerdown',()=>{ const on=SFX.toggle(); this.muteBtn.setText(on?'\u266a':'\u266a\u0338').setColor(on?'#3df2b4':'#54706a'); if(on&&this.phase==='live') SFX.music(true); });
     // weapon swap: spostato a META' SCHERMO sulla destra (zona "OK" del pollice),
     // ben separato dal tasto abilita' che resta nel terzo basso.

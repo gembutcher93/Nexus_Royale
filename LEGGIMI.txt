@@ -1,18 +1,12 @@
-NEXUS ROYALE — DELTA V86
+NEXUS ROYALE — DELTA V87
 =========================
-Copia in assets/ le 11 PNG nt_*.png (rigenerate, allineate)
-Sostituisci: game.js  sw.js  index.html  assets_fallback.js     (cache -> v86)
+Sostituisci: game.js  sw.js  index.html      (in alto a schermo leggerai BUILD v87)
 
-1) ZAINO RISOLTO — era esattamente come avevi capito tu.
-   Il gioco ha una telecamera separata per l'interfaccia, e gli oggetti dello zaino
-   non erano registrati li' dentro: restavano agganciati alla telecamera del MONDO.
-   Per questo con lo zoom del rifle si ingrandivano, e per questo dovevi cliccare in un
-   punto vuoto (il pannello era disegnato in un posto, la zona di tocco in un altro).
-   Ora invG / testi / pannello stanno sulla telecamera UI, come le barre della vita.
+1) ICONA AUDIO spostata in alto al centro, tra la barra della salute e VIVI/KILL,
+   piu' a portata di pollice.
 
-2) STRADE — dove la strada GIRA non mette piu' la X: ora usa la L (nt_cor) con la
-   rotazione giusta. E i vicoli ciechi usano la T al posto di un dritto interrotto.
-
-3) In alto a sinistra ora c'e' scritto "BUILD v86": cosi' in un colpo d'occhio sappiamo
-   quale versione stai giocando. ATTENZIONE: tu hai DUE deploy,
-   1993.workers.dev e nexus-royale.morbo1993.workers.dev -> aggiorna quello che provi.
+2) SCHERMO INTERO: al PRIMO tocco sullo schermo il gioco va a tutto schermo e
+   sparisce la barra dell'indirizzo. I browser lo consentono solo dopo un gesto
+   dell'utente, per questo non puo' partire da solo al caricamento.
+   Se lo apri dalla PWA installata (icona in home) parte gia' senza barra.
+   Provo anche a bloccare l'orientamento in verticale dove il browser lo permette.
