@@ -456,6 +456,9 @@ class Boot extends Phaser.Scene{
     ['sw_tl','sw_t','sw_tr','sw_l','sw_c','sw_r','sw_bl','sw_b','sw_br','sw_f'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
+    ['ct_radar','ct_cam','ct_chip','ct_portal','ct_remains'].forEach(k=>{
+      this.load.image(k,'assets/'+k+'.png');
+    });
     ['nt_asf','nt_str','nt_ped','nt_edge','nt_cor','nt_side','nt_t','nt_t2','nt_x','nt_round','nt_pad'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
@@ -1834,7 +1837,7 @@ class Game extends Phaser.Scene{
     this.cameras.main.setBackgroundColor(C.bg);
 
     this.physics.add.overlap(this.bullets,this.walls,(b,w)=>this.onBulletWall(b,w));
-    this.useUntil=0; this.useKind=null; this.invInit();
+    this.useUntil=0; this.useKind=null; this.invInit(); this.spawnCityProps();
     this.physics.add.overlap(this.player.s,this.loot,(s,l)=>this.pickup(this.player,l));
 
     // vignette (screen space)
@@ -3187,6 +3190,8 @@ class Game extends Phaser.Scene{
 
   killUnit(u,by){
     if(!u.alive) return; u.alive=false; this.aliveCount--;
+    this.dropRemains(u.s.x,u.s.y);
+    if(u.markG){ u.markG.destroy(); u.markG=null; }
     const visible = u.isPlayer || this.inView(u.s.x,u.s.y,80);
     // PERF: off-screen deaths are silent (no particles, no corpse, no tweens)
     if(!visible){
@@ -3525,15 +3530,15 @@ class Game extends Phaser.Scene{
     this.hud.bars=this.add.graphics().setScrollFactor(0).setDepth(150);
     this.hud.hpTxt=this.add.text(0,0,'',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#9dffdd',fontStyle:'900'}).setScrollFactor(0).setDepth(152);
     this.hud.shTxt=this.add.text(0,0,'',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#37d9c8',fontStyle:'900'}).setScrollFactor(0).setDepth(152);
-    this.hud.wpn=this.add.text(20,80,'',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#9dffdd',fontStyle:'900'}).setScrollFactor(0).setDepth(151);
+    this.hud.wpn=this.add.text(20,124,'',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#9dffdd',fontStyle:'900'}).setScrollFactor(0).setDepth(151);
     this.hud.alive=this.add.text(W-14,14,'',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#3df2b4',fontStyle:'900'}).setOrigin(1,0).setScrollFactor(0).setDepth(151);
     this.hud.kills=this.add.text(W-14,38,'',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#7fa79b',fontStyle:'900'}).setOrigin(1,0).setScrollFactor(0).setDepth(151);
     this.mm={size:Math.min(150,W*0.32)}; this.mm.x=W-this.mm.size-12; this.mm.y=66;
     this.hud.zone=this.add.text(W-this.mm.size/2-12,this.mm.y+this.mm.size+14,'',{fontSize:'13px',color:'#ff8a9c',fontStyle:'800'}).setOrigin(0.5,0).setScrollFactor(0).setDepth(151);
     this.mmImg=this.add.image(this.mm.x,this.mm.y,'mmTex').setOrigin(0).setDisplaySize(this.mm.size,this.mm.size).setScrollFactor(0).setDepth(149).setAlpha(GAME.mmAlpha);
     this.mmGfx=this.add.graphics().setScrollFactor(0).setDepth(150).setAlpha(GAME.mmAlpha);
-    this.muteBtn=this.add.text(16,96,SFX.on?'♪ ON':'♪ OFF',{fontFamily:TITLE_FONT,fontSize:T.fXs,color:T.txtMute,fontStyle:'900',backgroundColor:'#08120e',padding:{x:12,y:12}}).setScrollFactor(0).setDepth(151).setInteractive({useHandCursor:true});
-    this.muteBtn.on('pointerdown',()=>{ const on=SFX.toggle(); this.muteBtn.setText(on?'AUDIO ON':'AUDIO OFF'); if(on&&this.phase==='live') SFX.music(true); });
+    this.muteBtn=this.add.text(this.mm.x-30,this.mm.y-2,SFX.on?'\u266a':'\u266a\u0338',{fontFamily:TITLE_FONT,fontSize:'20px',color:SFX.on?'#3df2b4':'#54706a',fontStyle:'900',backgroundColor:'#08120e',padding:{x:8,y:6}}).setOrigin(0.5,0).setScrollFactor(0).setDepth(208).setInteractive({useHandCursor:true});
+    this.muteBtn.on('pointerdown',()=>{ const on=SFX.toggle(); this.muteBtn.setText(on?'\u266a':'\u266a\u0338').setColor(on?'#3df2b4':'#54706a'); if(on&&this.phase==='live') SFX.music(true); });
     // weapon swap: spostato a META' SCHERMO sulla destra (zona "OK" del pollice),
     // ben separato dal tasto abilita' che resta nel terzo basso.
     const swx=W-58, swy=Math.round(this.scale.height*0.50);
@@ -3548,6 +3553,10 @@ class Game extends Phaser.Scene{
     const ax=W-54, ay=this.scale.height-58; this.abBtn={x:ax,y:ay,r:40};
     // ---- ZAINO: grafica + testi ----
     this.invG=this.add.graphics().setScrollFactor(0).setDepth(205);
+    { const b=this.invBarRect();
+      this.invZone=this.add.zone(b.x,b.y,b.w,b.h).setOrigin(0,0).setScrollFactor(0)
+        .setDepth(209).setInteractive({useHandCursor:true});
+      this.invZone.on('pointerdown',()=>{ this.invOpen=!this.invOpen; SFX.ui(); }); }
     this.invTxt=this.add.text(0,0,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#3df2b4'})
       .setOrigin(0.5).setScrollFactor(0).setDepth(206);
     this.invSlotTxt=[]; for(let i=0;i<6;i++) this.invSlotTxt.push(
@@ -3597,7 +3606,11 @@ class Game extends Phaser.Scene{
     mg.lineStyle(1,C.zone,0.9); mg.strokeCircle(x+z.tcx*sx,y+z.tcy*sy,z.tr*sx);
     this.loot.getChildren().forEach(l=>{ if(l.airdrop){ mg.fillStyle(C.gold,1); mg.fillCircle(x+l.x*sx,y+l.y*sy,3); }});
     const tnow=this.time.now;
-    this.units.forEach(u=>{ if(!u.isPlayer&&u.alive&&u.scan>tnow){ mg.fillStyle(C.green,1); mg.fillCircle(x+u.s.x*sx,y+u.s.y*sy,2.5); }});
+    const revealAll=(this.reveal||0)>tnow;
+    this.units.forEach(u=>{ if(u.isPlayer||!u.alive) return;
+      if(u.scan>tnow){ mg.fillStyle(C.green,1); mg.fillCircle(x+u.s.x*sx,y+u.s.y*sy,2.5); }
+      else if(revealAll){ mg.fillStyle(0x3df2b4,0.95); mg.fillCircle(x+u.s.x*sx,y+u.s.y*sy,2.5); }
+      else if(u.markedUntil>tnow){ mg.fillStyle(0x33e1ff,1); mg.fillCircle(x+u.s.x*sx,y+u.s.y*sy,2.5); } });
     // player arrow
     const pxm=x+this.player.s.x*sx, pym=y+this.player.s.y*sy, a=this.player.aim;
     mg.fillStyle(C.player,1);
@@ -3629,6 +3642,67 @@ class Game extends Phaser.Scene{
       this.ultIcon.setColor(uReady?'#ffc247':'#6a6a4a');
     }
   }
+  // ================= CITTA' VIVA: props interattive =================
+  // Radar (rivela sulla minimappa) · Telecamera (marca i nemici in zona) ·
+  // Chip (ricarica l'ultimate) · Portale glitch (teletrasporto a coppie)
+  spawnCityProps(){
+    if(!this.textures.exists('ct_radar')) return;
+    this.props=[]; this.portals=[]; this.reveal=0; this.marked=[];
+    const spots=[];                                   // punti buoni: sui marciapiedi, non in strada
+    for(let i=0;i<420;i++){ const p=this.freeSpot(); if(p) spots.push(p); }
+    const take=()=>spots.length?spots.splice(Phaser.Math.Between(0,spots.length-1),1)[0]:null;
+    const mk=(kind,key,col)=>{ const p=take(); if(!p) return null;
+      const im=this.add.image(p.x,p.y,key).setDepth(0.4).setDisplaySize(52,52); if(this.toWorld) this.toWorld(im);
+      const o={kind:kind,x:p.x,y:p.y,im:im,used:0,col:col};
+      // alone pulsante per farle notare nel buio
+      this.tweens.add({targets:im,alpha:{from:0.75,to:1},duration:900,yoyo:true,repeat:-1});
+      this.props.push(o); return o; };
+    for(let i=0;i<7;i++) mk('radar','ct_radar',0x3df2b4);
+    for(let i=0;i<9;i++) mk('cam','ct_cam',0x33e1ff);
+    for(let i=0;i<14;i++) mk('chip','ct_chip',0xffc247);
+    for(let i=0;i<4;i++){ const a=mk('portal','ct_portal',0xff7a2a), b=mk('portal','ct_portal',0xff7a2a);
+      if(a&&b){ a.link=b; b.link=a; } }
+  }
+  updateCityProps(){
+    if(!this.props||!this.player||!this.player.alive) return;
+    const P=this.player, now=this.time.now;
+    this.props.forEach(o=>{
+      if(!o.im||!o.im.active) return;
+      if(o.used>now) return;
+      const d=Phaser.Math.Distance.Between(P.s.x,P.s.y,o.x,o.y);
+      if(d>44) return;
+      if(o.kind==='radar'){ o.used=now+25000; this.reveal=now+9000;
+        this.toast('\u25c9 RADAR \u00b7 nemici rivelati',0x3df2b4); SFX.tone(700,0.12,'sine',0.12,1100);
+        o.im.setAlpha(0.35); this.time.delayedCall(25000,()=>{ if(o.im.active) o.im.setAlpha(1); }); }
+      else if(o.kind==='cam'){ o.used=now+30000;
+        let n=0; this.units.forEach(u=>{ if(u===P||!u.alive) return;
+          if(Phaser.Math.Distance.Between(o.x,o.y,u.s.x,u.s.y)<620){ u.markedUntil=now+10000; n++; } });
+        this.toast(n?('\u25a3 CAMERA HACKERATA \u00b7 '+n+' segnalati'):'\u25a3 CAMERA \u00b7 zona libera',0x33e1ff);
+        SFX.tone(420,0.09,'square',0.1,900); o.im.setAlpha(0.35);
+        this.time.delayedCall(30000,()=>{ if(o.im.active) o.im.setAlpha(1); }); }
+      else if(o.kind==='chip'){ o.im.destroy(); o.used=1e15;
+        P.ultReady=Math.max(0,(P.ultReady||0)-9000);   // il chip ricarica l'ultimate
+        this.toast('\u2b22 CHIP DATI \u00b7 ultimate ricaricata',0xffc247); SFX.pickup(); }
+      else if(o.kind==='portal' && o.link){ o.used=now+2500; o.link.used=now+2500;
+        const t=o.link; const fx=(x,y)=>{ const g=this.add.image(x,y,'glow').setTint(0xff7a2a)
+            .setBlendMode(Phaser.BlendModes.ADD).setDepth(11).setDisplaySize(70,70); if(this.toWorld) this.toWorld(g);
+          this.tweens.add({targets:g,alpha:0,scale:0.2,duration:340,onComplete:()=>g.destroy()}); };
+        fx(P.s.x,P.s.y); P.s.setPosition(t.x,t.y); if(P.s.body) P.s.body.reset(t.x,t.y); fx(t.x,t.y);
+        this.toast('\u2726 PORTALE',0xff7a2a); SFX.tone(600,0.18,'sine',0.13,1300); }
+    });
+    // marcatore sui nemici scoperti dalla telecamera
+    this.units.forEach(u=>{ if(!u.alive) return;
+      if(u.markedUntil>now){ if(!u.markG){ u.markG=this.add.graphics().setDepth(9); if(this.toWorld) this.toWorld(u.markG); }
+        u.markG.clear(); u.markG.lineStyle(2,0x33e1ff,0.9); u.markG.strokeCircle(u.s.x,u.s.y,26);
+        u.markG.lineStyle(1,0x33e1ff,0.35); u.markG.strokeCircle(u.s.x,u.s.y,34); }
+      else if(u.markG){ u.markG.destroy(); u.markG=null; } });
+  }
+  // resti lasciati dove qualcuno muore: diventano informazione (qui c'e' stato uno scontro)
+  dropRemains(x,y){ if(!this.textures.exists('ct_remains')) return;
+    const im=this.add.image(x,y,'ct_remains').setDepth(0.2).setDisplaySize(58,58).setAlpha(0.9)
+      .setAngle(Phaser.Math.Between(0,359)); if(this.toWorld) this.toWorld(im);
+    this.tweens.add({targets:im,alpha:0.55,duration:9000}); }
+
   // ---------- ZAINO: barra, pannello, tocchi ----------
   invSlots(){ // rettangoli dei posti nel pannello (coordinate schermo)
     const W=this.scale.width, H=this.scale.height;
@@ -3640,10 +3714,11 @@ class Game extends Phaser.Scene{
     out.cells.push({kind:'h',i:0,x:px+20,y:py+38+s+12,w:cw2,h:40});
     out.cells.push({kind:'s',i:0,x:px+40+cw2,y:py+38+s+12,w:cw2,h:40});
     return out; }
-  invBarRect(){ const W=this.scale.width; const w=Math.min(300,W-120); return {x:(W-w)/2,y:96,w:w,h:30}; }
+  invBarRect(){ const W=this.scale.width; const w=Math.min(230,W-this.mm.size-40); return {x:16,y:92,w:w,h:28}; }
   invHitTest(p){
     const b=this.invBarRect();
-    if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h){ this.invOpen=!this.invOpen; SFX.ui(); return true; }
+    // la barra la gestisce la zona interattiva (invZone): qui assorbo soltanto il tocco
+    if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h) return true;
     if(!this.invOpen) return false;
     const L=this.invSlots();
     for(const c of L.cells){ if(p.x>=c.x&&p.x<=c.x+c.w&&p.y>=c.y&&p.y<=c.y+c.h){
@@ -3671,9 +3746,9 @@ class Game extends Phaser.Scene{
       .setText('ZAINO  '+this.inv.weapons.length+'/'+INV_WPN+'   \u2795'+this.inv.heals.length+'   \u26a1'+this.inv.shields.length)
       .setColor(warn?'#ff3355':(this.invOpen?'#ffc247':'#3df2b4')).setVisible(true);
     // --- barra di "sto usando" ---
-    if(this.useUntil>now){ const W=this.scale.width, fr=1-(this.useUntil-now)/INV_USE_MS;
-      g.fillStyle(0x061310,0.8); g.fillRect(W/2-90,b.y+b.h+8,180,10);
-      g.fillStyle(this.useKind==='h'?C.player:C.shield,1); g.fillRect(W/2-90,b.y+b.h+8,180*fr,10); }
+    if(this.useUntil>now){ const fr=1-(this.useUntil-now)/INV_USE_MS;
+      g.fillStyle(0x061310,0.8); g.fillRect(b.x,b.y+b.h+30,b.w,8);
+      g.fillStyle(this.useKind==='h'?C.player:C.shield,1); g.fillRect(b.x,b.y+b.h+30,b.w*fr,8); }
     if(!this.invOpen){ this.invSlotTxt.forEach(t=>t.setVisible(false)); return; }
     // --- pannello ---
     const L=this.invSlots(), pn=L.panel;
@@ -3800,7 +3875,7 @@ class Game extends Phaser.Scene{
     if(Phaser.Input.Keyboard.JustDown(this.keys.Q)) this.activateAbility();
     if(Phaser.Input.Keyboard.JustDown(this.keys.E)) this.activateUltimate();
     SFX.setListener(P.s.x,P.s.y);
-    this.invUpdateHold(); this.drawInventory();
+    this.invUpdateHold(); this.drawInventory(); this.updateCityProps();
     this.drawZone(); this.updateZoneState(delta); this.updateHUD(); this.drawSticks();
   }
 

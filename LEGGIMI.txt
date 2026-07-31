@@ -1,25 +1,14 @@
-NEXUS ROYALE — DELTA V81 (zaino + audio spaziale + UI in gioco)
-================================================================
-Sostituisci SOLO: game.js  sw.js    (cache -> v81, svuota cache/PWA)
+NEXUS ROYALE — DELTA V83 (fix zaino che non si apriva + HUD riordinato)
+=======================================================================
+Sostituisci SOLO: game.js  sw.js   (cache -> v83, svuota cache/PWA)
 
---- 1) ZAINO ---
-Barra "ZAINO" sotto la minimappa: mostra armi x/4, medkit, batterie. Toccala per aprire.
-  TOCCA un'arma      = la equipaggi (quella vecchia torna nello zaino)
-  TOCCA medkit/batt  = la usi (1 secondo, barra di avanzamento sotto la barra zaino)
-  TIENI PREMUTO      = la butti a terra (anellino rosso che si riempie, ~0.4s)
-Raccolta: se hai posto l'arma entra nello zaino AL VOLO (niente prompt).
-Se le 4 armi sono piene: la barra LAMPEGGIA DI ROSSO e ti resta il prompt di scambio.
-Medkit/batterie: se sei sotto meta' vita/scudo li usi SUBITO da terra (resta la frenesia),
-altrimenti entrano nello zaino (max 3 per tipo).
-Manopole righe 13-16 di game.js: INV_WPN=4, INV_CONS=3, INV_USE_MS=1000, INV_HOLD_MS=420
+BUG ZAINO: il vecchio bottone audio ("♪ ON") stava alla STESSA altezza della barra
+zaino e si mangiava il tocco. Ora:
+ - la barra ZAINO ha una VERA area cliccabile (Phaser zone), non piu' un controllo a mano
+ - il bottone audio e' diventato una sola ICONA ♪ spostata in alto vicino alla minimappa
 
---- 2) AUDIO SPAZIALE ---
-Il synth ora e' posizionale: PANNING destra/sinistra + attenuazione con la distanza
-(+ suono piu' cupo se lontano). Gli spari dei bot si sentono da dove partono: senti
-prima di vedere, che e' quello che serve col cerchio di visuale.
-Manopola: SFX.AUD_R (1100) = oltre questa distanza non si sente piu' nulla.
-
---- 3) UI IN GIOCO ---
-I bottoni abilita' e ultimate non sono piu' cerchi generici: ora usano la forma
-OTTAGONALE con angoli tagliati + staffe angolari e la palette del menu
-(mint #3df2b4 / ambra #ffc247), coerenti col resto dell'interfaccia.
+HUD RIORDINATO come da tuo disegno:
+ 1. barre vita/scudo (in alto)
+ 2. subito sotto: barra ZAINO (a sinistra, 16px dal bordo)
+ 3. sotto ancora: arma in uso + AUTO/MANUAL
+ 4. audio: solo icona ♪ in alto a destra, vicino alla minimappa
