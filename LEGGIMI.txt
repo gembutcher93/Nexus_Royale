@@ -1,25 +1,18 @@
-NEXUS ROYALE — DELTA V85
+NEXUS ROYALE — DELTA V86
 =========================
-Sostituisci: game.js  sw.js  index.html      (cache -> v85)
-La V84 E' ARRIVATA (audio spostato + barra scesa sotto la vita = prova che la cache
-ora funziona). Restavano 3 problemi, tutti sistemati qui.
+Copia in assets/ le 11 PNG nt_*.png (rigenerate, allineate)
+Sostituisci: game.js  sw.js  index.html  assets_fallback.js     (cache -> v86)
 
-1) CAMBIO ARMA SBLOCCATO SUBITO (anche se il pannello facesse i capricci):
-   DOPPIO TAP sulla barra ZAINO = passi all'arma successiva dello zaino.
-   Questo funziona a prescindere dal pannello: non resti piu' bloccato.
+1) ZAINO RISOLTO — era esattamente come avevi capito tu.
+   Il gioco ha una telecamera separata per l'interfaccia, e gli oggetti dello zaino
+   non erano registrati li' dentro: restavano agganciati alla telecamera del MONDO.
+   Per questo con lo zoom del rifle si ingrandivano, e per questo dovevi cliccare in un
+   punto vuoto (il pannello era disegnato in un posto, la zona di tocco in un altro).
+   Ora invG / testi / pannello stanno sulla telecamera UI, come le barre della vita.
 
-2) TAP sulla barra = apre/chiude il pannello, e ORA COMPARE UN MESSAGGIO a schermo
-   ("ZAINO APERTO" / "ZAINO CHIUSO").
-   >>> IMPORTANTE, dimmi cosa succede quando tocchi la barra:
-       a) vedo il messaggio ma NIENTE pannello  -> il tocco arriva, e' il disegno
-       b) NON vedo nessun messaggio             -> il tocco non arriva proprio
-   Con questa singola risposta lo chiudo al colpo dopo, senza tirare a indovinare.
-   Ho tolto l'area cliccabile Phaser (non riceveva il tocco) e sono tornato allo stesso
-   percorso dei bottoni ABILITA'/SCATTO, che rispondono di sicuro, con area generosa (+16px).
+2) STRADE — dove la strada GIRA non mette piu' la X: ora usa la L (nt_cor) con la
+   rotazione giusta. E i vicoli ciechi usano la T al posto di un dritto interrotto.
 
-3) SOVRAPPOSIZIONI HUD RISOLTE:
-   - la barra ZAINO non copre piu' "PISTOL · AUTO" (arma spostata a y=128)
-   - l'icona audio non e' piu' addosso alla barra della vita: ora sta accanto alla barra ZAINO
-
-4) Il pannello ora e' protetto: se dovesse dare errore te lo scrive a schermo invece di
-   rompersi in silenzio.
+3) In alto a sinistra ora c'e' scritto "BUILD v86": cosi' in un colpo d'occhio sappiamo
+   quale versione stai giocando. ATTENZIONE: tu hai DUE deploy,
+   1993.workers.dev e nexus-royale.morbo1993.workers.dev -> aggiorna quello che provi.

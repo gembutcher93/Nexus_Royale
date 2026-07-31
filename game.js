@@ -5,6 +5,7 @@ let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
+const BUILD='v86';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -2055,6 +2056,10 @@ class Game extends Phaser.Scene{
     const ui=[this.vig,this.redvig,this.hud.bars,this.hud.hpTxt,this.hud.shTxt,this.hud.wpn,this.hud.alive,this.hud.kills,this.hud.zone,this.hud.toast,this.hud.killfeed,
       this.mmImg,this.mmGfx,this.muteBtn,this.swapG,this.swapIcon,this.swapTxt,this.abG,this.abIcon,this.abLbl,this.ultG,this.ultIcon,this.ultLbl];
     if(this.stickG) ui.push(this.stickG);
+    // ZAINO + build: vanno sulla telecamera dell'INTERFACCIA, altrimenti seguono lo zoom
+    // del mondo (col rifle si ingrandivano e il tocco finiva in un punto diverso dal disegno)
+    [this.invG,this.invTxt,this.invHint,this.buildTxt].forEach(o=>{ if(o) ui.push(o); });
+    if(this.invSlotTxt) this.invSlotTxt.forEach(t=>{ if(t) ui.push(t); });
     this.uiCam=this.cameras.add(0,0,this.scale.width,this.scale.height);
     this.cameras.main.ignore(ui);
     this.uiCam.ignore(this.children.list.filter(o=>ui.indexOf(o)<0));
@@ -2333,7 +2338,16 @@ class Game extends Phaser.Scene{
           const ang = !N?0 : (!E?90 : (!S?180:270));
           put('nt_t',tx,ty,ang);
         }
-        else if(n===2 && ((N&&E)||(E&&S)||(S&&W)||(W&&N))) put('nt_x',tx,ty,0);  // curva (angoli mappa): X, i bracci in piu' cadono fuori
+        else if(n===2 && ((N&&E)||(E&&S)||(S&&W)||(W&&N))){
+          // CURVA: si usa la L (nt_cor), NON la X. nt_cor nativa collega OVEST+SUD.
+          // rotazioni orarie: W+S=0 · N+W=90 · N+E=180 · E+S=270
+          const ang = (W&&S)?0 : ((N&&W)?90 : ((N&&E)?180:270));
+          put(this.textures.exists('nt_cor')?'nt_cor':'nt_x',tx,ty,ang);
+        }
+        else if(n===1){                                   // vicolo cieco: T chiusa dai due lati liberi
+          const ang = N?180 : (S?0 : (E?270:90));
+          put('nt_t',tx,ty,ang);
+        }
         else if(N||S) put('nt_str',tx,ty,90);             // verticale (anche vicolo cieco)
         else put('nt_str',tx,ty,0);                       // orizzontale
       }
@@ -3554,6 +3568,9 @@ class Game extends Phaser.Scene{
     const ax=W-54, ay=this.scale.height-58; this.abBtn={x:ax,y:ay,r:40};
     // ---- ZAINO: grafica + testi ----
     this.invG=this.add.graphics().setScrollFactor(0).setDepth(205);
+    this.buildTxt=this.add.text(16,68,'BUILD '+BUILD,{fontFamily:TITLE_FONT,fontSize:'12px',fontStyle:'900',
+      color:'#ffc247',backgroundColor:'#000000'}).setScrollFactor(0).setDepth(230);
+    if(this.hudEls) this.hudEls.push(this.buildTxt);
 
     this.invTxt=this.add.text(0,0,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#3df2b4'})
       .setOrigin(0.5).setScrollFactor(0).setDepth(206);
