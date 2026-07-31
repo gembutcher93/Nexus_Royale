@@ -5,7 +5,7 @@ let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v89';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v90';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -622,11 +622,26 @@ class Boot extends Phaser.Scene{
     g.fillStyle(C.gold,0.9); g.fillCircle(14,28,5); g.fillCircle(114,28,5);
     g.fillStyle(C.magenta,0.9); g.fillRect(40,20,48,4);
     g.generateTexture('ship',128,56);
-    // parachute canopy
-    g.clear(); g.fillStyle(0x1a1740,1); g.beginPath(); g.arc(28,26,22,Math.PI,0,false); g.closePath(); g.fillPath();
-    g.lineStyle(3,C.cyan,0.9); g.beginPath(); g.arc(28,26,22,Math.PI,0,false); g.strokePath();
-    g.lineStyle(2,0x8891c9,0.8); g.beginPath(); g.moveTo(8,26);g.lineTo(28,48);g.moveTo(48,26);g.lineTo(28,48);g.moveTo(28,26);g.lineTo(28,48); g.strokePath();
-    g.generateTexture('chute',56,56);
+    // PARACADUTE VISTO DALL'ALTO (cyberpunk): disco con spicchi + raggi + anelli neon
+    g.clear();
+    const CC=36, CR=33;
+    g.fillStyle(0x120f2e,0.96); g.fillCircle(CC,CC,CR);                       // telo
+    for(let i=0;i<8;i++){                                                      // spicchi alternati
+      if(i%2) continue;
+      const a0=i*Math.PI/4, a1=a0+Math.PI/4;
+      g.fillStyle(0x1d1a4a,1); g.beginPath(); g.moveTo(CC,CC);
+      g.arc(CC,CC,CR,a0,a1,false); g.closePath(); g.fillPath();
+    }
+    g.lineStyle(2,C.cyan,0.85); g.strokeCircle(CC,CC,CR);                      // bordo neon
+    g.lineStyle(1,C.cyan,0.45); g.strokeCircle(CC,CC,CR*0.66);
+    g.lineStyle(1,C.cyan,0.3);  g.strokeCircle(CC,CC,CR*0.34);
+    g.lineStyle(1.5,C.cyan,0.6);                                               // raggi/funi
+    for(let i=0;i<8;i++){ const a=i*Math.PI/4;
+      g.beginPath(); g.moveTo(CC+Math.cos(a)*7,CC+Math.sin(a)*7);
+      g.lineTo(CC+Math.cos(a)*CR,CC+Math.sin(a)*CR); g.strokePath(); }
+    g.fillStyle(0x02060a,1); g.fillCircle(CC,CC,7);                            // mozzo centrale
+    g.lineStyle(2,C.cyan,0.9); g.strokeCircle(CC,CC,7);
+    g.generateTexture('chute',72,72);
 
     // ---- weapon silhouettes (used on ground loot + HUD) ----
     const drawWpn=(key,col,kind)=>{
@@ -1968,6 +1983,9 @@ class Game extends Phaser.Scene{
 
   goLive(){
     this.phase='live';
+    // la skin cotta va ri-applicata: dopo la discesa qualcosa reimpostava la texture base
+    { const P=this.player, sk=P&&P.skin, bk='spr_'+GAME.char+'_'+((sk&&sk.id)||'base');
+      if(P&&sk&&sk.id!=='base'&&this.textures.exists(bk)){ P.s.setTexture(bk); P.s.setTint(0xffffff); } }
     this.units.forEach(u=>{ u.invuln=false; if(u.gun) u.gun.setVisible(true);
       if(u.s.body && !u.s.body.enable){ u.s.body.enable=true; u.s.body.reset(u.landing.x,u.landing.y); } });
     this.halo.setVisible(true); this.setHUD(true);
@@ -3253,6 +3271,7 @@ class Game extends Phaser.Scene{
     if(u.isPlayer){ this.killedBy={name:this.unitName(by), wpn:(by&&WEAPONS[by.weapon])?WEAPONS[by.weapon].name.toUpperCase():'ZONA'}; }
     this.dropRemains(u.s.x,u.s.y);
     if(u.markG){ u.markG.destroy(); u.markG=null; }
+    if(u.bossHalo){ u.bossHalo.destroy(); u.bossHalo=null; }
     const visible = u.isPlayer || this.inView(u.s.x,u.s.y,80);
     // PERF: off-screen deaths are silent (no particles, no corpse, no tweens)
     if(!visible){
@@ -3990,7 +4009,14 @@ class Game extends Phaser.Scene{
         else { ai.kind='normale'; ai.see=1; ai.brave=1; ai.spd=1; }
         if(Phaser.Math.Between(1,100)<=11){ ai.kind='boss'; ai.see=1.3; ai.brave=1.6; ai.spd=1.0;
           u.hp=u.maxhp=Math.round(u.maxhp*1.8); u.shield=u.maxshield=Math.round((u.maxshield||50)*1.6);
-          u.isBoss=true; u.s.setTint(0xffc247); u.s.setScale(u.s.scaleX*1.18); }
+          u.isBoss=true; u.s.setScale(u.s.scaleX*1.18);
+          const gold=(u.s.texture&&u.s.texture.key?u.s.texture.key:'spr_bot')+'_solar';
+          if(this.textures.exists(gold)){ u.s.setTexture(gold); u.s.setTint(0xffffff); }
+          else u.s.setTint(0xffd066);
+          // aura dorata per riconoscerlo anche nel buio
+          if(this.textures.exists('glow')){ const h=this.add.image(u.s.x,u.s.y,'glow').setTint(0xffc247)
+              .setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(66,66).setAlpha(0.3).setDepth(1);
+            if(this.toWorld) this.toWorld(h); u.bossHalo=h; } }
       }
       const dz=Phaser.Math.Distance.Between(s.x,s.y,this.zone.cx,this.zone.cy);
       if(dz>this.zone.r-140) ai.state='flee';
@@ -4008,6 +4034,7 @@ class Game extends Phaser.Scene{
         ai.lt=lt;
         if(ai.state==='flee'&&dz<this.zone.r-220) ai.state='wander';
       }
+      if(u.bossHalo){ if(u.alive) u.bossHalo.setPosition(s.x,s.y); else { u.bossHalo.destroy(); u.bossHalo=null; } }
       let tgt=ai.tgt; if(tgt&&!tgt.alive){ tgt=ai.tgt=null; }
       let lt=ai.lt; if(lt&&!lt.active){ lt=ai.lt=null; }
       let vx=0,vy=0; const spd=150*(ai.spd||1);

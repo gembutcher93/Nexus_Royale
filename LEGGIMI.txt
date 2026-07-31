@@ -1,21 +1,15 @@
-NEXUS ROYALE — DELTA V89   (a schermo: BUILD v89)
+NEXUS ROYALE — DELTA V90   (a schermo: BUILD v90)
 ==================================================
 Sostituisci: game.js  sw.js  index.html
 
-1) PUNTA DELL'ARMA sulla sprite — come avevi chiesto: la canna viene PROLUNGATA di
-   qualche pixel neri e la punta e' un puntino del COLORE dell'arma equipaggiata,
-   con un piccolo alone. La lunghezza cambia con l'arma:
-   pistola corta · smg/rifle media · fucili grossi lunga · cecchino la piu' lunga.
-   Vale per TUTTI (anche i bot): capisci a colpo d'occhio chi ha cosa in mano.
-   Segue la direzione di mira. Se vuoi piu'/meno lunghezza si cambia un numero.
+1) BUG SKIN RISOLTO — la skin si vedeva col paracadute e spariva all'atterraggio.
+   Ora viene RI-APPLICATA all'inizio partita (goLive), quindi resta per tutta la partita.
 
-2) BOSS piu' trovabile: probabilita' da 4% a 11%, e ora e' SEMPRE VISIBILE sulla
-   minimappa con un puntino ORO cerchiato -> diventa un obiettivo da cacciare
-   (e il rischio di trovarci gia' un altro bot sopra fa parte del gioco).
+2) BOSS DORATO — non piu' una tinta rossastra: se esiste usa la variante SOLAR
+   (la skin dorata cotta) del personaggio, altrimenti un oro pieno. In piu' ha
+   un'AURA DORATA che lo segue, cosi' lo riconosci anche nel buio.
+   Resta il puntino oro sulla minimappa.
 
-3) SCHERMATA FINE: la riga lunga che sforava ai lati e' ora
-   "skin, operatori o invia a InkAnimus".
-
-NOTA sul replay di chi ti ha ucciso: per ora c'e' solo la riga "Ucciso da NOME · ARMA".
-Un vero killcam va fatto a parte (serve registrare le ultime posizioni): quando vuoi lo
-mettiamo in cantiere.
+3) PARACADUTE NUOVO, VISTO DALL'ALTO — disegnato a codice (nessun asset da fare):
+   disco con 8 spicchi alternati, tre anelli neon concentrici, 8 funi/raggi e mozzo
+   centrale. Tema cyberpunk, colori del gioco. E' piu' grande (72px) e si legge bene.
