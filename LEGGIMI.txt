@@ -1,28 +1,25 @@
-NEXUS ROYALE — DELTA V84 (LEGGI QUESTO: risolve "le modifiche non arrivano")
-=============================================================================
-Sostituisci: game.js  sw.js  index.html      <-- index.html e' NUOVO, serve!
+NEXUS ROYALE — DELTA V85
+=========================
+Sostituisci: game.js  sw.js  index.html      (cache -> v85)
+La V84 E' ARRIVATA (audio spostato + barra scesa sotto la vita = prova che la cache
+ora funziona). Restavano 3 problemi, tutti sistemati qui.
 
-PERCHE' LA V83 SEMBRAVA NON AVER FATTO NULLA
-Le modifiche c'erano davvero nel file, ma il tuo telefono non le ha MAI caricate.
-Il service worker era scritto cosi': "cerca prima nella cache, vai in rete solo se
-non trovi". Quindi finche' la vecchia cache esisteva ti serviva il game.js VECCHIO,
-per sempre, anche dopo aver messo i file nuovi online. Non era un problema del gioco.
+1) CAMBIO ARMA SBLOCCATO SUBITO (anche se il pannello facesse i capricci):
+   DOPPIO TAP sulla barra ZAINO = passi all'arma successiva dello zaino.
+   Questo funziona a prescindere dal pannello: non resti piu' bloccato.
 
-COSA CAMBIA ORA (una volta sola, poi non succede piu')
-- sw.js: il CODICE (game.js, assets_fallback.js, index.html) ora e' NETWORK-FIRST:
-  si scarica sempre la versione nuova, e la cache resta solo come rete di sicurezza
-  offline. Le IMMAGINI restano cache-first, quindi il gioco resta veloce.
-- index.html: gli script hanno la versione nel nome (game.js?v=84) e la pagina si
-  ricarica DA SOLA una volta quando trova una build nuova.
-- Dalla prossima build ti bastera' sostituire i file: niente piu' balletti con la cache.
+2) TAP sulla barra = apre/chiude il pannello, e ORA COMPARE UN MESSAGGIO a schermo
+   ("ZAINO APERTO" / "ZAINO CHIUSO").
+   >>> IMPORTANTE, dimmi cosa succede quando tocchi la barra:
+       a) vedo il messaggio ma NIENTE pannello  -> il tocco arriva, e' il disegno
+       b) NON vedo nessun messaggio             -> il tocco non arriva proprio
+   Con questa singola risposta lo chiudo al colpo dopo, senza tirare a indovinare.
+   Ho tolto l'area cliccabile Phaser (non riceveva il tocco) e sono tornato allo stesso
+   percorso dei bottoni ABILITA'/SCATTO, che rispondono di sicuro, con area generosa (+16px).
 
-PRIMA VOLTA (serve per uscire dalla cache vecchia): apri il sito, tira giu' per
-ricaricare 2 volte. Se proprio resiste: impostazioni sito -> cancella dati, oppure
-disinstalla e reinstalla la PWA. Da qui in avanti non servira' piu'.
+3) SOVRAPPOSIZIONI HUD RISOLTE:
+   - la barra ZAINO non copre piu' "PISTOL · AUTO" (arma spostata a y=128)
+   - l'icona audio non e' piu' addosso alla barra della vita: ora sta accanto alla barra ZAINO
 
-FIX ANCHE: il rumore fastidioso che continuava mentre stavi sopra un'arma con lo
-zaino pieno (il bip partiva a ogni frame). Ora suona al massimo una volta al secondo.
-
-DENTRO CI SONO ANCHE LE COSE DELLA V83 (che non hai mai visto):
-  - barra ZAINO con vera area cliccabile -> si apre
-  - HUD riordinato: vita/scudo -> ZAINO a sinistra -> arma+AUTO -> icona audio in alto a destra
+4) Il pannello ora e' protetto: se dovesse dare errore te lo scrive a schermo invece di
+   rompersi in silenzio.

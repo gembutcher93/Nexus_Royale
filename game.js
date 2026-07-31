@@ -3531,14 +3531,14 @@ class Game extends Phaser.Scene{
     this.hud.bars=this.add.graphics().setScrollFactor(0).setDepth(150);
     this.hud.hpTxt=this.add.text(0,0,'',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#9dffdd',fontStyle:'900'}).setScrollFactor(0).setDepth(152);
     this.hud.shTxt=this.add.text(0,0,'',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#37d9c8',fontStyle:'900'}).setScrollFactor(0).setDepth(152);
-    this.hud.wpn=this.add.text(20,124,'',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#9dffdd',fontStyle:'900'}).setScrollFactor(0).setDepth(151);
+    this.hud.wpn=this.add.text(16,128,'',{fontFamily:TITLE_FONT,fontSize:'14px',color:'#9dffdd',fontStyle:'900'}).setScrollFactor(0).setDepth(151);
     this.hud.alive=this.add.text(W-14,14,'',{fontFamily:TITLE_FONT,fontSize:'18px',color:'#3df2b4',fontStyle:'900'}).setOrigin(1,0).setScrollFactor(0).setDepth(151);
     this.hud.kills=this.add.text(W-14,38,'',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#7fa79b',fontStyle:'900'}).setOrigin(1,0).setScrollFactor(0).setDepth(151);
     this.mm={size:Math.min(150,W*0.32)}; this.mm.x=W-this.mm.size-12; this.mm.y=66;
     this.hud.zone=this.add.text(W-this.mm.size/2-12,this.mm.y+this.mm.size+14,'',{fontSize:'13px',color:'#ff8a9c',fontStyle:'800'}).setOrigin(0.5,0).setScrollFactor(0).setDepth(151);
     this.mmImg=this.add.image(this.mm.x,this.mm.y,'mmTex').setOrigin(0).setDisplaySize(this.mm.size,this.mm.size).setScrollFactor(0).setDepth(149).setAlpha(GAME.mmAlpha);
     this.mmGfx=this.add.graphics().setScrollFactor(0).setDepth(150).setAlpha(GAME.mmAlpha);
-    this.muteBtn=this.add.text(this.mm.x-30,this.mm.y-2,SFX.on?'\u266a':'\u266a\u0338',{fontFamily:TITLE_FONT,fontSize:'20px',color:SFX.on?'#3df2b4':'#54706a',fontStyle:'900',backgroundColor:'#08120e',padding:{x:8,y:6}}).setOrigin(0.5,0).setScrollFactor(0).setDepth(208).setInteractive({useHandCursor:true});
+    this.muteBtn=this.add.text(16+Math.min(200,this.scale.width-this.mm.size-76)+22,92,SFX.on?'\u266a':'\u266a\u0338',{fontFamily:TITLE_FONT,fontSize:'20px',color:SFX.on?'#3df2b4':'#54706a',fontStyle:'900',backgroundColor:'#08120e',padding:{x:8,y:6}}).setOrigin(0.5,0).setScrollFactor(0).setDepth(208).setInteractive({useHandCursor:true});
     this.muteBtn.on('pointerdown',()=>{ const on=SFX.toggle(); this.muteBtn.setText(on?'\u266a':'\u266a\u0338').setColor(on?'#3df2b4':'#54706a'); if(on&&this.phase==='live') SFX.music(true); });
     // weapon swap: spostato a META' SCHERMO sulla destra (zona "OK" del pollice),
     // ben separato dal tasto abilita' che resta nel terzo basso.
@@ -3554,10 +3554,7 @@ class Game extends Phaser.Scene{
     const ax=W-54, ay=this.scale.height-58; this.abBtn={x:ax,y:ay,r:40};
     // ---- ZAINO: grafica + testi ----
     this.invG=this.add.graphics().setScrollFactor(0).setDepth(205);
-    { const b=this.invBarRect();
-      this.invZone=this.add.zone(b.x,b.y,b.w,b.h).setOrigin(0,0).setScrollFactor(0)
-        .setDepth(209).setInteractive({useHandCursor:true});
-      this.invZone.on('pointerdown',()=>{ this.invOpen=!this.invOpen; SFX.ui(); }); }
+
     this.invTxt=this.add.text(0,0,'',{fontFamily:TITLE_FONT,fontSize:'13px',fontStyle:'900',color:'#3df2b4'})
       .setOrigin(0.5).setScrollFactor(0).setDepth(206);
     this.invSlotTxt=[]; for(let i=0;i<6;i++) this.invSlotTxt.push(
@@ -3715,11 +3712,16 @@ class Game extends Phaser.Scene{
     out.cells.push({kind:'h',i:0,x:px+20,y:py+38+s+12,w:cw2,h:40});
     out.cells.push({kind:'s',i:0,x:px+40+cw2,y:py+38+s+12,w:cw2,h:40});
     return out; }
-  invBarRect(){ const W=this.scale.width; const w=Math.min(230,W-this.mm.size-40); return {x:16,y:92,w:w,h:28}; }
+  invBarRect(){ const W=this.scale.width; const w=Math.min(200,W-this.mm.size-76); return {x:16,y:92,w:w,h:28}; }
   invHitTest(p){
-    const b=this.invBarRect();
-    // la barra la gestisce la zona interattiva (invZone): qui assorbo soltanto il tocco
-    if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h) return true;
+    const b=this.invBarRect(), M=16;
+    if(p.x>=b.x-M&&p.x<=b.x+b.w+M&&p.y>=b.y-M&&p.y<=b.y+b.h+M){
+      const n=this.time.now;
+      if(this._invTap && n-this._invTap<320){ this._invTap=0; this.invCycle(); return true; }  // doppio tap = cambia arma
+      this._invTap=n;
+      this.invOpen=!this.invOpen; SFX.ui();
+      this.toast(this.invOpen?'\u25bc ZAINO APERTO \u00b7 doppio tap = cambia arma':'\u25b2 ZAINO CHIUSO',0xffc247);
+      return true; }
     if(!this.invOpen) return false;
     const L=this.invSlots();
     for(const c of L.cells){ if(p.x>=c.x&&p.x<=c.x+c.w&&p.y>=c.y&&p.y<=c.y+c.h){
@@ -3728,6 +3730,10 @@ class Game extends Phaser.Scene{
     if(p.x>=pn.x&&p.x<=pn.x+pn.w&&p.y>=pn.y&&p.y<=pn.y+pn.h) return true;   // dentro il pannello: assorbi
     this.invOpen=false; return true;                                        // fuori: chiudi
   }
+  invCycle(){ const P=this.player, w=this.inv.weapons; if(w.length<2) return;
+    let i=w.indexOf(P.weapon); i=(i<0?0:(i+1)%w.length);
+    if(w[i]===P.weapon) i=(i+1)%w.length;
+    this.invEquip(i); }
   invRelease(p){ const h=this._hold; if(!h||h.id!==p.id) return; this._hold=null;
     if(h.done) return;                                    // gia' buttato col tieni-premuto
     const c=h.cell;
@@ -3735,7 +3741,10 @@ class Game extends Phaser.Scene{
   invUpdateHold(){ const h=this._hold; if(!h||h.done) return;
     if(this.time.now-h.t>=INV_HOLD_MS){ h.done=true;
       const c=h.cell; this.invDrop(c.kind==='w'?'w':(c.kind==='h'?'h':'s'), c.i); } }
-  drawInventory(){ if(!this.isTouch&&!this.invOpen&&!this.inv) return; const g=this.invG; if(!g) return; g.clear();
+  drawInventory(){ try{ this._drawInv(); }catch(err){
+      this.invOpen=false;
+      if(!this._invErr){ this._invErr=1; this.toast('ZAINO: '+(err&&err.message?err.message:err),0xff3355); } } }
+  _drawInv(){ if(!this.inv) return; const g=this.invG; if(!g) return; g.clear();
     const now=this.time.now, P=this.player;
     // --- barra "ZAINO" ---
     const b=this.invBarRect(); const full=this.inv.weapons.length>=INV_WPN;
