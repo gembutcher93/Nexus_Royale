@@ -1,22 +1,17 @@
-NEXUS ROYALE — DELTA V94   (a schermo: BUILD v94)
+NEXUS ROYALE — DELTA V95   (a schermo: BUILD v95)
 ==================================================
-Sostituisci: game.js  sw.js  index.html      <-- index.html SERVE (ha il rilevatore errori)
+Sostituisci: game.js  sw.js  index.html
 
-CAUSA PIU' PROBABILE DEL BLOCCO (trovata e corretta)
-Nei distretti PARCO e INDUSTRIA salto apposta alcune strade: cosi' pero' potevano
-nascere BLOCCHI ENORMI (anche 20x15 tessere). Su un blocco cosi' il generatore
-costruiva un edificio con centinaia di stanze e arredi -> il gioco si impiantava
-durante la creazione del mondo, prima ancora di mostrarti la partita.
-Ora ogni blocco viene spezzato in pezzi da massimo 6 tessere per lato.
-Verificato su 8 generazioni: nessun blocco oltre 6-7 tessere.
+Il rilevatore ha fatto il suo lavoro: gli errori erano DUE, tutti e due risolti.
 
-RETE DI SICUREZZA
-- Se la pianta della citta' dovesse fallire, ora il gioco NON si blocca: parte con una
-  citta' a griglia semplice invece di piantarsi.
+1) "PAD is not defined" (game.js:2963) — ERA QUESTO A BLOCCARE IL GIOCO.
+   Quando ho riscritto il fiume ho eliminato la costante PAD, ma una riga piu' avanti
+   la usava ancora per calcolare i margini dei lotti. Quella riga ora non serve piu'
+   (i margini li danno i blocchi della pianta) ed e' stata tolta.
 
-SE ANCORA NON PARTE, ORA IL GIOCO TE LO DICE
-Ho aggiunto un rilevatore: se qualcosa esplode compare in alto una fascia ROSSA con
-scritto l'errore e la riga esatta.
->>> Mandami una foto di quella fascia rossa: con quella lo chiudo al colpo dopo.
-Se invece resta tutto nero SENZA fascia rossa, dimmelo lo stesso: vuol dire che non
-e' un errore ma un blocco per troppo lavoro, e taglio ancora.
+2) "The page needs to be fullscreen in order to call screen.orientation.lock()"
+   Chiedevo il blocco in verticale PRIMA che lo schermo intero fosse attivo.
+   Ora aspetto che il fullscreen sia davvero attivo, e se il browser non lo permette
+   viene ignorato in silenzio invece di finire nella fascia rossa.
+
+La fascia rossa resta attiva: se dovesse comparire altro, mandamela.

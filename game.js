@@ -5,7 +5,7 @@ let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v94';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v95';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -2960,8 +2960,7 @@ class Game extends Phaser.Scene{
     // ===== LOTTI TIPIZZATI: il quadrante non e' piu' "un edificio" =====
     // Ogni lotto riceve un TIPO. Il centro della mappa e' il nucleo denso e
     // irregolare, la periferia e' piu' regolare e piu' rada.
-    const SWW=48, PAD2=PAD+SWW;                       // dentro il marciapiede
-    const midX=(cols-1)/2, midY=(rows-1)/2;
+    const SWW=48;                                     // dentro il marciapiede
     const openB=(bx,by,bw,bh,edge)=>{
       const wth=34, gap=Phaser.Math.Between(90,150);
       const marg=Math.round(2.4*wth)+6;
