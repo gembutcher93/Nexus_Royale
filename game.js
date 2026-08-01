@@ -5,7 +5,7 @@ let WORLD_W=9000, WORLD_H=6600;   // ingrandita per i tile da 120px: stessi pala
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v103';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v105';   // NUMERO DI BUILD mostrato a schermo in gioco
 const TILE_BOX={"gr_grass": [], "gr_path": [], "gr_path_cor": [], "pz_floor": [], "wl_wall": [[0, 0, 30, 120]], "wl_corner": [[0, 0, 30, 120], [30, 90, 90, 30]], "wl_door": [[0, 0, 30, 30], [0, 90, 30, 30]], "wl_win": [[0, 0, 30, 30], [15, 60, 15, 15], [0, 90, 30, 30]], "wl_in": [[0, 0, 15, 120]], "wl_in_cor": [[0, 0, 15, 120], [15, 105, 105, 15]], "wt_water": [[0, 0, 120, 120]], "wt_edge": [[0, 60, 120, 30], [0, 90, 105, 30]], "wt_corner": [[0, 60, 90, 60]]};
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
@@ -463,6 +463,7 @@ class Boot extends Phaser.Scene{
       this.load.image(k,'assets/'+k+'.png');
     });
     this.load.image('chute2','assets/chute2.png');
+    ['if_home', 'if_office', 'if_hospital', 'if_shop', 'if_industrial', 'nf_table', 'nf_chair2', 'nf_chair3', 'nf_tv', 'nf_kitchen', 'nf_fridge', 'nf_sink', 'nf_toilet', 'nf_shower', 'nf_rug', 'nf_shelf', 'nf_bed1', 'hs_bed', 'hs_curtain', 'hs_monitor', 'hs_stretcher', 'hs_cabinet', 'hs_reception', 'of_desk2', 'of_partition', 'of_printer', 'of_water', 'of_meeting', 'of_locker', 'of_desk_stud', 'sh_counter', 'sh_shelf', 'sh_fridge', 'sh_table', 'sh_stool'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
     ['up_bench', 'up_lamp', 'up_tree', 'up_bush', 'up_fountain', 'up_bin', 'up_planter', 'up_sign', 'up_hydrant', 'up_barrier', 'up_bus', 'up_kiosk', 'up_car2', 'up_stairs', 'up_vent', 'gr_grass2'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
     ['gr_grass', 'gr_path', 'gr_path_cor', 'pz_floor', 'wl_wall', 'wl_corner', 'wl_door', 'wl_win', 'wl_in', 'wl_in_cor', 'wt_water', 'wt_edge', 'wt_corner'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
     ['ct_radar','ct_cam','ct_chip','ct_portal','ct_remains'].forEach(k=>{
@@ -1830,13 +1831,13 @@ class Game extends Phaser.Scene{
     this.gDecor=this.add.graphics().setDepth(-16);   // street clutter (static)
     this.gCity =this.add.graphics().setDepth(0);     // buildings + props (static)
     this.animCount=0;                                 // budget for infinite tweens
+    this.walls=this.physics.add.staticGroup(); this.wallRects=[];   // deve esistere PRIMA di drawRoads
     try{ this.planCity(); }
     catch(e){ console.error('planCity',e); this.city=this.planCityFallback(); }
     try{ this.planMegas(); }
     catch(e){ console.error('planMegas',e); this.megas=[]; this.megaLots={}; }
     this.drawRoads();
 
-    this.walls=this.physics.add.staticGroup(); this.wallRects=[];
     this.bullets=this.physics.add.group(); this.loot=this.physics.add.group({allowGravity:false});
     this.units=[];
     this.buildCity();
@@ -2151,6 +2152,7 @@ class Game extends Phaser.Scene{
     const T=120, im=this.add.image(x+T/2,y+T/2,k).setDisplaySize(T+2,T+2)
       .setAngle(ang||0).setDepth(depth===undefined?0.5:depth);
     const rot=((ang||0)%360+360)%360;
+    if(!this.walls) return im;
     this.tileBox(k).forEach(r=>{
       let [rx,ry,rw,rh]=r, nx,ny,nw,nh;
       if(rot===0){ nx=rx; ny=ry; nw=rw; nh=rh; }
@@ -2173,7 +2175,7 @@ class Game extends Phaser.Scene{
       up_bin:[26,26],up_planter:[90,34],up_sign:[40,40],up_hydrant:[20,20],up_barrier:[90,24],
       up_bus:[130,60],up_kiosk:[110,90],up_car2:[96,46],up_stairs:[120,60],up_vent:[60,60]}[k]||[60,60];
     const im=this.add.image(x,y,k).setDisplaySize(S[0],S[1]).setDepth(0.62);
-    if(solid){ const b=this.walls.create(x,y,'px').setVisible(false);
+    if(solid && this.walls){ const b=this.walls.create(x,y,'px').setVisible(false);
       b.setDisplaySize(S[0]*0.8,S[1]*0.8); b.refreshBody();
       this.wallRects.push({x:x-S[0]*0.4,y:y-S[1]*0.4,w:S[0]*0.8,h:S[1]*0.8,type:'cover'}); }
     return im;
@@ -2182,7 +2184,12 @@ class Game extends Phaser.Scene{
     if(!this.textures.exists('wl_wall')) return false;
     const T=120, cols=Math.max(2,Math.round(w/T)), rows=Math.max(2,Math.round(h/T));
     // pavimento interno
-    const fk=floorKey||'pz_floor';
+    // pavimento in base al tipo di edificio (casa/ufficio/ospedale/negozio/capannone)
+    const FL={casa:'if_home',ufficio:'if_office',ospedale:'if_hospital',negozio:'if_shop',
+              magazzino:'if_industrial'};
+    let fk=floorKey;
+    if(!fk){ const t=this._bldTheme||'casa'; fk=FL[t]||'if_home'; }
+    if(!this.textures.exists(fk)) fk='pz_floor';
     if(this.textures.exists(fk))
       this.add.tileSprite(x,y,cols*T,rows*T,fk).setOrigin(0,0).setDepth(-18.15);
     const doorSide=Phaser.Math.Between(0,3), doorAt=Phaser.Math.Between(1,Math.max(1,(doorSide%2?rows:cols)-2));
@@ -2772,7 +2779,9 @@ class Game extends Phaser.Scene{
   // la sedia da ufficio guarda in ALTO (N=0). rot = (target - nativo + 360) % 360
   furnishReal(ix,iy,iw,ih,theme,noGo){
     const FS=1.05;                                  // scala nativa (NON rimpicciolire)
-    const NATIVE={nf_chair:0};                      // default 180 (guardano in basso)
+    // il verso nativo dei nuovi arredi: quasi tutti guardano in BASSO come gli altri;
+    // sedie e wc guardano in ALTO (vanno rivolti verso il tavolo / la stanza)
+    const NATIVE={nf_chair:0,nf_chair2:0,nf_chair3:0,of_desk_stud:180,nf_toilet:0,sh_stool:0};
     const nat=k=>(NATIVE[k]!==undefined?NATIVE[k]:180);
     const dim=k=>{ const t=this.textures.get(k).getSourceImage(); return [Math.round(t.width*FS),Math.round(t.height*FS)]; };
     const placed=[];
@@ -2818,15 +2827,44 @@ class Game extends Phaser.Scene{
       return true;
     };
     const R=(a,b)=>Phaser.Math.Between(a,b);
-    if(theme==='camera'){
+    if(theme==='ospedale'){
+      const step=Math.round(170*FS);
+      for(let a=8;a+step<iw;a+=step){ atWall('hs_bed','T',a); atWall('hs_bed','B',a); }
+      atWall('hs_cabinet','L',R(10,Math.max(11,ih-90)));
+      atWall('hs_monitor','R',R(10,Math.max(11,ih-70)));
+      if(iw>320) atWall('hs_reception','T',Math.round(iw/2)-80);
+      atWall('hs_stretcher','L',R(10,Math.max(11,ih-120)));
+    } else if(theme==='negozio'){
+      atWall('sh_counter','B',R(8,Math.max(9,iw-Math.round(170*FS))));
+      const st=Math.round(130*FS);
+      for(let a=8;a+st<iw;a+=st) atWall('sh_shelf','T',a);
+      atWall('sh_fridge','R',R(10,Math.max(11,ih-80)));
+      atWall('sh_table','L',R(10,Math.max(11,ih-90)));
+      atWall('sh_stool','L',R(10,Math.max(11,ih-60)));
+    } else if(theme==='cucina'){
+      atWall('nf_kitchen','T',R(8,Math.max(9,iw-Math.round(150*FS))));
+      atWall('nf_fridge','L',R(10,Math.max(11,ih-80)));
+      atWall('nf_sink','T',R(8,Math.max(9,iw-70)));
+      atWall('nf_table','B',R(10,Math.max(11,iw-130)));
+      atWall('nf_chair2','B',R(10,Math.max(11,iw-60)));
+    } else if(theme==='bagno'){
+      atWall('nf_toilet','L',R(8,Math.max(9,ih-70)));
+      atWall('nf_shower','T',R(8,Math.max(9,iw-90)));
+      atWall('nf_sink','R',R(8,Math.max(9,ih-60)));
+    } else if(theme==='camera'){
       atWall('nf_bed','T',Math.max(4,R(10,Math.max(11,iw-Math.round(200*FS)-10))));
       atWall(Phaser.Utils.Array.GetRandom(['nf_cab2','nf_cab3']),'L',R(10,Math.max(11,ih-120)));
       atWall('nf_arm','B',R(10,Math.max(11,iw-120)));
       atWall('nf_cab','R',R(10,Math.max(11,ih-90)));
+      if(this.textures.exists('nf_tv')) atWall('nf_tv','B',R(10,Math.max(11,iw-100)));
+      if(this.textures.exists('nf_shelf')) atWall('nf_shelf','R',R(10,Math.max(11,ih-60)));
     } else if(theme==='ufficio'){
       const step=Math.round(190*FS);
       for(let a=8;a+step<iw;a+=step){ desk('T',a); desk('B',a); }
-      for(let b=8;b+100<ih;b+=Math.round(110*FS)) atWall('nf_cab3','R',b);
+      for(let b=8;b+100<ih;b+=Math.round(110*FS)) atWall(Phaser.Math.FloatBetween(0,1)<0.5?'of_locker':'nf_cab3','R',b);
+      if(iw>420&&ih>300) atWall('of_meeting','T',Math.round(iw/2)-110);
+      atWall('of_printer','L',R(10,Math.max(11,ih-80)));
+      atWall('of_water','L',R(10,Math.max(11,ih-50)));
     } else if(theme==='magazzino'){
       const s=Math.round(95*FS);
       for(let a=6;a+80<iw;a+=s){ atWall('nf_cab2','T',a); atWall('nf_cab3','B',a); }
@@ -2850,9 +2888,13 @@ class Game extends Phaser.Scene{
     if(this.textures.exists('nf_bed')){
       const noGo={x:x+w-wth-110,y:doorY0,w:130,h:doorY1-doorY0};
       const area=iw*ih;
+      const bt=this._bldTheme||'casa';
       let theme;
-      if(area>150000) theme=Phaser.Utils.Array.GetRandom(['ufficio','magazzino']);
-      else theme=Phaser.Utils.Array.GetRandom(['camera','salotto','ufficio']);
+      if(bt==='ospedale')      theme='ospedale';
+      else if(bt==='negozio')  theme='negozio';
+      else if(bt==='magazzino')theme='magazzino';
+      else if(bt==='ufficio')  theme=(area>150000)?'ufficio':Phaser.Utils.Array.GetRandom(['ufficio','ufficio','negozio']);
+      else theme=Phaser.Utils.Array.GetRandom(['camera','salotto','cucina','bagno','camera']);
       this.furnishReal(ix,iy,iw,ih,theme,noGo);
       return;
     }
@@ -3211,7 +3253,12 @@ class Game extends Phaser.Scene{
       if(tipo==='complesso'){
         // struttura grande: corpo principale + ala, con cortile fra i due
         const bodyH=Math.floor(maxH*Phaser.Math.FloatBetween(0.52,0.64));
-        if(this.buildWallRing(px,py,maxW,bodyH,'pz_floor')){
+        this._bldTheme=Phaser.Utils.Array.GetRandom(
+          _b.kind==='centro'?['ufficio','ufficio','negozio']:
+          _b.kind==='uffici'?['ufficio','ospedale','negozio']:
+          _b.kind==='industria'?['magazzino','magazzino','ufficio']:
+          ['casa','casa','negozio','ospedale']);
+        if(this.buildWallRing(px,py,maxW,bodyH,null)){
           if(maxW>300&&Math.random()<0.5) this.putProp('up_stairs',px+maxW/2,py+bodyH-30,false);
           if(Math.random()<0.6) this.putProp('up_vent',px+50,py+50,false);
         }
