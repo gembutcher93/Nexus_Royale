@@ -5,7 +5,8 @@ let WORLD_W=9000, WORLD_H=6600;   // ingrandita per i tile da 120px: stessi pala
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v100';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v102';   // NUMERO DI BUILD mostrato a schermo in gioco
+const TILE_BOX={"gr_grass": [], "gr_path": [], "gr_path_cor": [], "pz_floor": [], "wl_wall": [[0, 0, 30, 120]], "wl_corner": [[0, 0, 30, 120], [30, 90, 90, 30]], "wl_door": [[0, 0, 30, 30], [0, 90, 30, 30]], "wl_win": [[0, 0, 30, 30], [15, 60, 15, 15], [0, 90, 30, 30]], "wl_in": [[0, 0, 15, 120]], "wl_in_cor": [[0, 0, 15, 120], [15, 105, 105, 15]], "wt_water": [[0, 0, 120, 120]], "wt_edge": [[0, 60, 120, 30], [0, 90, 105, 30]], "wt_corner": [[0, 60, 90, 60]]};
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -462,6 +463,7 @@ class Boot extends Phaser.Scene{
       this.load.image(k,'assets/'+k+'.png');
     });
     this.load.image('chute2','assets/chute2.png');
+    ['gr_grass', 'gr_path', 'gr_path_cor', 'pz_floor', 'wl_wall', 'wl_corner', 'wl_door', 'wl_win', 'wl_in', 'wl_in_cor', 'wt_water', 'wt_edge', 'wt_corner'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
     ['ct_radar','ct_cam','ct_chip','ct_portal','ct_remains'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
@@ -2139,6 +2141,54 @@ class Game extends Phaser.Scene{
       blocks.push({tx:x,ty:y,tw:3,th:3,d:3,kind:'residenza',fill:0.7,tall:false});
     return {TS,NX,NY,R,W,D,blocks,bridge:[],KIND:[null,{n:'residenza',step:4,fill:.7,tall:false}]};
   }
+  // collisioni ricavate dai PIXEL delle tessere di Gem (muri pieni, porta aperta sul rosa,
+  // acqua solo dove c'e' acqua). Coordinate relative a una tessera da 120px.
+  tileBox(k){ return (TILE_BOX[k]||[]); }
+  // posa una tessera del set nuovo, ruotata, e ne registra la collisione
+  putTile(k,x,y,ang,depth){
+    if(!this.textures.exists(k)) return null;
+    const T=120, im=this.add.image(x+T/2,y+T/2,k).setDisplaySize(T+2,T+2)
+      .setAngle(ang||0).setDepth(depth===undefined?0.5:depth);
+    const rot=((ang||0)%360+360)%360;
+    this.tileBox(k).forEach(r=>{
+      let [rx,ry,rw,rh]=r, nx,ny,nw,nh;
+      if(rot===0){ nx=rx; ny=ry; nw=rw; nh=rh; }
+      else if(rot===90){ nx=T-ry-rh; ny=rx; nw=rh; nh=rw; }
+      else if(rot===180){ nx=T-rx-rw; ny=T-ry-rh; nw=rw; nh=rh; }
+      else { nx=ry; ny=T-rx-rw; nw=rh; nh=rw; }
+      const b=this.walls.create(x+nx+nw/2,y+ny+nh/2,'px').setVisible(false);
+      b.setDisplaySize(nw,nh); b.refreshBody();
+      this.wallRects.push({x:x+nx,y:y+ny,w:nw,h:nh,type:(k[0]==='w'&&k[1]==='t')?'water':'building'});
+    });
+    return im;
+  }
+  // PERIMETRO DI UN EDIFICIO con le tessere di Gem: angoli, muri, finestre e UNA porta.
+  // wl_wall nativa = fascia sul lato SINISTRO -> ruotandola copre i 4 lati.
+  // wl_corner nativa = angolo ALTO-SINISTRA.
+  buildWallRing(x,y,w,h,floorKey){
+    if(!this.textures.exists('wl_wall')) return false;
+    const T=120, cols=Math.max(2,Math.round(w/T)), rows=Math.max(2,Math.round(h/T));
+    // pavimento interno
+    const fk=floorKey||'pz_floor';
+    if(this.textures.exists(fk))
+      this.add.tileSprite(x,y,cols*T,rows*T,fk).setOrigin(0,0).setDepth(-18.15);
+    const doorSide=Phaser.Math.Between(0,3), doorAt=Phaser.Math.Between(1,Math.max(1,(doorSide%2?rows:cols)-2));
+    const pick=()=>Phaser.Math.FloatBetween(0,1)<0.32?'wl_win':'wl_wall';
+    for(let c=0;c<cols;c++)for(let r=0;r<rows;r++){
+      const bx=x+c*T, by=y+r*T;
+      const edgeL=(c===0), edgeR=(c===cols-1), edgeT=(r===0), edgeB=(r===rows-1);
+      if(!(edgeL||edgeR||edgeT||edgeB)) continue;               // solo il perimetro
+      if(edgeL&&edgeT){ this.putTile('wl_corner',bx,by,0,0.55); continue; }
+      if(edgeR&&edgeT){ this.putTile('wl_corner',bx,by,90,0.55); continue; }
+      if(edgeR&&edgeB){ this.putTile('wl_corner',bx,by,180,0.55); continue; }
+      if(edgeL&&edgeB){ this.putTile('wl_corner',bx,by,270,0.55); continue; }
+      let ang = edgeL?0 : (edgeT?90 : (edgeR?180:270));
+      const isDoor=(doorSide===0&&edgeT&&c===doorAt)||(doorSide===1&&edgeR&&r===doorAt)
+                 ||(doorSide===2&&edgeB&&c===doorAt)||(doorSide===3&&edgeL&&r===doorAt);
+      this.putTile(isDoor?'wl_door':pick(),bx,by,ang,0.55);
+    }
+    return true;
+  }
   planCity(){
     const TS=120;
     const NX=Math.ceil(WORLD_W/TS), NY=Math.ceil(WORLD_H/TS);
@@ -2448,7 +2498,7 @@ class Game extends Phaser.Scene{
       for(let ty=0;ty<NY;ty++)for(let tx=0;tx<NX;tx++){
         if(P.W[ty][tx]) continue;                     // fiume: lo disegna il generatore acqua
         if(!R[ty][tx]){
-          const near=(isR(tx-1,ty)||isR(tx+1,ty)||isR(tx,ty-1)||isR(tx,ty+1));
+          const near=(isR(tx-1,ty)||isR(tx+1,ty)||isR(tx,ty-1)||isR(tx,ty+1));   // solo la fascia a filo strada
           if(near) put('nt_side',tx,ty,0);           // solo il bordo: l'interno lo copre l'edificio
           else { gFill.fillStyle(0x11161c,1); gFill.fillRect(tx*TS,ty*TS,TS+1,TS+1); }
           continue; }
@@ -2571,6 +2621,7 @@ class Game extends Phaser.Scene{
   realBuilding(x,y,w,h,col){
     this._flPick=Phaser.Math.Between(0,2);   // pavimento COERENTE per tutto l'edificio
     if(!this.textures.exists('bldT1')) return false;
+    if(w<260||h<200) return false;   // troppo piccolo: meglio un corpo pieno che il tile ripetuto
     const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
       return (m(r)<<16)|(m(g)<<8)|m(b); };
     const tint=mix(col||0x33e1ff,0.5);
@@ -2957,7 +3008,15 @@ class Game extends Phaser.Scene{
         while(tx<P.NX){
           if(!P.W[ty][tx]){ tx++; continue; }
           let w=0; while(tx+w<P.NX && P.W[ty][tx+w]) w++;
-          addWall(tx*TS,ty*TS,w*TS,TS,C.waterEdge,'water');
+          if(this.textures.exists('wt_water')){
+            for(let k2=0;k2<w;k2++){
+              const X=(tx+k2)*TS, Y=ty*TS;
+              const up=(ty>0&&P.W[ty-1]&&P.W[ty-1][tx+k2]), dn=(P.W[ty+1]&&P.W[ty+1][tx+k2]);
+              if(!up)      this.putTile('wt_edge',X,Y,0,-18.3);      // riva sopra
+              else if(!dn) this.putTile('wt_edge',X,Y,180,-18.3);    // riva sotto
+              else         this.putTile('wt_water',X,Y,0,-18.3);
+            }
+          } else addWall(tx*TS,ty*TS,w*TS,TS,C.waterEdge,'water');
           tx+=w;
         }
       }
@@ -3022,8 +3081,15 @@ class Game extends Phaser.Scene{
 
       if(tipo==='parco'){
         const G=this.gDecor;
-        // prato: base verde scura con chiazze piu' chiare (non un rettangolo piatto)
-        G.fillStyle(0x0d2019,0.96); G.fillRect(px,py,maxW,maxH);
+        if(this.textures.exists('gr_grass')){          // erba vera (tessera di Gem)
+          this.add.tileSprite(px,py,maxW,maxH,'gr_grass').setOrigin(0,0).setDepth(-18.2);
+          // vialetto che attraversa il parco
+          if(this.textures.exists('gr_path')){
+            const pY=py+Math.round(maxH/2/120)*120;
+            for(let xx=px;xx<px+maxW-60;xx+=120) this.putTile('gr_path',xx,pY,90,-18.1);
+          }
+        }
+        else { G.fillStyle(0x0d2019,0.96); G.fillRect(px,py,maxW,maxH); }
         G.fillStyle(0x11301f,0.6);
         for(let b=0;b<8;b++){ const bx2=px+Math.random()*maxW, by2=py+Math.random()*maxH;
           G.fillEllipse(bx2,by2,Phaser.Math.Between(60,140),Phaser.Math.Between(40,90)); }
@@ -3076,7 +3142,10 @@ class Game extends Phaser.Scene{
         continue;
       }
 
-      if(tipo==='piazza'){
+      if(tipo==='piazza' && this.textures.exists('pz_floor')){
+        this.add.tileSprite(px,py,maxW,maxH,'pz_floor').setOrigin(0,0).setDepth(-18.2);
+      }
+      else if(tipo==='piazza'){
         // lastricato liscio col pezzo #52, niente edifici: spazio aperto e pericoloso
         if(this.textures.exists('sw_f')){
           this.add.tileSprite(px,py,maxW,maxH,'sw_f').setOrigin(0,0).setDepth(-15)
@@ -3098,7 +3167,11 @@ class Game extends Phaser.Scene{
       if(tipo==='complesso'){
         // struttura grande: corpo principale + ala, con cortile fra i due
         const bodyH=Math.floor(maxH*Phaser.Math.FloatBetween(0.52,0.64));
-        addWall(px,py,maxW,bodyH,edge,'building');
+        if(!this.buildWallRing(px,py,maxW,bodyH,'pz_floor')){
+          addWall(px,py,maxW,bodyH,edge,'building');
+          const G=this.gCity;                    // ripiego: corpo pieno
+          G.fillStyle(0x0e1418,1); G.fillRect(px,py,maxW,bodyH);
+          G.lineStyle(2,edge,0.5); G.strokeRect(px+1,py+1,maxW-2,bodyH-2); }
         const alaW=Math.floor(maxW*Phaser.Math.FloatBetween(0.45,0.60));
         const alaY=py+bodyH+Math.floor(maxH*0.10);
         const alaH=(py+maxH)-alaY;
