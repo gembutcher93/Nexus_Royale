@@ -5,7 +5,7 @@ let WORLD_W=9000, WORLD_H=6600;   // ingrandita per i tile da 120px: stessi pala
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v96';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v98';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -1991,8 +1991,8 @@ class Game extends Phaser.Scene{
   goLive(){
     this.phase='live';
     // la skin cotta va ri-applicata: dopo la discesa qualcosa reimpostava la texture base
-    { const P=this.player, sk=P&&P.skin, bk='spr_'+GAME.char+'_'+((sk&&sk.id)||'base');
-      if(P&&sk&&sk.id!=='base'&&this.textures.exists(bk)){ P.s.setTexture(bk); P.s.setTint(0xffffff); } }
+    { const P=this.player, sk=P&&P.skin;
+      if(P&&this.applySkinFrames(GAME.char,(sk&&sk.id)||'base')) P.s.setTint(0xffffff); }
     this.units.forEach(u=>{ u.invuln=false; if(u.gun) u.gun.setVisible(true);
       if(u.s.body && !u.s.body.enable){ u.s.body.enable=true; u.s.body.reset(u.landing.x,u.landing.y); } });
     this.halo.setVisible(true); this.setHUD(true);
@@ -3237,12 +3237,30 @@ class Game extends Phaser.Scene{
 
   // Applica il "guscio" di una skin all'unita': tint, glow, particelle, scia, extra.
   // Un solo metodo, vale per qualunque personaggio (l'effetto e' indipendente dalla sprite).
+  // Il gioco non usa mai spr_<char>: all'avvio ne ricava i frame ch_<char>_0..._d2 e
+  // in partita usa QUELLI. Quindi per far vedere una skin bisogna RIGENERARE i frame
+  // partendo dalla sprite della skin (base = sprite originale del personaggio).
+  applySkinFrames(charId, skinId){
+    const src='spr_'+charId+(skinId&&skinId!=='base'?('_'+skinId):'');
+    if(!this.textures.exists(src)) return false;
+    const img=this.textures.get(src).getSourceImage();
+    ['_0','_1','_2','_3','_4','_5','_d0','_d1','_d2'].forEach(suf=>{
+      const key='ch_'+charId+suf;
+      if(this.textures.exists(key)) this.textures.remove(key);
+      const cv=this.textures.createCanvas(key,64,64);
+      const ctx=cv.getContext(); ctx.clearRect(0,0,64,64);
+      ctx.imageSmoothingEnabled=false; ctx.drawImage(img,0,0,64,64); cv.refresh();
+    });
+    return true;
+  }
   applySkinFx(u,sk){
     const fx=(sk&&sk.fx)||{}, s=u.s, p={x:s.x,y:s.y}, q=fxq();
     u.skinFx=fx; u.skinParts=[]; u.skinTrail=[];
     // sprite-skin COTTA nel PNG se esiste: usa quella e NON tintare (il colore e' gia' nel PNG)
-    const _bk='spr_'+GAME.char+'_'+((sk&&sk.id)||'base');
-    if(sk && sk.id!=='base' && this.textures.exists(_bk)){ s.setTexture(_bk); s.setTint(0xffffff); }
+    if(u.isPlayer && this.applySkinFrames(GAME.char,(sk&&sk.id)||'base')){
+      s.setTint(0xffffff);                       // il colore e' gia' dentro il PNG
+      if(s.anims&&s.anims.currentAnim) s.anims.restart();
+    }
     else s.setTint(fx.tint!=null?fx.tint:0xffffff);
     if(fx.alpha!=null) s.setAlpha(fx.alpha);
     if(!q.glow) return;                    // qualita' bassa: solo tint, niente effetti pesanti

@@ -1,27 +1,19 @@
-NEXUS ROYALE — DELTA V96  ·  RITOCCHI APERTI   (a schermo: BUILD v96)
-======================================================================
-Sostituisci: game.js  sw.js  index.html
+NEXUS ROYALE — DELTA V98  ·  SKIN RIFATTE COL LOOK GIUSTO   (BUILD v98)
+========================================================================
+1) Copia in assets/ le 60 PNG spr_*_*.png  (SOVRASCRIVI quelle vecchie)
+2) Sostituisci: game.js  sw.js  index.html  assets_fallback.js
 
-1) MAPPA PIU' GRANDE (la tua idea) — da 6600x4800 a 9000x6600.
-   Stesso numero di palazzi, ma visti con una prospettiva piu' larga e realistica
-   rispetto al personaggio: la citta' non e' piu' schiacciata sui tile da 120px.
-   (BLITZ passa da 4200x3000 a 5760x4200.)
+PERCHE' PRIMA ERA GRIGIA
+Il Chrome bello che hai visto NON era un file: e' l'effetto che il gioco applica DAL
+VIVO (tinta metallica + alone) sopra la sprite. Non esisteva come PNG da esportare.
+Quello grigio invece l'avevo generato con un altro metodo (recolor sulla luminanza) —
+ed e' venuto peggio, avevi ragione.
 
-2) VIALI A DOPPIA CARREGGIATA — le arterie principali (i confini fra i distretti)
-   ora sono larghe DUE tessere: si distinguono a colpo d'occhio dalle strade normali
-   e ci passano comode le auto affiancate.
+COSA HO FATTO ORA
+Ho cotto nel PNG ESATTAMENTE l'effetto del gioco, prendendo i valori dalla tabella
+delle skin: la stessa tinta di setTint + l'alone colorato + il riflesso sulle parti
+chiare. Quindi il PNG ora e' quello che vedevi nell'anteprima, non piu' il grigio.
+Rifatte tutte e 12 le skin su tutti e 5 i personaggi.
 
-3) PAVIMENTI INTERNI COERENTI — prima ogni stanza pescava a caso fra 8 pavimenti
-   diversi ("messi alla cazza di cane", parole tue). Ora OGNI EDIFICIO sceglie UN
-   pavimento e lo tiene in tutte le sue stanze, su 3 varianti invece di 8.
-
-4) MENO DETTAGLI SPARSI sui tetti/strade (da 60 a 26): via il rumore visivo che stonava.
-
-5) OTTIMIZZAZIONE necessaria per reggere la mappa grande: il marciapiede viene
-   disegnato SOLO sul bordo dei blocchi (l'interno e' coperto dagli edifici, quindi
-   erano oltre mille sprite invisibili). Senza questo, la mappa grande rischiava di
-   ripiantare il gioco.
-
-RESTA DA DECIDERE: le skin RANK (ferro/oro/hero/matrix) sono ancora a effetto-codice.
-Non le ho cotte nel PNG perche' il Chrome cotto non ti aveva convinto: dimmi tu se le
-vuoi cotte come le altre o se preferisci ritagliartele dal mockup.
+Insieme alla V97 (frame di animazione rigenerati) le skin ora si vedono per TUTTA la
+partita, non solo col paracadute.
