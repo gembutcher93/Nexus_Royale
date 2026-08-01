@@ -1,31 +1,19 @@
-NEXUS ROYALE — DELTA V92  ·  LA CITTA' VERA   (a schermo: BUILD v92)
-=====================================================================
+NEXUS ROYALE — DELTA V93  ·  FIX BLOCCO ALL'AVVIO   (a schermo: BUILD v93)
+===========================================================================
 Sostituisci: game.js  sw.js  index.html
 
-IL BUG DI FONDO CHE HAI INTUITO: c'erano DUE griglie diverse. Le strade usavano i
-tile da 120px, i palazzi e il fiume usavano ancora la vecchia griglia 11x8 con strade
-da 150px. Da li' venivano TUTTI i difetti: strade che passano sotto i palazzi e
-spariscono, il fiume che taglia un edificio in due, i palazzi-piattaforma in mezzo
-al vuoto, e le T/L quasi mai usate.
+PERCHE' SI BLOCCAVA (non era la minimappa): con la citta' nuova i blocchi edificabili
+sono passati da ~8 a piu' di 90. Ogni palazzo grande genera stanze, arredi e una
+collisione per ogni mobile -> decine di migliaia di collisioni. La funzione che cerca
+un punto libero (per loot, props, atterraggio) le scorreva TUTTE, ogni volta, per
+centinaia di volte: il gioco si impiantava prima ancora di partire.
 
-ORA C'E' UNA SOLA PIANTA DELLA CITTA' (metodo planCity), nell'ordine giusto:
-  1. FIUME  serpeggia da un bordo all'altro (non piu' una riga dritta)
-  2. DISTRETTI  centro + 4 settori esterni mescolati ogni partita:
-       CENTRO     isolati piccoli e fitti, grattacieli attaccati
-       UFFICI     blocchi medi, molto costruiti
-       RESIDENZA  case in cui si entra, qualche parco
-       INDUSTRIA  isolati ENORMI, capannoni giganti
-       PARCO      verde, poche strade, spazi aperti veri
-  3. STRADE  i confini dei distretti diventano i VIALI principali; dentro ogni
-     distretto la griglia ha un passo diverso -> isolati di misure molto diverse
-  4. PONTI  dove un viale attraversa il fiume; le strade minori invece si fermano
-     sulla riva (e questo genera le T e le L, che ora vengono usate davvero)
-  5. BLOCCHI  lo spazio fra le strade viene calcolato come rettangoli, e i palazzi
-     RIEMPIONO il blocco: non ci passa mai una strada sotto, e nel centro escono
-     edifici che occupano tutta la piazza invece di piattaforme minuscole
+FIX:
+1) Tetto alle megastrutture: massimo 14 palazzi "grandi" con interni per partita,
+   scelti a caso fra i blocchi disponibili. Gli altri blocchi restano palazzi normali,
+   quindi la citta' resta piena ma non esplode.
+2) La ricerca del punto libero ora usa un indice a griglia: guarda solo le collisioni
+   della cella dove sta cercando, non tutte quante. E' centinaia di volte piu' veloce.
+3) Ridotti i tentativi per le props della citta' (erano 420 ricerche, ora 90).
 
-ALTRO: i LAMPIONI ora non finiscono piu' dentro i palazzi ne' sull'acqua, solo sul
-bordo del marciapiede come volevi.
-
-NOTA: la mappa cambia parecchio. Fai un paio di partite e dimmi se i distretti si
-sentono (il centro deve essere claustrofobico, l'industria enorme, il parco aperto).
+Se dovesse essere ancora lento all'avvio, dimmelo e abbasso MAX_MEGA (riga ~2215).

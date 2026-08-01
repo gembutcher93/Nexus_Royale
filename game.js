@@ -5,7 +5,7 @@ let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v92';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v93';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -2212,9 +2212,10 @@ class Game extends Phaser.Scene{
     const KINDS={centro:['uffici','uffici','scuola'], uffici:['uffici','ospedale','scuola'],
                  residenza:['scuola','ospedale','magazzino'], industria:['magazzino','magazzino','uffici'],
                  parco:['scuola']};
-    P.blocks.forEach(bl=>{
-      if(bl.kind==='parco') return;                       // il parco resta verde
-      if(bl.tw<2||bl.th<2) return;                        // blocchi minuscoli: li riempie il resto
+    const MAX_MEGA=14;                                    // oltre questo il gioco si impianta
+    const cand=P.blocks.filter(b=>b.kind!=='parco'&&b.tw>=2&&b.th>=2);
+    Phaser.Utils.Array.Shuffle(cand);
+    cand.slice(0,MAX_MEGA).forEach(bl=>{
       if(Phaser.Math.FloatBetween(0,1)>bl.fill) return;
       const M=8;                                           // stacco dal marciapiede
       this.megas.push({
@@ -3122,11 +3123,24 @@ class Game extends Phaser.Scene{
   }
 
   freeSpot(nd){
+    // indice a griglia: senza questo, con migliaia di muri la ricerca impiantava il gioco
+    if(!this._grid || this._gridN!==this.wallRects.length){ const CS=240; this._gridCS=CS; this._gridN=this.wallRects.length;
+      const gw=Math.ceil(WORLD_W/CS), gh=Math.ceil(WORLD_H/CS);
+      this._gw=gw; this._grid=new Array(gw*gh);
+      this.wallRects.forEach(r=>{
+        const x0=Math.max(0,Math.floor((r.x-30)/CS)), x1=Math.min(gw-1,Math.floor((r.x+r.w+30)/CS));
+        const y0=Math.max(0,Math.floor((r.y-30)/CS)), y1=Math.min(gh-1,Math.floor((r.y+r.h+30)/CS));
+        for(let gy=y0;gy<=y1;gy++)for(let gx=x0;gx<=x1;gx++){
+          const i=gy*gw+gx; (this._grid[i]||(this._grid[i]=[])).push(r); }
+      });
+    }
+    const CS=this._gridCS, GW=this._gw;
     for(let k=0;k<60;k++){ let x,y;
       if(nd){ x=Phaser.Math.Clamp(nd.x*WORLD_W+Phaser.Math.Between(-480,480),80,WORLD_W-80);
               y=Phaser.Math.Clamp(nd.y*WORLD_H+Phaser.Math.Between(-480,480),80,WORLD_H-80); }
       else { x=Phaser.Math.Between(120,WORLD_W-120); y=Phaser.Math.Between(120,WORLD_H-120); }
-      if(!this.wallRects.some(r=>x>r.x-30&&x<r.x+r.w+30&&y>r.y-30&&y<r.y+r.h+30)) return {x,y};
+      const cell=this._grid[Math.floor(y/CS)*GW+Math.floor(x/CS)];
+      if(!cell || !cell.some(r=>x>r.x-30&&x<r.x+r.w+30&&y>r.y-30&&y<r.y+r.h+30)) return {x,y};
     } return {x:WORLD_W/2,y:WORLD_H/2};
   }
 
@@ -3854,7 +3868,7 @@ class Game extends Phaser.Scene{
     if(!this.textures.exists('ct_radar')) return;
     this.props=[]; this.portals=[]; this.reveal=0; this.marked=[];
     const spots=[];                                   // punti buoni: sui marciapiedi, non in strada
-    for(let i=0;i<420;i++){ const p=this.freeSpot(); if(p) spots.push(p); }
+    for(let i=0;i<90;i++){ const p=this.freeSpot(); if(p) spots.push(p); }
     const take=()=>spots.length?spots.splice(Phaser.Math.Between(0,spots.length-1),1)[0]:null;
     const mk=(kind,key,col)=>{ const p=take(); if(!p) return null;
       const im=this.add.image(p.x,p.y,key).setDepth(0.4).setDisplaySize(52,52); if(this.toWorld) this.toWorld(im);
