@@ -1,32 +1,22 @@
-NEXUS ROYALE — DELTA V108   (BUILD v108)
-=========================================
-Sostituisci SOLO: game.js  sw.js  index.html
+NEXUS ROYALE v2.0.1 — CORREZIONE   (a schermo: BUILD v2.0.1)
+=============================================================
+Sostituisci SOLO questi 4 file:  game.js  sw.js  index.html  assets_fallback.js
+Gli asset li hai gia' dal pacchetto completo. NON serve ricaricare tutto.
 
-1) LE FORME A CROCE — RISOLTO, e mi dispiace.
-   Non erano i muri: era la BOCCHETTA DI AERAZIONE (up_vent), che e' una ventola a
-   quattro pale. La mettevo sul 60% degli edifici e ripetuta ovunque dava quella forma.
-   RIMOSSA del tutto dagli edifici.
-   In piu' il muro interno ora si STACCA dal perimetro invece di attaccarcisi, cosi'
-   non si formano incroci a croce da nessuna parte.
+COSA ERA SUCCESSO
+"this.drawRoads is not a function": ripulendo i vecchi asset dal preload, il mio
+script ha tagliato piu' del dovuto e ha portato via con se' sei metodi interi
+(drawRoads, realBuilding, tileBuilding, roofProps, openBuilding, furnishReal).
+Li ho recuperati e rimessi al loro posto.
 
-2) QUARTIERI DAVVERO SEPARATI — come dicevi tu, prima era tutto mescolato.
-   Ora un distretto = UN carattere:
-     CENTRO      uffici (e qualche negozio)
-     UFFICI      quartiere OSPEDALIERO in prevalenza
-     INDUSTRIA   solo capannoni
-     RESIDENZA   solo case private (e rari negozi)
-     PARCO       verde + le case che vi si affacciano
-   E il FIUME ora scorre DENTRO IL PARCO: le fasce che attraversa diventano verde,
-   cosi' fiume e parco sono una zona sola invece di tagliare le strade a caso.
+E DENTRO C'ERA LA SORPRESA
+Uno dei metodi recuperati e' roofProps: e' LUI che disegnava le VENTOLE (fan1-4) e i
+pannelli solari (sol1-2) sui tetti. Non l'avevo mai visto perche' non lo cercavo li'.
+ORA E' SPENTO. Insieme a lui ho spento anche:
+ - il vecchio costruttore di edifici a pezzi (b_*)
+ - il terreno di fondo vecchio (sw_f) -> ora usa il tuo pz_floor
+ - il pavimento interno vecchio (fl_n) -> ora usa il tuo if_home
 
-3) MAPPA PIU' GRANDE E PARTITA PIU' LUNGA
-   ROYALE 9000x6600 (BLITZ 5760x4200), loot da 170 a 240 pezzi.
-   La zona ora aspetta di piu' e si stringe piu' lentamente: c'e' davvero tempo per
-   girare la citta' invece di finire in 3 minuti.
-
-4) SCHERMATA DI CARICAMENTO all'inizio partita (serviva, con la mappa piu' grande):
-   fondo scuro, titolo e barra di avanzamento, poi sfuma sul gioco.
-
-ANCORA DA FARE, come hai detto: far lavorare INSIEME il tuo generatore di planimetrie
-(PlanimetriK) con le tessere, invece che uno contro l'altro. E le navicelle della
-minimappa iniziale, che sono ancora le vecchie.
+Il codice vecchio resta nel file ma e' IRRAGGIUNGIBILE (i metodi escono subito):
+non puo' piu' disegnare nulla. Se vuoi lo cancello del tutto in un secondo momento,
+con calma e verificando build per build.

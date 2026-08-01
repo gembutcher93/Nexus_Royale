@@ -2521,6 +2521,396 @@ class Game extends Phaser.Scene{
     return;   // il vecchio arredo (fan/sol/fur) e' DISMESSO: arreda solo furnishReal
   }
 
+  drawRoads(){
+    const cols=this.GC, rows=this.GR, cw=WORLD_W/cols, ch=WORLD_H/rows;
+    // ===== TILESET NUOVO (Street_and_walkside): 1 TILE = 1 LARGHEZZA STRADA =====
+    // Gli incroci di Gem (nt_x) hanno GIA' dentro i 4 angolini smussati: si posano interi,
+    // e le strade dritte (nt_str, marciapiede su entrambi i lati) agganciano il neon da sole.
+    if(this.textures.exists('nt_x')){
+      const TS=120;                                   // lato tile = carreggiata
+      const GX=Math.max(3,Math.round(cw/TS)), GY=Math.max(3,Math.round(ch/TS)); // tile per cella
+      const NX=Math.ceil(WORLD_W/TS), NY=Math.ceil(WORLD_H/TS);
+      const gFill=this.add.graphics().setDepth(-18.9);   // base scura sotto i blocchi
+      const put=(k,tx,ty,ang)=>{ const im=this.add.image(tx*TS+TS/2,ty*TS+TS/2,k).setDepth(-18.7)
+          .setDisplaySize(TS+2,TS+2);          // +2px: i tile si sovrappongono, niente fessure
+        if(ang) im.setAngle(ang); return im; };
+      // ---- 1) RETE STRADALE: presa dalla PIANTA della citta' (planCity) ----
+      const P=(this.city&&this.city.R)?this.city:(this.city=this.planCityFallback());
+      const R=P.R;
+      const majX=[], majY=[];
+      for(let x=0;x<NX;x++){ let n=0; for(let y=0;y<NY;y++) if(R[y][x]) n++; if(n>NY*0.8) majX.push(x); }
+      for(let y=0;y<NY;y++){ let n=0; for(let x=0;x<NX;x++) if(R[y][x]) n++; if(n>NX*0.8) majY.push(y); }
+      const rnd=()=>Phaser.Math.FloatBetween(0,1);
+      // ---- 2) AUTOTILE: il pezzo lo decidono i vicini (niente rotazioni indovinate) ----
+      // nt_str nativa = strada EST-OVEST ; nt_t nativa = T chiusa a NORD (bracci E,O,S)
+      const isR=(x,y)=>(x>=0&&y>=0&&x<NX&&y<NY&&R[y][x]);
+      for(let ty=0;ty<NY;ty++)for(let tx=0;tx<NX;tx++){
+        if(P.W[ty][tx]) continue;                     // fiume: lo disegna il generatore acqua
+        if(!R[ty][tx]){
+          const near=(isR(tx-1,ty)||isR(tx+1,ty)||isR(tx,ty-1)||isR(tx,ty+1));   // solo la fascia a filo strada
+          if(near) put('nt_side',tx,ty,0);           // solo il bordo: l'interno lo copre l'edificio
+          else { gFill.fillStyle(0x11161c,1); gFill.fillRect(tx*TS,ty*TS,TS+1,TS+1); }
+          continue; }
+        const N=isR(tx,ty-1),S=isR(tx,ty+1),E=isR(tx+1,ty),W=isR(tx-1,ty);
+        const n=(N?1:0)+(S?1:0)+(E?1:0)+(W?1:0);
+        if(n===4) put('nt_x',tx,ty,0);
+        else if(n===3){                                   // T: ruoto verso il lato CHIUSO
+          const ang = !N?0 : (!E?90 : (!S?180:270));
+          put('nt_t',tx,ty,ang);
+        }
+        else if(n===2 && ((N&&E)||(E&&S)||(S&&W)||(W&&N))){
+          // CURVA: si usa la L (nt_cor), NON la X. nt_cor nativa collega OVEST+SUD.
+          // rotazioni orarie: W+S=0 · N+W=90 · N+E=180 · E+S=270
+          const ang = (W&&S)?0 : ((N&&W)?90 : ((N&&E)?180:270));
+          put(this.textures.exists('nt_cor')?'nt_cor':'nt_x',tx,ty,ang);
+        }
+        else if(n===1){                                   // vicolo cieco: T chiusa dai due lati liberi
+          const ang = N?180 : (S?0 : (E?270:90));
+          put('nt_t',tx,ty,ang);
+        }
+        else if(N||S) put('nt_str',tx,ty,90);             // verticale (anche vicolo cieco)
+        else put('nt_str',tx,ty,0);                       // orizzontale
+      }
+      // ---- 3) strisce pedonali sugli avvicinamenti agli incroci principali ----
+      for(const x of majX) for(const y of majY){
+        if(y+1<NY&&R[y+1][x]) put('nt_ped',x,y+1,90).setDepth(-18.66);
+        if(x+1<NX&&R[y][x+1]) put('nt_ped',x+1,y,0).setDepth(-18.66);
+      }
+      // ---- 4) LANDMARK: rotatoria su qualche incrocio grande, pad VTOL su qualche isolato ----
+      for(let i=1;i+1<majX.length;i++)for(let j=1;j+1<majY.length;j++){
+        if(rnd()<0.18) put('nt_round',majX[i],majY[j],0).setDepth(-18.6);
+      }
+      for(let i=0;i+1<majX.length;i++)for(let j=0;j+1<majY.length;j++){
+        if(rnd()>0.2) continue;
+        const px=majX[i]+2, py=majY[j]+2;
+        if(px<NX&&py<NY&&!R[py][px]) put('nt_pad',px,py,0).setDepth(-18.6);
+      }
+      // ---- LAMPIONI lungo le strade: sono le bolle di luce che bucano la notte ----
+      this.lamps=[];
+      const cand=[];
+      for(let ty=1;ty<NY-1;ty++)for(let tx=1;tx<NX-1;tx++){
+        if(!R[ty][tx]) continue;
+        // metto il lampione sul bordo strada/marciapiede (dove c'e' un isolato accanto)
+        if(P.W[ty][tx]) continue;
+        if(!R[ty][tx+1]&&!P.W[ty][tx+1]) cand.push({x:tx*TS+TS-14, y:ty*TS+TS/2});
+        else if(R[ty+1]&&!R[ty+1][tx]&&!P.W[ty+1][tx]) cand.push({x:tx*TS+TS/2, y:ty*TS+TS-14});
+      }
+      Phaser.Utils.Array.Shuffle(cand);
+      const nL=Math.min(LAMP_N,cand.length);
+      for(let i=0;i<nL;i++){ const p=cand[i];
+        const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.gold]);
+        this.lamps.push({x:p.x,y:p.y,col:col,r:LAMP_R*Phaser.Math.FloatBetween(0.8,1.25)});
+        if(this.textures.exists('up_lamp')) this.putProp('up_lamp',p.x,p.y,false);
+        else { const b=this.add.circle(p.x,p.y,3.5,col,0.95).setDepth(-18.4); if(this.toWorld) this.toWorld(b); }
+      }
+      // altro arredo di strada sui restanti punti a bordo marciapiede
+      for(let i=nL;i<Math.min(cand.length,nL+150);i++){ const p=cand[i], r=Math.random();
+        if(r<0.16) this.putProp('up_bin',p.x,p.y,false);
+        else if(r<0.28) this.putProp('up_hydrant',p.x,p.y,false);
+        else if(r<0.40) this.putProp('up_bench',p.x,p.y,true);
+        else if(r<0.50) this.putProp('up_sign',p.x,p.y,false);
+        else if(r<0.58) this.putProp('up_barrier',p.x,p.y,true);
+        else if(r<0.64) this.putProp('up_bus',p.x,p.y,true);
+        else if(r<0.70) this.putProp('up_car2',p.x,p.y,true);
+        else if(r<0.74) this.putProp('up_kiosk',p.x,p.y,true);
+      }
+      return;
+    }
+    // carreggiata = larghezza NATIVA del tile strada (i tile di Gem si agganciano gia' a questa misura)
+    const ROAD=this.textures.exists('road_h')? this.textures.get('road_h').getSourceImage().height : 150;
+    // ---- LAYER DI FONDO su TUTTO il mondo; le strade ci vanno SOPRA
+    //      (niente piu' buchi neri, niente marciapiedi di bordo: il bordo lo da' gia' la strada) ----
+    if(this.textures.exists('pz_floor'))
+      this.add.tileSprite(0,0,WORLD_W,WORLD_H,'pz_floor').setOrigin(0,0).setDepth(-19).setAlpha(0.5);
+    else { const gAsf=this.add.graphics().setDepth(-19); gAsf.fillStyle(0x11151b,1); gAsf.fillRect(0,0,WORLD_W,WORLD_H); }
+    const g=this.add.graphics().setDepth(-17);
+    // ===== STRADE SPRITE coi circuiti neon (Gem) al posto di asfalto piatto + LED =====
+    if(this.textures.exists('road_h')){
+      // dritti a MISURA NATIVA: tileSprite scala 1, banda alta = altezza nativa del tile (ROAD)
+      for(let j=0;j<=rows;j++){ const y=j*ch;
+        this.add.tileSprite(WORLD_W/2,y,WORLD_W,ROAD,'road_h').setDepth(-18.72); }
+      for(let i=0;i<=cols;i++){ const x=i*cw;
+        this.add.tileSprite(x,WORLD_H/2,WORLD_H,ROAD,'road_h').setAngle(90).setDepth(-18.70); }
+      // svincoli a MISURA NATIVA (si agganciano sui bordi grigi): X (road_x) ai crocevia interni,
+      // curva (road_cv) ai 4 ANGOLI mappa. road_cv nativa connette SINISTRA+SOTTO.
+      // rotazioni orarie: alto-sx=270  alto-dx=0  basso-sx=180  basso-dx=90
+      const hasX=this.textures.exists('road_x'), hasCV=this.textures.exists('road_cv');
+      for(let i=0;i<=cols;i++)for(let j=0;j<=rows;j++){
+        const L=(i===0),R=(i===cols),T=(j===0),B=(j===rows);
+        let key=hasX?'road_x':'road_h', ang=0;
+        if(hasCV){
+          if(T&&L){key='road_cv';ang=270;} else if(T&&R){key='road_cv';ang=0;}
+          else if(B&&L){key='road_cv';ang=180;} else if(B&&R){key='road_cv';ang=90;}
+        }
+        this.add.image(i*cw,j*ch,key).setAngle(ang).setDepth(-18.5); }
+    } else {
+      // --- fallback vecchio stile (LED) se le strade sprite non ci sono ---
+      const gLed=this.add.graphics().setDepth(-17.5);
+      for(let i=0;i<=cols;i++){ const x=i*cw;
+        gLed.fillStyle(C.cyan,0.55); gLed.fillRect(x-ROAD/2+3,0,2,WORLD_H); gLed.fillRect(x+ROAD/2-5,0,2,WORLD_H); }
+      for(let j=0;j<=rows;j++){ const y=j*ch;
+        gLed.fillStyle(C.magenta,0.45); gLed.fillRect(0,y-ROAD/2+3,WORLD_W,2); gLed.fillRect(0,y+ROAD/2-5,WORLD_W,2); }
+      g.fillStyle(0xd8c14a,0.5);
+      for(let i=1;i<cols;i++){ const x=i*cw-2; for(let y=20;y<WORLD_H;y+=118) g.fillRect(x,y,4,54); }
+      for(let j=1;j<rows;j++){ const y=j*ch-2; for(let x=20;x<WORLD_W;x+=118) g.fillRect(x,y,54,4); }
+    }
+    // lampioni
+    let lights=0;
+    for(let i=1;i<cols;i++)for(let j=0;j<rows;j++){
+      if(Math.random()<0.55) continue;
+      const x=i*cw+(Math.random()<0.5?-ROAD/2+14:ROAD/2-14), y=j*ch+ch/2;
+      const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.gold]);
+      if(lights<this.FX.lights){ lights++;
+        this.add.image(x,y,'glow').setDisplaySize(150,150).setTint(col).setAlpha(0.10).setBlendMode(Phaser.BlendModes.ADD).setDepth(-16); }
+      g.fillStyle(col,0.9); g.fillCircle(x,y,3);
+    }
+    const D=this.gDecor;
+    for(let i=0;i<26;i++){
+      const x=Phaser.Math.Between(60,WORLD_W-60), y=Phaser.Math.Between(60,WORLD_H-60);
+      const r=Math.random();
+      if(r<0.42){ const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.purple]);
+        D.fillStyle(col,0.08); D.fillEllipse(x,y,Phaser.Math.Between(50,120),Phaser.Math.Between(24,56));
+      } else if(r<0.68){ D.fillStyle(0x24242f,1); D.fillCircle(x,y,11); D.lineStyle(2,0x14141c,1); D.strokeCircle(x,y,11);
+      } else if(r<0.86){ D.fillStyle(0x1a1a24,1); D.fillRect(x-14,y-9,28,18);
+      } else { const col=Phaser.Utils.Array.GetRandom([C.magenta,C.green,C.gold]);
+        D.fillStyle(col,0.10); D.fillEllipse(x,y,Phaser.Math.Between(26,54),Phaser.Math.Between(14,26)); }
+    }
+  }
+
+  // Palazzo chiuso col TETTO PRONTO di Gem (vista dall'alto), ricolorato per distretto.
+  // Sceglie la sprite in base alla proporzione del lotto; se il lotto e' grande usa il grande.
+  realBuilding(x,y,w,h,col){
+    this._flPick=Phaser.Math.Between(0,2);   // pavimento COERENTE per tutto l'edificio
+    return false;   // DISMESSO: gli edifici si costruiscono coi muri di Gem (buildWallRing)
+    const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
+      return (m(r)<<16)|(m(g)<<8)|m(b); };
+    const tint=mix(col||0x33e1ff,0.5);
+    let key;
+    if(w>300&&h>150) key='bldT_big';
+    else if(h>w*1.7) key='bldT_tall';
+    else key=Phaser.Utils.Array.GetRandom(['bldT0','bldT1','bldT2','bldT3','bldT4','bldT5']);
+    // riempio il lotto: la sprite si adatta (puo' allungarsi un po', sono tetti astratti)
+    this.add.image(x,y,key).setOrigin(0,0).setDisplaySize(w,h).setDepth(0.6).setTint(tint);
+    return true;
+  }
+  tileBuilding(x,y,w,h,col){
+    // prima prova i palazzi pronti di Gem, poi il nine-slice come ripiego
+    if(this.realBuilding(x,y,w,h,col)) return true;
+    // le megastrutture usano gli stessi MURI del resto della citta'
+    if(this.textures.exists('wl_wall')){
+      if(!this._bldTheme) this._bldTheme='ufficio';   // qui il tipo lo decide il chiamante
+      if(this.buildWallRing(x,y,w,h,null)) return true;
+    }
+    return false;   // DISMESSO: il nine-slice vecchio (b_*) non si usa piu'
+    const S=Math.max(24,Math.min(100,Math.floor(Math.min(w,h)/2)));
+    const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
+      return (m(r)<<16)|(m(g)<<8)|m(b); };
+    const tint=mix(col||0x33e1ff,0.62);
+    const put=(key,px,py,pw,ph,rep)=>{ if(pw<=0||ph<=0) return null;
+      const o=rep ? this.add.tileSprite(px,py,pw,ph,key).setOrigin(0,0)
+                  : this.add.image(px,py,key).setOrigin(0,0).setDisplaySize(pw,ph);
+      o.setDepth(0.6).setTint(tint); return o; };
+    const iw=w-2*S, ih=h-2*S;
+    put('b_c',x+S,y+S,iw,ih,true);
+    put('b_t',x+S,y,iw,S,true); put('b_b',x+S,y+h-S,iw,S,true);
+    put('b_l',x,y+S,S,ih,true); put('b_r',x+w-S,y+S,S,ih,true);
+    put('b_tl',x,y,S,S); put('b_tr',x+w-S,y,S,S);
+    put('b_bl',x,y+h-S,S,S); put('b_br',x+w-S,y+h-S,S,S);
+    return true;
+  }
+  // Dettagli sui tetti dei palazzi CHIUSI: ventole e pannelli solari.
+  // ---- TETTI dei palazzi CHIUSI: impianto tecnico credibile, non props a caso ----
+  // Schema reale: una fila di unita' di trattamento aria sul lato lungo, un campo di
+  // pannelli solari sulla meta' libera, un vano scale d'angolo. Pezzi grandi, pochi.
+  roofProps(x,y,w,h,col){
+    return;   // DISMESSO: era questo a disegnare le VENTOLE (fan1-4) e i pannelli (sol1-2) sui tetti
+    const c=col||0x9fd8ff, horiz=w>=h, m=22;
+    const g=this.add.graphics().setDepth(0.70);
+    // basamento tecnico su una fascia del tetto (dove poggia tutto)
+    const bandT = horiz ? Math.min(96,h*0.42) : Math.min(96,w*0.42);
+    const band = horiz ? {x:x+m, y:y+m, w:w-2*m, h:bandT}
+                       : {x:x+m, y:y+m, w:bandT,  h:h-2*m};
+    g.fillStyle(0x0e1a17,0.55); g.fillRect(band.x,band.y,band.w,band.h);
+    g.lineStyle(1,c,0.20);      g.strokeRect(band.x,band.y,band.w,band.h);
+
+    // 1) fila di VENTOLE grandi lungo la fascia
+    const fs=Math.max(38,Math.min(64,(horiz?h:w)*0.30));       // molto piu' grandi di prima
+    const run = horiz ? band.w : band.h;
+    const nF  = Math.max(1,Math.min(4,Math.floor(run/(fs*1.5))));
+    const step= run/nF;
+    for(let i=0;i<nF;i++){
+      const cxp = horiz ? band.x+step*(i+0.5) : band.x+band.w/2;
+      const cyp = horiz ? band.y+band.h/2     : band.y+step*(i+0.5);
+      // culla della ventola
+      g.fillStyle(0x16241f,1); g.fillRect(cxp-fs/2-4,cyp-fs/2-4,fs+8,fs+8);
+      g.lineStyle(1,c,0.35);   g.strokeRect(cxp-fs/2-4,cyp-fs/2-4,fs+8,fs+8);
+      const o=this.add.image(cxp,cyp,Phaser.Utils.Array.GetRandom(['fan1','fan2','fan3','fan4']))
+        .setDisplaySize(fs,fs).setDepth(0.78).setTint(c).setAlpha(0.95);
+      if(this.FX.glow && this.animCount<this.FX.signs+16){ this.animCount++;
+        this.tweens.add({targets:o,angle:360,duration:Phaser.Math.Between(3200,6000),repeat:-1}); }
+    }
+
+    // 2) CAMPO SOLARE sulla meta' libera: griglia fitta, come sui tetti veri
+    const fx = horiz ? x+m               : band.x+band.w+10;
+    const fy = horiz ? band.y+band.h+10  : y+m;
+    const fw = horiz ? w-2*m             : (x+w-m)-fx;
+    const fh = horiz ? (y+h-m)-fy        : h-2*m;
+    if(fw>70&&fh>50){
+      const pw=Math.min(46,fw/3.2), ph=Math.round(pw*1.22);
+      const cols=Math.max(1,Math.floor(fw/(pw+6))), rows=Math.max(1,Math.min(3,Math.floor(fh/(ph+6))));
+      const ox=fx+(fw-(cols*(pw+6)-6))/2, oy=fy+(fh-(rows*(ph+6)-6))/2;
+      for(let r=0;r<rows;r++)for(let k=0;k<cols;k++){
+        this.add.image(ox+k*(pw+6),oy+r*(ph+6),k%2?'sol1':'sol2').setOrigin(0,0)
+          .setDisplaySize(pw,ph).setDepth(0.74).setTint(c).setAlpha(0.9);
+      }
+    }
+    // 3) vano scale / torretta d'angolo
+    const sz=Math.min(46,Math.min(w,h)*0.20);
+    g.fillStyle(0x16241f,1); g.fillRect(x+w-m-sz,y+h-m-sz,sz,sz);
+    g.lineStyle(2,c,0.5);    g.strokeRect(x+w-m-sz,y+h-m-sz,sz,sz);
+    g.lineStyle(1,c,0.30);
+    for(let i=1;i<4;i++) g.lineBetween(x+w-m-sz+4,y+h-m-sz+i*sz/4,x+w-m-4,y+h-m-sz+i*sz/4);
+  }
+
+  // ---- Palazzo APERTO: pavimento calpestabile, muri a filo sottile, varco su un lato ----
+  // Le collisioni del perimetro restano quelle delle 5 strisce create da addWall.
+  openBuilding(x,y,w,h,wth,gy,gap,col){
+    if(!this.textures.exists('wl_c')) return false;
+    if(w < 2*(2.4*wth)+40 || h < 2*(2.4*wth)+40) return false;
+    const c=col||0x33e1ff;
+    const dark=(v,f)=>{ const r=((v>>16)&255)*f,g2=((v>>8)&255)*f,b=(v&255)*f;
+      return (Math.round(r)<<16)|(Math.round(g2)<<8)|Math.round(b); };
+    // pavimento: tessera neutra tinta col colore del distretto
+    this.add.tileSprite(x+wth,y+wth,w-2*wth,h-2*wth,(this.textures.exists('if_home')?'if_home':'pz_floor')).setOrigin(0,0)
+      .setDepth(0.45).setTint(dark(c,0.42)).setTileScale(0.55);
+    // arredi (con collisione)
+    this.furnish(x,y,w,h,wth,gy,gap,c);
+    // muri sottili. La barra e' 40px nativa, lo spigolo un L 96x96 con bracci
+    // spessi 40: vanno disegnati alla STESSA scala, se no l'angolo non chiude.
+    const ts=wth/40, CS=Math.round(96*ts);
+    const bar=(bx,by,bw,bh,horiz)=>{ if(bw<=0||bh<=0) return;
+      this.add.tileSprite(bx,by,bw,bh,horiz?'wl_h':'wl_v').setOrigin(0,0)
+        .setDepth(0.8).setTint(c).setTileScale(ts,ts); };
+    bar(x+CS,y,w-2*CS,wth,true);
+    bar(x+CS,y+h-wth,w-2*CS,wth,true);
+    bar(x,y+CS,wth,h-2*CS,false);
+    bar(x+w-wth,y+CS,wth,gy-(y+CS),false);
+    bar(x+w-wth,gy+gap,wth,(y+h-CS)-(gy+gap),false);
+    const cor=(cx2,cy2,fx,fy)=>this.add.image(cx2,cy2,'wl_c').setOrigin(0,0)
+      .setDisplaySize(CS,CS).setDepth(0.85).setTint(c).setFlipX(fx).setFlipY(fy);
+    cor(x,y,false,false); cor(x+w-CS,y,true,false);
+    cor(x,y+h-CS,false,true); cor(x+w-CS,y+h-CS,true,true);
+    return true;
+  }
+
+  // ---- ARREDI degli interni: mobili grandi, allungati, addossati ai muri, CON COLLISIONE ----
+  // Le tessere UI sono astratte: allungandole prendono la forma del mobile (letto, tavolo,
+  // bancone, armadio). Ogni mobile registra un corpo statico, quindi fa da riparo.
+  // ---- ARREDAMENTO REALE: mobili alla scala NATIVA, attaccati ai muri col fronte
+  // verso l'INTERNO della stanza (cosi' il centro resta libero), a TEMA per stanza.
+  // VERSO NATIVO delle sprite di Gem: letto/divano/scrivania/mobili guardano in BASSO (S=180),
+  // la sedia da ufficio guarda in ALTO (N=0). rot = (target - nativo + 360) % 360
+  furnishReal(ix,iy,iw,ih,theme,noGo){
+    const FS=1.05;                                  // scala nativa (NON rimpicciolire)
+    // il verso nativo dei nuovi arredi: quasi tutti guardano in BASSO come gli altri;
+    // sedie e wc guardano in ALTO (vanno rivolti verso il tavolo / la stanza)
+    const NATIVE={nf_chair:0,nf_chair2:0,nf_chair3:0,of_desk_stud:180,nf_toilet:0,sh_stool:0};
+    const nat=k=>(NATIVE[k]!==undefined?NATIVE[k]:180);
+    const dim=k=>{ const t=this.textures.get(k).getSourceImage(); return [Math.round(t.width*FS),Math.round(t.height*FS)]; };
+    const placed=[];
+    const fits=(r)=>{
+      if(r.x<ix||r.y<iy||r.x+r.w>ix+iw||r.y+r.h>iy+ih) return false;
+      if(noGo && r.x<noGo.x+noGo.w && r.x+r.w>noGo.x && r.y<noGo.y+noGo.h && r.y+r.h>noGo.y) return false;
+      return !placed.some(o=> r.x<o.x+o.w+8 && r.x+r.w+8>o.x && r.y<o.y+o.h+8 && r.y+r.h+8>o.y);
+    };
+    // mette il mobile contro il muro `side`, col fronte verso l'interno
+    const atWall=(k,side,along)=>{
+      if(!this.textures.exists(k)) return false;
+      let [w,h]=dim(k);
+      const target={T:180,B:0,L:90,R:270}[side];     // dove deve guardare (dentro la stanza)
+      let rot=(target-nat(k)+360)%360;
+      if(rot===90||rot===270){ const t=w; w=h; h=t; } // ruotato: ingombro scambiato
+      let x,y;
+      if(side==='T'){ x=ix+along; y=iy+2; }
+      else if(side==='B'){ x=ix+along; y=iy+ih-h-2; }
+      else if(side==='L'){ x=ix+2; y=iy+along; }
+      else { x=ix+iw-w-2; y=iy+along; }
+      const r={x,y,w,h};
+      if(!fits(r)) return false;
+      placed.push(r);
+      this.add.image(x+w/2,y+h/2,k).setOrigin(0.5).setAngle(rot).setDepth(0.55).setAlpha(0.97);
+      const body=this.walls.create(x+w/2,y+h/2,'px').setVisible(false);
+      body.setDisplaySize(Math.max(4,w-6),Math.max(4,h-6)); body.refreshBody();
+      this.wallRects.push({x:x+3,y:y+3,w:w-6,h:h-6,type:'cover'});
+      return true;
+    };
+    // postazione ufficio: scrivania al muro + sedia davanti (guarda la scrivania)
+    const desk=(side,along)=>{
+      if(!atWall('nf_desk',side,along)) return false;
+      const d=placed[placed.length-1], [cw,chh]=dim('nf_chair');
+      let cx,cy,rot;
+      if(side==='T'){ cx=d.x+d.w/2-cw/2; cy=d.y+d.h+6; rot=0; }
+      else if(side==='B'){ cx=d.x+d.w/2-cw/2; cy=d.y-chh-6; rot=180; }
+      else if(side==='L'){ cx=d.x+d.w+6; cy=d.y+d.h/2-cw/2; rot=90; }
+      else { cx=d.x-chh-6; cy=d.y+d.h/2-cw/2; rot=270; }
+      const sw=(rot===90||rot===270)?chh:cw, sh=(rot===90||rot===270)?cw:chh;
+      const r={x:cx,y:cy,w:sw,h:sh};
+      if(fits(r)){ placed.push(r);
+        this.add.image(cx+sw/2,cy+sh/2,'nf_chair').setOrigin(0.5).setAngle(rot).setDepth(0.56).setAlpha(0.97); }
+      return true;
+    };
+    const R=(a,b)=>Phaser.Math.Between(a,b);
+    if(theme==='ospedale'){
+      const step=Math.round(170*FS);
+      for(let a=8;a+step<iw;a+=step){ atWall('hs_bed','T',a); atWall('hs_bed','B',a); }
+      atWall('hs_cabinet','L',R(10,Math.max(11,ih-90)));
+      atWall('hs_monitor','R',R(10,Math.max(11,ih-70)));
+      if(iw>320) atWall('hs_reception','T',Math.round(iw/2)-80);
+      atWall('hs_stretcher','L',R(10,Math.max(11,ih-120)));
+    } else if(theme==='negozio'){
+      atWall('sh_counter','B',R(8,Math.max(9,iw-Math.round(170*FS))));
+      const st=Math.round(130*FS);
+      for(let a=8;a+st<iw;a+=st) atWall('sh_shelf','T',a);
+      atWall('sh_fridge','R',R(10,Math.max(11,ih-80)));
+      atWall('sh_table','L',R(10,Math.max(11,ih-90)));
+      atWall('sh_stool','L',R(10,Math.max(11,ih-60)));
+    } else if(theme==='cucina'){
+      atWall('nf_kitchen','T',R(8,Math.max(9,iw-Math.round(150*FS))));
+      atWall('nf_fridge','L',R(10,Math.max(11,ih-80)));
+      atWall('nf_sink','T',R(8,Math.max(9,iw-70)));
+      atWall('nf_table','B',R(10,Math.max(11,iw-130)));
+      atWall('nf_chair2','B',R(10,Math.max(11,iw-60)));
+    } else if(theme==='bagno'){
+      atWall('nf_toilet','L',R(8,Math.max(9,ih-70)));
+      atWall('nf_shower','T',R(8,Math.max(9,iw-90)));
+      atWall('nf_sink','R',R(8,Math.max(9,ih-60)));
+    } else if(theme==='camera'){
+      atWall('nf_bed','T',Math.max(4,R(10,Math.max(11,iw-Math.round(200*FS)-10))));
+      atWall(Phaser.Utils.Array.GetRandom(['nf_cab2','nf_cab3']),'L',R(10,Math.max(11,ih-120)));
+      atWall('nf_arm','B',R(10,Math.max(11,iw-120)));
+      atWall('nf_cab','R',R(10,Math.max(11,ih-90)));
+      if(this.textures.exists('nf_tv')) atWall('nf_tv','B',R(10,Math.max(11,iw-100)));
+      if(this.textures.exists('nf_shelf')) atWall('nf_shelf','R',R(10,Math.max(11,ih-60)));
+    } else if(theme==='ufficio'){
+      const step=Math.round(190*FS);
+      for(let a=8;a+step<iw;a+=step){ desk('T',a); desk('B',a); }
+      for(let b=8;b+100<ih;b+=Math.round(110*FS)) atWall(Phaser.Math.FloatBetween(0,1)<0.5?'of_locker':'nf_cab3','R',b);
+      if(iw>420&&ih>300) atWall('of_meeting','T',Math.round(iw/2)-110);
+      atWall('of_printer','L',R(10,Math.max(11,ih-80)));
+      atWall('of_water','L',R(10,Math.max(11,ih-50)));
+    } else if(theme==='magazzino'){
+      const s=Math.round(95*FS);
+      for(let a=6;a+80<iw;a+=s){ atWall('nf_cab2','T',a); atWall('nf_cab3','B',a); }
+      for(let b=6;b+80<ih;b+=s){ atWall('nf_cab','L',b); atWall('nf_cab2','R',b); }
+    } else {  // salotto
+      atWall('nf_sofa','B',R(8,Math.max(9,iw-Math.round(225*FS)-8)));
+      atWall('nf_arm','L',R(8,Math.max(9,ih-110)));
+      desk('T',R(8,Math.max(9,iw-Math.round(150*FS))));
+      atWall('nf_cab','R',R(8,Math.max(9,ih-90)));
+    }
+    return placed.length;
+  }
+
   furnish(x,y,w,h,wth,gy,gap,col){
     if(!this.textures.exists('nf_bed')) return;   // solo mobili veri, niente fur1-5
     const c=col||0x9fd8ff;
@@ -2877,9 +3267,8 @@ class Game extends Phaser.Scene{
       }
       else if(tipo==='piazza'){
         // lastricato liscio col pezzo #52, niente edifici: spazio aperto e pericoloso
-        if(this.textures.exists('sw_f')){
-          this.add.tileSprite(px,py,maxW,maxH,'sw_f').setOrigin(0,0).setDepth(-15)
-            .setTileScale(0.5,0.5).setTint(0xffffff).setAlpha(0.9);
+        if(this.textures.exists('pz_floor')){
+          this.add.tileSprite(px,py,maxW,maxH,'pz_floor').setOrigin(0,0).setDepth(-18.2);
         }
         const G=this.gDecor;
         G.lineStyle(2,edge,0.45); G.strokeRect(px,py,maxW,maxH);
@@ -2966,9 +3355,8 @@ class Game extends Phaser.Scene{
       }
       else if(tipo==='piazza'){
         // lastricato liscio col pezzo #52, niente edifici: spazio aperto e pericoloso
-        if(this.textures.exists('sw_f')){
-          this.add.tileSprite(px,py,maxW,maxH,'sw_f').setOrigin(0,0).setDepth(-15)
-            .setTileScale(0.5,0.5).setTint(0xffffff).setAlpha(0.9);
+        if(this.textures.exists('pz_floor')){
+          this.add.tileSprite(px,py,maxW,maxH,'pz_floor').setOrigin(0,0).setDepth(-18.2);
         }
         const G=this.gDecor;
         G.lineStyle(2,edge,0.45); G.strokeRect(px,py,maxW,maxH);
