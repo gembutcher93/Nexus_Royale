@@ -5,7 +5,7 @@ let WORLD_W=9000, WORLD_H=6600;   // ingrandita per i tile da 120px: stessi pala
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v98';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v99';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -3246,10 +3246,11 @@ class Game extends Phaser.Scene{
     const img=this.textures.get(src).getSourceImage();
     ['_0','_1','_2','_3','_4','_5','_d0','_d1','_d2'].forEach(suf=>{
       const key='ch_'+charId+suf;
-      if(this.textures.exists(key)) this.textures.remove(key);
-      const cv=this.textures.createCanvas(key,64,64);
-      const ctx=cv.getContext(); ctx.clearRect(0,0,64,64);
-      ctx.imageSmoothingEnabled=false; ctx.drawImage(img,0,0,64,64); cv.refresh();
+      let cv=this.textures.exists(key)?this.textures.get(key):null;
+      if(!cv||!cv.getContext) cv=this.textures.createCanvas(key,64,64);   // niente remove: le sprite la stanno usando
+      const ctx=cv.getContext(); if(!ctx) return;
+      ctx.clearRect(0,0,64,64); ctx.imageSmoothingEnabled=false;
+      ctx.drawImage(img,0,0,64,64); cv.refresh();
     });
     return true;
   }

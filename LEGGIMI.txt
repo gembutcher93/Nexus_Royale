@@ -1,19 +1,26 @@
-NEXUS ROYALE — DELTA V98  ·  SKIN RIFATTE COL LOOK GIUSTO   (BUILD v98)
-========================================================================
-1) Copia in assets/ le 60 PNG spr_*_*.png  (SOVRASCRIVI quelle vecchie)
+NEXUS ROYALE — DELTA V99   (BUILD v99)
+=======================================
+1) Copia in assets/ le 60 PNG spr_*_*.png  (SOVRASCRIVI)
 2) Sostituisci: game.js  sw.js  index.html  assets_fallback.js
 
-PERCHE' PRIMA ERA GRIGIA
-Il Chrome bello che hai visto NON era un file: e' l'effetto che il gioco applica DAL
-VIVO (tinta metallica + alone) sopra la sprite. Non esisteva come PNG da esportare.
-Quello grigio invece l'avevo generato con un altro metodo (recolor sulla luminanza) —
-ed e' venuto peggio, avevi ragione.
+DUE BUG DELLA V98, ENTRAMBI MIEI:
 
-COSA HO FATTO ORA
-Ho cotto nel PNG ESATTAMENTE l'effetto del gioco, prendendo i valori dalla tabella
-delle skin: la stessa tinta di setTint + l'alone colorato + il riflesso sulle parti
-chiare. Quindi il PNG ora e' quello che vedevi nell'anteprima, non piu' il grigio.
-Rifatte tutte e 12 le skin su tutti e 5 i personaggi.
+1) "Script error" che bloccava il gioco
+   Per cambiare i frame del personaggio CANCELLAVO le texture e le ricreavo. Ma quelle
+   texture erano IN USO dalle sprite in quel momento -> Phaser esplodeva.
+   Ora non cancello piu' niente: ridisegno sopra la texture esistente.
 
-Insieme alla V97 (frame di animazione rigenerati) le skin ora si vedono per TUTTA la
-partita, non solo col paracadute.
+2) "Le skin sono solo alone"
+   Avevo cotto l'alone DENTRO il PNG, ma il gioco ne aggiunge gia' uno suo dal vivo:
+   due aloni sovrapposti nascondevano il personaggio. Ora l'alone lo mette solo il gioco.
+
+E LA RISPOSTA ALLA TUA DOMANDA (perche' nel mockup si vedeva e in gioco no):
+la tinta del gioco MOLTIPLICA i colori. Su una sprite scura come i tuoi personaggi puo'
+solo scurire, mai schiarire: per questo CHROME in partita e' sempre sembrato identico
+allo standard. Non era un bug, era proprio il limite del metodo.
+Ora le skin sono cotte rimappando la LUMINANZA su una rampa di colore (ombra / medio /
+luce) e rimescolando un 28% dell'originale per non perdere i dettagli. Risultato: la
+skin si vede davvero E il personaggio resta riconoscibile.
+Verificato: chrome grigio-azzurro chiaro, inferno rosso, toxic verde, void viola.
+
+Se una tinta non ti convince si cambia la rampa di quella singola skin.
