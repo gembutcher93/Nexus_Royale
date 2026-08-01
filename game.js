@@ -5,7 +5,7 @@ let WORLD_W=9000, WORLD_H=6600;   // ingrandita per i tile da 120px: stessi pala
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v106';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v107';   // NUMERO DI BUILD mostrato a schermo in gioco
 const TILE_BOX={"gr_grass": [], "gr_path": [], "gr_path_cor": [], "pz_floor": [], "wl_wall": [[0, 0, 30, 120]], "wl_corner": [[0, 0, 30, 120], [30, 90, 90, 30]], "wl_door": [[0, 0, 30, 30], [0, 90, 30, 30]], "wl_win": [[0, 0, 30, 30], [15, 60, 15, 15], [0, 90, 30, 30]], "wl_in": [[0, 0, 15, 120]], "wl_in_cor": [[0, 0, 15, 120], [15, 105, 105, 15]], "wt_water": [[0, 0, 120, 120]], "wt_edge": [[0, 60, 120, 30], [0, 90, 105, 30]], "wt_corner": [[0, 60, 90, 60]]};
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
@@ -2360,6 +2360,10 @@ class Game extends Phaser.Scene{
   // Occupa PIU' lotti e la strada in mezzo. Perimetro con piu' ingressi, corridoio
   // centrale, stanze ai lati con la loro porta, arredi dentro. Ci si entra e ci si combatte.
   megaBuilding(x,y,w,h,col,kind){
+    // la megastruttura impone il suo tipo: pavimento e arredi lo seguono
+    const MK={ospedale:'ospedale',uffici:'ufficio',scuola:'ufficio',magazzino:'magazzino'};
+    this._bldTheme=MK[kind]||'ufficio';
+    this._bldDistrict=this._bldDistrict||'uffici';
     const c=col||0x3df2b4, wth=34;
     const ts=wth/40, CS=Math.round(96*ts);
     if(w<CS*4||h<CS*4) return false;
@@ -2693,7 +2697,7 @@ class Game extends Phaser.Scene{
     if(this.realBuilding(x,y,w,h,col)) return true;
     // le megastrutture usano gli stessi MURI del resto della citta'
     if(this.textures.exists('wl_wall')){
-      this._bldTheme=kind||'ufficio';
+      if(!this._bldTheme) this._bldTheme='ufficio';   // qui il tipo lo decide il chiamante
       if(this.buildWallRing(x,y,w,h,null)) return true;
     }
     if(!this.textures.exists('b_tl')) return false;

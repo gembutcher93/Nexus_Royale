@@ -1,25 +1,16 @@
-NEXUS ROYALE — DELTA V106  ·  VIA IL VECCHIO   (BUILD v106)
-============================================================
+NEXUS ROYALE — DELTA V107  ·  FIX "kind is not defined"   (BUILD v107)
+=======================================================================
 Sostituisci SOLO: game.js  sw.js  index.html
-(gli asset li hai gia' tutti dalle V102/V103/V105)
 
-HAI RAGIONE: con quello che hai consegnato non serve piu' niente di vecchio.
-Restano solo STRADE e MARCIAPIEDI (nt_*), tutto il resto ora e' roba tua.
+NON erano i file vecchi su GitHub: era un errore mio nel codice.
+Nella V106 ho spostato il codice dei muri dentro tileBuilding(), che pero' NON riceve
+il parametro "kind" (il tipo di edificio): al primo palazzo il gioco cercava una
+variabile che li' non esiste e si fermava.
 
-DISMESSO (non viene piu' disegnato):
- - bldT0..5, i vecchi "palazzi chiusi" usati come corpo dell'edificio (le "ventole")
- - il vecchio megaBuilding a pezzi (b_tl, b_top...): ora anche le megastrutture
-   si costruiscono coi TUOI muri
- - ifloor0..7, i vecchi pavimenti interni -> ora solo if_home/office/hospital/shop/industrial
- - fur1..fur5, il vecchio arredo disegnato a codice -> solo mobili veri
+FIX: in quel punto il tipo non serve piu' (lo decide chi chiama). In piu' le
+MEGASTRUTTURE ora impostano il proprio tipo (ospedale/uffici/scuola/magazzino) prima
+di costruirsi, cosi' anche li' pavimento e arredi combaciano.
 
-ADESSO OGNI EDIFICIO E':
- perimetro con wl_corner agli spigoli, wl_wall sui lati, wl_win qua e la', UNA wl_door
- + MURI INTERNI (wl_in) che dividono l'edificio in due stanze, con un varco per passare
- + pavimento del tipo giusto + arredi del tema giusto
-
-COLORE PER QUARTIERE (come dicevi): i muri partono dalla tua base blu-azzurra e
-prendono una tinta leggera secondo il distretto —
- centro azzurro chiaro · uffici azzurro · residenza caldo/sabbia · industria ambra ·
- parco verde tenue.
-Se una tinta e' troppo forte o vuoi tutto uguale, si toglie in una riga.
+I file vecchi su GitHub puoi lasciarli o cancellarli: il gioco non li carica piu'.
+Se vuoi fare pulizia, quelli non piu' usati sono bldT*, b_tl/b_top/..., ifloor0-7,
+fur1-5. Cancellali SOLO dopo aver verificato che questa build gira.
