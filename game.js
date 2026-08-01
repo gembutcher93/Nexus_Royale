@@ -5,7 +5,7 @@ let WORLD_W=9000, WORLD_H=6600;   // ingrandita per i tile da 120px: stessi pala
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v107';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v108';   // NUMERO DI BUILD mostrato a schermo in gioco
 const TILE_BOX={"gr_grass": [], "gr_path": [], "gr_path_cor": [], "pz_floor": [], "wl_wall": [[0, 0, 30, 120]], "wl_corner": [[0, 0, 30, 120], [30, 90, 90, 30]], "wl_door": [[0, 0, 30, 30], [0, 90, 30, 30]], "wl_win": [[0, 0, 30, 30], [15, 60, 15, 15], [0, 90, 30, 30]], "wl_in": [[0, 0, 15, 120]], "wl_in_cor": [[0, 0, 15, 120], [15, 105, 105, 15]], "wt_water": [[0, 0, 120, 120]], "wt_edge": [[0, 60, 120, 30], [0, 90, 105, 30]], "wt_corner": [[0, 60, 90, 60]]};
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
@@ -38,8 +38,9 @@ const ART={
 };
 let ART_OK={};
 
-function matchCfg(){ if(GAME.match==='blitz') return {total:30,w:4200,h:3000,loot:95,deploy:5,first:12000,wait:9000,shrink:9000,pr:[0.60,0.40,0.24,0.12,0.05],pd:[2,3,5,8,13]};
-  return {total:100,w:6600,h:4800,loot:170,deploy:8,first:22000,wait:14000,shrink:13000,pr:[0.78,0.60,0.45,0.32,0.20,0.11,0.05],pd:[1,1,2,3,5,8,12]}; }
+function matchCfg(){ if(GAME.match==='blitz') return {total:30,w:5760,h:4200,loot:130,deploy:5,first:16000,wait:11000,shrink:11000,pr:[0.60,0.40,0.24,0.12,0.05],pd:[2,3,5,8,13]};
+  // mappa piu' grande e partita piu' lunga: c'e' piu' citta' da girare
+  return {total:100,w:9000,h:6600,loot:240,deploy:8,first:34000,wait:20000,shrink:18000,pr:[0.80,0.64,0.50,0.36,0.24,0.13,0.05],pd:[1,1,2,3,5,8,12]}; }
 // quality affects EFFECTS ONLY (bot count never changes)
 const FXQ={ low:{particles:0.25,glow:false,shake:false,signs:0,lights:6,trails:false},
             med:{particles:0.55,glow:true, shake:true, signs:8, lights:16,trails:false},
@@ -1831,6 +1832,7 @@ class Game extends Phaser.Scene{
     this.gDecor=this.add.graphics().setDepth(-16);   // street clutter (static)
     this.gCity =this.add.graphics().setDepth(0);     // buildings + props (static)
     this.animCount=0;                                 // budget for infinite tweens
+    this.showLoading();                                             // copre la costruzione del mondo
     this.walls=this.physics.add.staticGroup(); this.wallRects=[];   // deve esistere PRIMA di drawRoads
     try{ this.planCity(); }
     catch(e){ console.error('planCity',e); this.city=this.planCityFallback(); }
@@ -1841,6 +1843,7 @@ class Game extends Phaser.Scene{
     this.bullets=this.physics.add.group(); this.loot=this.physics.add.group({allowGravity:false});
     this.units=[];
     this.buildCity();
+    this.time.delayedCall(120,()=>this.hideLoading());
     this.buildMinimapTexture();
     this.spawnLoot(this.cfg.loot);
     this.dash=null; this.dome=null;
@@ -2224,12 +2227,35 @@ class Game extends Phaser.Scene{
       const varco=Phaser.Math.Between(1,(vert?rows:cols)-2);   // porta interna
       for(let i=1;i<(vert?rows:cols)-1;i++){
         if(i===varco) continue;
+        if(i===1||i===(vert?rows:cols)-2) continue;   // stacca dal perimetro: niente incroci
         const bx=x+(vert?cut:i)*T, by=y+(vert?i:cut)*T;
         const im=this.putTile('wl_in',bx,by,vert?0:90,0.54);
         if(im&&wtint!==0xffffff) im.setTint(wtint);
       }
     }
     return true;
+  }
+  showLoading(){
+    const W=this.scale.width,H=this.scale.height;
+    const g=this.add.graphics().setScrollFactor(0).setDepth(9000);
+    g.fillStyle(0x02060a,1); g.fillRect(0,0,W,H);
+    g.lineStyle(2,UI.mint,0.7); g.strokeRect(W/2-130,H/2+34,260,10);
+    const t1=this.add.text(W/2,H/2-30,'NEXUS ROYALE',{fontFamily:TITLE_FONT,fontSize:'30px',
+      fontStyle:'900',color:'#3df2b4'}).setOrigin(0.5).setScrollFactor(0).setDepth(9001);
+    const t2=this.add.text(W/2,H/2+8,'costruzione della citta\u2026',{fontFamily:UI.MONO,
+      fontSize:'13px',color:UI.dim}).setOrigin(0.5).setScrollFactor(0).setDepth(9001);
+    const bar=this.add.graphics().setScrollFactor(0).setDepth(9002);
+    this._load={g,t1,t2,bar,tw:null};
+    let p=0;
+    this._load.tw=this.time.addEvent({delay:60,loop:true,callback:()=>{
+      p=Math.min(1,p+0.05); bar.clear(); bar.fillStyle(UI.mint,0.9);
+      bar.fillRect(W/2-128,H/2+36,256*p,6); }});
+  }
+  hideLoading(){
+    const L=this._load; if(!L) return; this._load=null;
+    if(L.tw) L.tw.remove();
+    this.tweens.add({targets:[L.g,L.t1,L.t2,L.bar],alpha:0,duration:420,
+      onComplete:()=>{ L.g.destroy(); L.t1.destroy(); L.t2.destroy(); L.bar.destroy(); }});
   }
   planCity(){
     const TS=120;
@@ -2267,6 +2293,16 @@ class Game extends Phaser.Scene{
       if(x>=cx0&&x<cx1&&y>=cy0&&y<cy1){ D[y][x]=1; continue; }       // centro
       const q=(x<NX/2?0:1)+(y<NY/2?0:2);
       D[y][x]=outer[q];
+    }
+    // il FIUME deve scorrere nel VERDE: le fasce che tocca diventano parco (5)
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
+      if(!W[y][x]) continue;
+      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
+        const nx=x+dx, ny=y+dy;
+        if(nx<0||ny<0||nx>=NX||ny>=NY) continue;
+        if(nx>=cx0&&nx<cx1&&ny>=cy0&&ny<cy1) continue;               // il centro resta centro
+        D[ny][nx]=5;
+      }
     }
 
     // ---- 3) STRADE: arterie che attraversano tutto + griglia locale per distretto ----
@@ -3286,14 +3322,14 @@ class Game extends Phaser.Scene{
         // struttura grande: corpo principale + ala, con cortile fra i due
         const bodyH=Math.floor(maxH*Phaser.Math.FloatBetween(0.52,0.64));
         this._bldDistrict=_b.kind;
-        this._bldTheme=Phaser.Utils.Array.GetRandom(
-          _b.kind==='centro'?['ufficio','ufficio','negozio']:
-          _b.kind==='uffici'?['ufficio','ospedale','negozio']:
-          _b.kind==='industria'?['magazzino','magazzino','ufficio']:
-          ['casa','casa','negozio','ospedale']);
+        // un distretto = UN carattere. Cosi' si capisce dove sei invece di avere tutto mescolato.
+        this._bldTheme = _b.kind==='centro'    ? (Math.random()<0.75?'ufficio':'negozio')
+                       : _b.kind==='uffici'    ? (Math.random()<0.7?'ospedale':'ufficio')
+                       : _b.kind==='industria' ? 'magazzino'
+                       : _b.kind==='parco'     ? 'casa'
+                       : (Math.random()<0.85?'casa':'negozio');
         if(this.buildWallRing(px,py,maxW,bodyH,null)){
           if(maxW>300&&Math.random()<0.5) this.putProp('up_stairs',px+maxW/2,py+bodyH-30,false);
-          if(Math.random()<0.6) this.putProp('up_vent',px+50,py+50,false);
         }
 
         if(!this.textures.exists('wl_wall')){

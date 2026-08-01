@@ -1,16 +1,32 @@
-NEXUS ROYALE — DELTA V107  ·  FIX "kind is not defined"   (BUILD v107)
-=======================================================================
+NEXUS ROYALE — DELTA V108   (BUILD v108)
+=========================================
 Sostituisci SOLO: game.js  sw.js  index.html
 
-NON erano i file vecchi su GitHub: era un errore mio nel codice.
-Nella V106 ho spostato il codice dei muri dentro tileBuilding(), che pero' NON riceve
-il parametro "kind" (il tipo di edificio): al primo palazzo il gioco cercava una
-variabile che li' non esiste e si fermava.
+1) LE FORME A CROCE — RISOLTO, e mi dispiace.
+   Non erano i muri: era la BOCCHETTA DI AERAZIONE (up_vent), che e' una ventola a
+   quattro pale. La mettevo sul 60% degli edifici e ripetuta ovunque dava quella forma.
+   RIMOSSA del tutto dagli edifici.
+   In piu' il muro interno ora si STACCA dal perimetro invece di attaccarcisi, cosi'
+   non si formano incroci a croce da nessuna parte.
 
-FIX: in quel punto il tipo non serve piu' (lo decide chi chiama). In piu' le
-MEGASTRUTTURE ora impostano il proprio tipo (ospedale/uffici/scuola/magazzino) prima
-di costruirsi, cosi' anche li' pavimento e arredi combaciano.
+2) QUARTIERI DAVVERO SEPARATI — come dicevi tu, prima era tutto mescolato.
+   Ora un distretto = UN carattere:
+     CENTRO      uffici (e qualche negozio)
+     UFFICI      quartiere OSPEDALIERO in prevalenza
+     INDUSTRIA   solo capannoni
+     RESIDENZA   solo case private (e rari negozi)
+     PARCO       verde + le case che vi si affacciano
+   E il FIUME ora scorre DENTRO IL PARCO: le fasce che attraversa diventano verde,
+   cosi' fiume e parco sono una zona sola invece di tagliare le strade a caso.
 
-I file vecchi su GitHub puoi lasciarli o cancellarli: il gioco non li carica piu'.
-Se vuoi fare pulizia, quelli non piu' usati sono bldT*, b_tl/b_top/..., ifloor0-7,
-fur1-5. Cancellali SOLO dopo aver verificato che questa build gira.
+3) MAPPA PIU' GRANDE E PARTITA PIU' LUNGA
+   ROYALE 9000x6600 (BLITZ 5760x4200), loot da 170 a 240 pezzi.
+   La zona ora aspetta di piu' e si stringe piu' lentamente: c'e' davvero tempo per
+   girare la citta' invece di finire in 3 minuti.
+
+4) SCHERMATA DI CARICAMENTO all'inizio partita (serviva, con la mappa piu' grande):
+   fondo scuro, titolo e barra di avanzamento, poi sfuma sul gioco.
+
+ANCORA DA FARE, come hai detto: far lavorare INSIEME il tuo generatore di planimetrie
+(PlanimetriK) con le tessere, invece che uno contro l'altro. E le navicelle della
+minimappa iniziale, che sono ancora le vecchie.
