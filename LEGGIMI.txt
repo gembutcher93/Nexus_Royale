@@ -1,26 +1,13 @@
-NEXUS ROYALE — DELTA V99   (BUILD v99)
-=======================================
-1) Copia in assets/ le 60 PNG spr_*_*.png  (SOVRASCRIVI)
+NEXUS ROYALE — DELTA V100   (BUILD v100)
+=========================================
+1) Copia in assets/ :  chute2.png
 2) Sostituisci: game.js  sw.js  index.html  assets_fallback.js
 
-DUE BUG DELLA V98, ENTRAMBI MIEI:
+PARACADUTE NUOVO — quello che hai disegnato tu.
+Ritagliato sui bordi pieni, reso quadrato e salvato a 256x256 per non perdere
+dettaglio, poi mostrato in gioco a 110px = circa 2,6 volte il personaggio (42px),
+come volevi. Niente tinta sopra: si vedono i tuoi colori originali (ciano/magenta,
+lo stemma e il kanji).
 
-1) "Script error" che bloccava il gioco
-   Per cambiare i frame del personaggio CANCELLAVO le texture e le ricreavo. Ma quelle
-   texture erano IN USO dalle sprite in quel momento -> Phaser esplodeva.
-   Ora non cancello piu' niente: ridisegno sopra la texture esistente.
-
-2) "Le skin sono solo alone"
-   Avevo cotto l'alone DENTRO il PNG, ma il gioco ne aggiunge gia' uno suo dal vivo:
-   due aloni sovrapposti nascondevano il personaggio. Ora l'alone lo mette solo il gioco.
-
-E LA RISPOSTA ALLA TUA DOMANDA (perche' nel mockup si vedeva e in gioco no):
-la tinta del gioco MOLTIPLICA i colori. Su una sprite scura come i tuoi personaggi puo'
-solo scurire, mai schiarire: per questo CHROME in partita e' sempre sembrato identico
-allo standard. Non era un bug, era proprio il limite del metodo.
-Ora le skin sono cotte rimappando la LUMINANZA su una rampa di colore (ombra / medio /
-luce) e rimescolando un 28% dell'originale per non perdere i dettagli. Risultato: la
-skin si vede davvero E il personaggio resta riconoscibile.
-Verificato: chrome grigio-azzurro chiaro, inferno rosso, toxic verde, void viola.
-
-Se una tinta non ti convince si cambia la rampa di quella singola skin.
+Se lo vuoi ancora piu' grande basta cambiare il numero 110 in setDisplaySize.
+Il vecchio paracadute disegnato a codice resta come ripiego se il file non carica.

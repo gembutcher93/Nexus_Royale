@@ -5,7 +5,7 @@ let WORLD_W=9000, WORLD_H=6600;   // ingrandita per i tile da 120px: stessi pala
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v99';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v100';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -461,6 +461,7 @@ class Boot extends Phaser.Scene{
     ['sw_tl','sw_t','sw_tr','sw_l','sw_c','sw_r','sw_bl','sw_b','sw_br','sw_f'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
+    this.load.image('chute2','assets/chute2.png');
     ['ct_radar','ct_cam','ct_chip','ct_portal','ct_remains'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
@@ -1975,7 +1976,10 @@ class Game extends Phaser.Scene{
       const ring=this.add.circle(L.x,L.y,26,0,0).setStrokeStyle(3,u.isPlayer?C.player:0x5a5a88,0.8).setDepth(4); if(this.toWorld) this.toWorld(ring);
       this.tweens.add({targets:ring,alpha:0,scale:1.4,duration:1200,onComplete:()=>ring.destroy()});
       // parachute
-      const chute=this.add.image(L.x,L.y-DROP-30,'chute').setDepth(9).setTint(u.isPlayer?C.player:C.enemy); if(this.toWorld) this.toWorld(chute);
+      const _ck=this.textures.exists('chute2')?'chute2':'chute';
+      const chute=this.add.image(L.x,L.y-DROP-30,_ck).setDepth(9);
+      if(_ck==='chute2') chute.setDisplaySize(110,110);      // ~2.6x il personaggio (42px)
+      else chute.setTint(u.isPlayer?C.player:C.enemy); if(this.toWorld) this.toWorld(chute);
       const dur = u.isPlayer ? 2100 : (1050+Phaser.Math.Between(-120,220));
       const ease = u.isPlayer ? 'Sine.out' : 'Sine.in';
       this.tweens.add({targets:chute,y:L.y-34,duration:dur,ease});
