@@ -5,7 +5,7 @@ let WORLD_W=9000, WORLD_H=6600;   // ingrandita per i tile da 120px: stessi pala
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v102';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v103';   // NUMERO DI BUILD mostrato a schermo in gioco
 const TILE_BOX={"gr_grass": [], "gr_path": [], "gr_path_cor": [], "pz_floor": [], "wl_wall": [[0, 0, 30, 120]], "wl_corner": [[0, 0, 30, 120], [30, 90, 90, 30]], "wl_door": [[0, 0, 30, 30], [0, 90, 30, 30]], "wl_win": [[0, 0, 30, 30], [15, 60, 15, 15], [0, 90, 30, 30]], "wl_in": [[0, 0, 15, 120]], "wl_in_cor": [[0, 0, 15, 120], [15, 105, 105, 15]], "wt_water": [[0, 0, 120, 120]], "wt_edge": [[0, 60, 120, 30], [0, 90, 105, 30]], "wt_corner": [[0, 60, 90, 60]]};
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
@@ -463,6 +463,7 @@ class Boot extends Phaser.Scene{
       this.load.image(k,'assets/'+k+'.png');
     });
     this.load.image('chute2','assets/chute2.png');
+    ['up_bench', 'up_lamp', 'up_tree', 'up_bush', 'up_fountain', 'up_bin', 'up_planter', 'up_sign', 'up_hydrant', 'up_barrier', 'up_bus', 'up_kiosk', 'up_car2', 'up_stairs', 'up_vent', 'gr_grass2'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
     ['gr_grass', 'gr_path', 'gr_path_cor', 'pz_floor', 'wl_wall', 'wl_corner', 'wl_door', 'wl_win', 'wl_in', 'wl_in_cor', 'wt_water', 'wt_edge', 'wt_corner'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
     ['ct_radar','ct_cam','ct_chip','ct_portal','ct_remains'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
@@ -2165,6 +2166,18 @@ class Game extends Phaser.Scene{
   // PERIMETRO DI UN EDIFICIO con le tessere di Gem: angoli, muri, finestre e UNA porta.
   // wl_wall nativa = fascia sul lato SINISTRO -> ruotandola copre i 4 lati.
   // wl_corner nativa = angolo ALTO-SINISTRA.
+  // arredo urbano: misure della lista, collisione solo per gli oggetti solidi
+  putProp(k,x,y,solid){
+    if(!this.textures.exists(k)) return null;
+    const S={up_bench:[70,28],up_lamp:[34,34],up_tree:[90,90],up_bush:[46,46],up_fountain:[130,130],
+      up_bin:[26,26],up_planter:[90,34],up_sign:[40,40],up_hydrant:[20,20],up_barrier:[90,24],
+      up_bus:[130,60],up_kiosk:[110,90],up_car2:[96,46],up_stairs:[120,60],up_vent:[60,60]}[k]||[60,60];
+    const im=this.add.image(x,y,k).setDisplaySize(S[0],S[1]).setDepth(0.62);
+    if(solid){ const b=this.walls.create(x,y,'px').setVisible(false);
+      b.setDisplaySize(S[0]*0.8,S[1]*0.8); b.refreshBody();
+      this.wallRects.push({x:x-S[0]*0.4,y:y-S[1]*0.4,w:S[0]*0.8,h:S[1]*0.8,type:'cover'}); }
+    return im;
+  }
   buildWallRing(x,y,w,h,floorKey){
     if(!this.textures.exists('wl_wall')) return false;
     const T=120, cols=Math.max(2,Math.round(w/T)), rows=Math.max(2,Math.round(h/T));
@@ -2551,7 +2564,19 @@ class Game extends Phaser.Scene{
       for(let i=0;i<nL;i++){ const p=cand[i];
         const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.gold]);
         this.lamps.push({x:p.x,y:p.y,col:col,r:LAMP_R*Phaser.Math.FloatBetween(0.8,1.25)});
-        const b=this.add.circle(p.x,p.y,3.5,col,0.95).setDepth(-18.4); if(this.toWorld) this.toWorld(b);
+        if(this.textures.exists('up_lamp')) this.putProp('up_lamp',p.x,p.y,false);
+        else { const b=this.add.circle(p.x,p.y,3.5,col,0.95).setDepth(-18.4); if(this.toWorld) this.toWorld(b); }
+      }
+      // altro arredo di strada sui restanti punti a bordo marciapiede
+      for(let i=nL;i<Math.min(cand.length,nL+150);i++){ const p=cand[i], r=Math.random();
+        if(r<0.16) this.putProp('up_bin',p.x,p.y,false);
+        else if(r<0.28) this.putProp('up_hydrant',p.x,p.y,false);
+        else if(r<0.40) this.putProp('up_bench',p.x,p.y,true);
+        else if(r<0.50) this.putProp('up_sign',p.x,p.y,false);
+        else if(r<0.58) this.putProp('up_barrier',p.x,p.y,true);
+        else if(r<0.64) this.putProp('up_bus',p.x,p.y,true);
+        else if(r<0.70) this.putProp('up_car2',p.x,p.y,true);
+        else if(r<0.74) this.putProp('up_kiosk',p.x,p.y,true);
       }
       return;
     }
@@ -3082,11 +3107,23 @@ class Game extends Phaser.Scene{
       if(tipo==='parco'){
         const G=this.gDecor;
         if(this.textures.exists('gr_grass')){          // erba vera (tessera di Gem)
-          this.add.tileSprite(px,py,maxW,maxH,'gr_grass').setOrigin(0,0).setDepth(-18.2);
+          this.add.tileSprite(px,py,maxW,maxH,(this.textures.exists('gr_grass2')&&Math.random()<0.45)?'gr_grass2':'gr_grass').setOrigin(0,0).setDepth(-18.2);
           // vialetto che attraversa il parco
           if(this.textures.exists('gr_path')){
             const pY=py+Math.round(maxH/2/120)*120;
             for(let xx=px;xx<px+maxW-60;xx+=120) this.putTile('gr_path',xx,pY,90,-18.1);
+          }
+          // arredo del parco
+          const R6=(a,b)=>Phaser.Math.Between(a,b);
+          for(let i=0;i<Math.floor(maxW*maxH/26000);i++){
+            const ox=R6(px+50,px+maxW-50), oy=R6(py+50,py+maxH-50);
+            const r=Math.random();
+            if(r<0.34) this.putProp('up_tree',ox,oy,true);
+            else if(r<0.56) this.putProp('up_bush',ox,oy,false);
+            else if(r<0.72) this.putProp('up_bench',ox,oy,true);
+            else if(r<0.82) this.putProp('up_planter',ox,oy,true);
+            else if(r<0.92) this.putProp('up_lamp',ox,oy,false);
+            else this.putProp('up_bin',ox,oy,false);
           }
         }
         else { G.fillStyle(0x0d2019,0.96); G.fillRect(px,py,maxW,maxH); }
@@ -3144,6 +3181,13 @@ class Game extends Phaser.Scene{
 
       if(tipo==='piazza' && this.textures.exists('pz_floor')){
         this.add.tileSprite(px,py,maxW,maxH,'pz_floor').setOrigin(0,0).setDepth(-18.2);
+        const cx2=px+maxW/2, cy2=py+maxH/2;
+        if(maxW>260&&maxH>260) this.putProp('up_fountain',cx2,cy2,true);
+        else this.putProp('up_kiosk',cx2,cy2,true);
+        for(let i=0;i<4;i++){ const a2=i*Math.PI/2+0.78, rr=Math.min(maxW,maxH)*0.33;
+          this.putProp(i%2?'up_bench':'up_bin',cx2+Math.cos(a2)*rr,cy2+Math.sin(a2)*rr,i%2===1); }
+        this.putProp('up_lamp',px+40,py+40,false);
+        this.putProp('up_lamp',px+maxW-40,py+maxH-40,false);
       }
       else if(tipo==='piazza'){
         // lastricato liscio col pezzo #52, niente edifici: spazio aperto e pericoloso
@@ -3167,7 +3211,12 @@ class Game extends Phaser.Scene{
       if(tipo==='complesso'){
         // struttura grande: corpo principale + ala, con cortile fra i due
         const bodyH=Math.floor(maxH*Phaser.Math.FloatBetween(0.52,0.64));
-        if(!this.buildWallRing(px,py,maxW,bodyH,'pz_floor')){
+        if(this.buildWallRing(px,py,maxW,bodyH,'pz_floor')){
+          if(maxW>300&&Math.random()<0.5) this.putProp('up_stairs',px+maxW/2,py+bodyH-30,false);
+          if(Math.random()<0.6) this.putProp('up_vent',px+50,py+50,false);
+        }
+
+        if(!this.textures.exists('wl_wall')){
           addWall(px,py,maxW,bodyH,edge,'building');
           const G=this.gCity;                    // ripiego: corpo pieno
           G.fillStyle(0x0e1418,1); G.fillRect(px,py,maxW,bodyH);

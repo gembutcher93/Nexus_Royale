@@ -1,22 +1,19 @@
-NEXUS ROYALE — DELTA V102  ·  LE TUE TILE NUOVE   (BUILD v102)
-===============================================================
-1) Copia in assets/ le 13 PNG (gr_*, pz_*, wl_*, wt_*)
+NEXUS ROYALE — DELTA V103  ·  ARREDO URBANO   (BUILD v103)
+===========================================================
+1) Copia in assets/ le 16 PNG (up_*, gr_grass2)
 2) Sostituisci: game.js  sw.js  index.html  assets_fallback.js
 
-Le tue tessere 240x240 sono state portate a 120 (la misura della griglia) e montate:
+Tutti i tuoi arredi sono montati, alle misure della lista:
 
-MURI VERI — gli edifici non sono piu' rettangoli disegnati a codice. Ora hanno un
-perimetro fatto con le TUE tessere: angoli agli spigoli, muri sui lati, qualche
-FINESTRA sparsa (32%) e UNA PORTA su un lato a caso. Dentro, pavimento pz_floor.
+PARCHI   alberi (solidi), cespugli, panchine, fioriere, lampioni, cestini sparsi in
+         densita' proporzionale all'area. Meta' dei parchi usa gr_grass2 per variare.
+PIAZZE   FONTANA al centro (chiosco se la piazza e' piccola), 4 panchine/cestini
+         attorno, lampioni agli angoli.
+STRADE   sul bordo marciapiede, oltre ai lampioni: cestini, idranti, panchine,
+         insegne RAMEN, transenne, pensiline, auto parcheggiate, chioschi.
+EDIFICI  scala esterna sui palazzi larghi, bocchetta di aerazione.
 
-PARCHI — erba gr_grass al posto delle macchie verdi, con un vialetto gr_path.
-PIAZZE — pavimento pz_floor.
-ACQUA — wt_water nel mezzo del fiume e wt_edge sulle rive (ruotata a seconda del lato).
-
-COLLISIONI ricavate dai PIXEL, come mi hai detto:
- - muri, angoli, finestre, divisori: hitbox piena
- - PORTA: hitbox solo sui due montanti, la parte rosa WELCOME si attraversa
- - ACQUA: hitbox solo dove c'e' davvero l'acqua (sui bordi solo la parte bagnata)
-
-NON ANCORA USATE: wl_in / wl_in_cor (muri interni) e gr_path_cor / wt_corner:
-servono quando faro' le stanze interne e le curve del fiume. Sono gia' caricate.
+SOLIDI (ci si ripara dietro): alberi, panchine, fioriere, fontana, transenne,
+pensiline, auto, chioschi.  ATTRAVERSABILI: cespugli, lampioni, cestini, idranti,
+insegne, scale, bocchette.
+Se qualcosa dev'essere solido e non lo e' (o viceversa) si cambia un true/false.
