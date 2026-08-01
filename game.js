@@ -5,7 +5,7 @@ let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v93';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v94';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -1826,8 +1826,10 @@ class Game extends Phaser.Scene{
     this.gDecor=this.add.graphics().setDepth(-16);   // street clutter (static)
     this.gCity =this.add.graphics().setDepth(0);     // buildings + props (static)
     this.animCount=0;                                 // budget for infinite tweens
-    this.planCity();
-    this.planMegas();
+    try{ this.planCity(); }
+    catch(e){ console.error('planCity',e); this.city=this.planCityFallback(); }
+    try{ this.planMegas(); }
+    catch(e){ console.error('planMegas',e); this.megas=[]; this.megaLots={}; }
     this.drawRoads();
 
     this.walls=this.physics.add.staticGroup(); this.wallRects=[];
@@ -2123,6 +2125,16 @@ class Game extends Phaser.Scene{
   // Prima il fiume, poi i distretti con le loro strade, poi i blocchi rimasti:
   // i palazzi riempiono i blocchi, quindi non ci passano mai strade sotto.
   // ==========================================================================
+  planCityFallback(){
+    const TS=120, NX=Math.ceil(WORLD_W/TS), NY=Math.ceil(WORLD_H/TS);
+    const R=[],W=[],D=[];
+    for(let y=0;y<NY;y++){ R.push(new Array(NX).fill(false)); W.push(new Array(NX).fill(false)); D.push(new Array(NX).fill(3)); }
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++) if(x%4===0||y%4===0) R[y][x]=true;
+    const blocks=[];
+    for(let y=1;y<NY-1;y+=4)for(let x=1;x<NX-1;x+=4)
+      blocks.push({tx:x,ty:y,tw:3,th:3,d:3,kind:'residenza',fill:0.7,tall:false});
+    return {TS,NX,NY,R,W,D,blocks,bridge:[],KIND:[null,{n:'residenza',step:4,fill:.7,tall:false}]};
+  }
   planCity(){
     const TS=120;
     const NX=Math.ceil(WORLD_W/TS), NY=Math.ceil(WORLD_H/TS);
@@ -2199,7 +2211,20 @@ class Game extends Phaser.Scene{
       blocks.push({tx:x,ty:y,tw:w,th:h,d:D[y][x],kind:KIND[D[y][x]].n,
                    fill:KIND[D[y][x]].fill, tall:KIND[D[y][x]].tall});
     }
-    this.city={TS,NX,NY,R,W,D,blocks,bridge,KIND};
+    // Blocchi troppo grandi = edifici enormi con centinaia di stanze: il gioco si impianta.
+    // Li spezzo in pezzi da al massimo MAXB tile per lato.
+    const MAXB=6, split=[];
+    blocks.forEach(b=>{
+      const nx=Math.ceil(b.tw/MAXB), ny=Math.ceil(b.th/MAXB);
+      if(nx<=1&&ny<=1){ split.push(b); return; }
+      const pw=Math.floor(b.tw/nx), ph=Math.floor(b.th/ny);
+      for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
+        const w=(i===nx-1)?(b.tw-pw*(nx-1)):pw, h=(j===ny-1)?(b.th-ph*(ny-1)):ph;
+        if(w<1||h<1) continue;
+        split.push({tx:b.tx+i*pw, ty:b.ty+j*ph, tw:w, th:h, d:b.d, kind:b.kind, fill:b.fill, tall:b.tall});
+      }
+    });
+    this.city={TS,NX,NY,R,W,D,blocks:split,bridge,KIND};
     return this.city;
   }
 
@@ -2207,7 +2232,7 @@ class Game extends Phaser.Scene{
   // strade sotto, e nel centro/uffici escono grattacieli attaccati che occupano
   // tutta la piazza invece di piattaforme minuscole in mezzo al vuoto.
   planMegas(){
-    const P=this.city||this.planCity(), TS=P.TS;
+    const P=(this.city&&this.city.blocks)?this.city:(this.city=this.planCityFallback()), TS=P.TS;
     this.megas=[]; this.megaLots={};
     const KINDS={centro:['uffici','uffici','scuola'], uffici:['uffici','ospedale','scuola'],
                  residenza:['scuola','ospedale','magazzino'], industria:['magazzino','magazzino','uffici'],
@@ -2404,7 +2429,7 @@ class Game extends Phaser.Scene{
           .setDisplaySize(TS+2,TS+2);          // +2px: i tile si sovrappongono, niente fessure
         if(ang) im.setAngle(ang); return im; };
       // ---- 1) RETE STRADALE: presa dalla PIANTA della citta' (planCity) ----
-      const P=this.city||this.planCity();
+      const P=(this.city&&this.city.R)?this.city:(this.city=this.planCityFallback());
       const R=P.R;
       const majX=[], majY=[];
       for(let x=0;x<NX;x++){ let n=0; for(let y=0;y<NY;y++) if(R[y][x]) n++; if(n>NY*0.8) majX.push(x); }
@@ -2914,7 +2939,7 @@ class Game extends Phaser.Scene{
     // ===== FIUME NEON — segue la PIANTA (planCity): serpeggia fra i blocchi e
     // non taglia mai un palazzo. Dove incrocia un viale principale c'e' un PONTE. =====
     {
-      const P=this.city||this.planCity(), TS=P.TS;
+      const P=(this.city&&this.city.W)?this.city:(this.city=this.planCityFallback()), TS=P.TS;
       for(let ty=0;ty<P.NY;ty++){
         let tx=0;
         while(tx<P.NX){
@@ -2957,7 +2982,7 @@ class Game extends Phaser.Scene{
 
     // I lotti normali riempiono i BLOCCHI liberi della pianta (quelli non presi
     // dalle megastrutture): cosi' ogni spazio fra le strade ha qualcosa dentro.
-    const _P=this.city||this.planCity(), _TS=_P.TS;
+    const _P=(this.city&&this.city.blocks)?this.city:(this.city=this.planCityFallback()), _TS=_P.TS;
     const _free=_P.blocks.filter(b=>!b.taken);
     for(const _b of _free){
       const cxr=_b.tx, cyr=_b.ty;

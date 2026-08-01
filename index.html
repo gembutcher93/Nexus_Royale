@@ -23,8 +23,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
-<script src="assets_fallback.js?v=93"></script>
-<script src="game.js?v=93"></script>
+<script src="assets_fallback.js?v=94"></script>
+<script src="game.js?v=94"></script>
 <script>
   if('serviceWorker' in navigator){ window.addEventListener('load',()=>{
     navigator.serviceWorker.register('sw.js').then(reg=>{
@@ -47,6 +47,17 @@
   }
   ['pointerdown','touchend','click'].forEach(function(ev){
     window.addEventListener(ev,go,{once:true,passive:true}); });
+})();
+</script>
+<div id="nr_err" style="display:none;position:fixed;left:0;right:0;top:0;z-index:99999;background:#300;color:#ffd;font:12px monospace;padding:10px;white-space:pre-wrap;max-height:60%;overflow:auto"></div>
+<script>
+(function(){ // mostra a schermo l'errore che blocca il gioco
+  function show(m){ var d=document.getElementById('nr_err'); if(!d) return;
+    d.style.display='block'; d.textContent=(d.textContent?d.textContent+'\n':'')+m; }
+  window.addEventListener('error',function(e){
+    show('ERRORE: '+(e.message||'')+'\n@ '+(e.filename||'').split('/').pop()+':'+e.lineno+':'+e.colno);
+  });
+  window.addEventListener('unhandledrejection',function(e){ show('PROMISE: '+(e.reason&&e.reason.message||e.reason)); });
 })();
 </script>
 </body>

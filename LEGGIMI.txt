@@ -1,19 +1,22 @@
-NEXUS ROYALE — DELTA V93  ·  FIX BLOCCO ALL'AVVIO   (a schermo: BUILD v93)
-===========================================================================
-Sostituisci: game.js  sw.js  index.html
+NEXUS ROYALE — DELTA V94   (a schermo: BUILD v94)
+==================================================
+Sostituisci: game.js  sw.js  index.html      <-- index.html SERVE (ha il rilevatore errori)
 
-PERCHE' SI BLOCCAVA (non era la minimappa): con la citta' nuova i blocchi edificabili
-sono passati da ~8 a piu' di 90. Ogni palazzo grande genera stanze, arredi e una
-collisione per ogni mobile -> decine di migliaia di collisioni. La funzione che cerca
-un punto libero (per loot, props, atterraggio) le scorreva TUTTE, ogni volta, per
-centinaia di volte: il gioco si impiantava prima ancora di partire.
+CAUSA PIU' PROBABILE DEL BLOCCO (trovata e corretta)
+Nei distretti PARCO e INDUSTRIA salto apposta alcune strade: cosi' pero' potevano
+nascere BLOCCHI ENORMI (anche 20x15 tessere). Su un blocco cosi' il generatore
+costruiva un edificio con centinaia di stanze e arredi -> il gioco si impiantava
+durante la creazione del mondo, prima ancora di mostrarti la partita.
+Ora ogni blocco viene spezzato in pezzi da massimo 6 tessere per lato.
+Verificato su 8 generazioni: nessun blocco oltre 6-7 tessere.
 
-FIX:
-1) Tetto alle megastrutture: massimo 14 palazzi "grandi" con interni per partita,
-   scelti a caso fra i blocchi disponibili. Gli altri blocchi restano palazzi normali,
-   quindi la citta' resta piena ma non esplode.
-2) La ricerca del punto libero ora usa un indice a griglia: guarda solo le collisioni
-   della cella dove sta cercando, non tutte quante. E' centinaia di volte piu' veloce.
-3) Ridotti i tentativi per le props della citta' (erano 420 ricerche, ora 90).
+RETE DI SICUREZZA
+- Se la pianta della citta' dovesse fallire, ora il gioco NON si blocca: parte con una
+  citta' a griglia semplice invece di piantarsi.
 
-Se dovesse essere ancora lento all'avvio, dimmelo e abbasso MAX_MEGA (riga ~2215).
+SE ANCORA NON PARTE, ORA IL GIOCO TE LO DICE
+Ho aggiunto un rilevatore: se qualcosa esplode compare in alto una fascia ROSSA con
+scritto l'errore e la riga esatta.
+>>> Mandami una foto di quella fascia rossa: con quella lo chiudo al colpo dopo.
+Se invece resta tutto nero SENZA fascia rossa, dimmelo lo stesso: vuol dire che non
+e' un errore ma un blocco per troppo lavoro, e taglio ancora.
