@@ -5,7 +5,7 @@ let WORLD_W=9000, WORLD_H=6600;   // ingrandita per i tile da 120px: stessi pala
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v105';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v106';   // NUMERO DI BUILD mostrato a schermo in gioco
 const TILE_BOX={"gr_grass": [], "gr_path": [], "gr_path_cor": [], "pz_floor": [], "wl_wall": [[0, 0, 30, 120]], "wl_corner": [[0, 0, 30, 120], [30, 90, 90, 30]], "wl_door": [[0, 0, 30, 30], [0, 90, 30, 30]], "wl_win": [[0, 0, 30, 30], [15, 60, 15, 15], [0, 90, 30, 30]], "wl_in": [[0, 0, 15, 120]], "wl_in_cor": [[0, 0, 15, 120], [15, 105, 105, 15]], "wt_water": [[0, 0, 120, 120]], "wt_edge": [[0, 60, 120, 30], [0, 90, 105, 30]], "wt_corner": [[0, 60, 90, 60]]};
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
@@ -2182,6 +2182,10 @@ class Game extends Phaser.Scene{
   }
   buildWallRing(x,y,w,h,floorKey){
     if(!this.textures.exists('wl_wall')) return false;
+    // tinta leggera per quartiere: la base blu-azzurra resta riconoscibile
+    const WT={centro:0xbfe6ff, uffici:0xa8d8ff, residenza:0xffd9c2,
+              industria:0xffce9a, parco:0xc8ffe0};
+    const wtint=WT[this._bldDistrict]||0xffffff;
     const T=120, cols=Math.max(2,Math.round(w/T)), rows=Math.max(2,Math.round(h/T));
     // pavimento interno
     // pavimento in base al tipo di edificio (casa/ufficio/ospedale/negozio/capannone)
@@ -2198,14 +2202,32 @@ class Game extends Phaser.Scene{
       const bx=x+c*T, by=y+r*T;
       const edgeL=(c===0), edgeR=(c===cols-1), edgeT=(r===0), edgeB=(r===rows-1);
       if(!(edgeL||edgeR||edgeT||edgeB)) continue;               // solo il perimetro
-      if(edgeL&&edgeT){ this.putTile('wl_corner',bx,by,0,0.55); continue; }
-      if(edgeR&&edgeT){ this.putTile('wl_corner',bx,by,90,0.55); continue; }
-      if(edgeR&&edgeB){ this.putTile('wl_corner',bx,by,180,0.55); continue; }
-      if(edgeL&&edgeB){ this.putTile('wl_corner',bx,by,270,0.55); continue; }
-      let ang = edgeL?0 : (edgeT?90 : (edgeR?180:270));
-      const isDoor=(doorSide===0&&edgeT&&c===doorAt)||(doorSide===1&&edgeR&&r===doorAt)
-                 ||(doorSide===2&&edgeB&&c===doorAt)||(doorSide===3&&edgeL&&r===doorAt);
-      this.putTile(isDoor?'wl_door':pick(),bx,by,ang,0.55);
+      let im=null;
+      if(edgeL&&edgeT) im=this.putTile('wl_corner',bx,by,0,0.55);
+      else if(edgeR&&edgeT) im=this.putTile('wl_corner',bx,by,90,0.55);
+      else if(edgeR&&edgeB) im=this.putTile('wl_corner',bx,by,180,0.55);
+      else if(edgeL&&edgeB) im=this.putTile('wl_corner',bx,by,270,0.55);
+      else {
+        const ang = edgeL?0 : (edgeT?90 : (edgeR?180:270));
+        const isDoor=(doorSide===0&&edgeT&&c===doorAt)||(doorSide===1&&edgeR&&r===doorAt)
+                   ||(doorSide===2&&edgeB&&c===doorAt)||(doorSide===3&&edgeL&&r===doorAt);
+        im=this.putTile(isDoor?'wl_door':pick(),bx,by,ang,0.55);
+      }
+      if(im&&wtint!==0xffffff) im.setTint(wtint);
+      continue;
+    }
+    // MURI INTERNI: divide l'edificio in stanze con wl_in, lasciando un varco per passare
+    if(this.textures.exists('wl_in') && cols>=3 && rows>=3){
+      const vert=(cols>=rows);
+      const n=(vert?cols:rows);
+      const cut=Math.floor(n/2);
+      const varco=Phaser.Math.Between(1,(vert?rows:cols)-2);   // porta interna
+      for(let i=1;i<(vert?rows:cols)-1;i++){
+        if(i===varco) continue;
+        const bx=x+(vert?cut:i)*T, by=y+(vert?i:cut)*T;
+        const im=this.putTile('wl_in',bx,by,vert?0:90,0.54);
+        if(im&&wtint!==0xffffff) im.setTint(wtint);
+      }
     }
     return true;
   }
@@ -2344,10 +2366,12 @@ class Game extends Phaser.Scene{
     const dark=(v,f)=>{ const r=((v>>16)&255)*f,g=((v>>8)&255)*f,b=(v&255)*f;
       return (Math.round(r)<<16)|(Math.round(g)<<8)|Math.round(b); };
     // pavimento
-    if(this.textures.exists('ifloor0')||this.textures.exists('fl_n')){
+    if(this.textures.exists('if_home')||this.textures.exists('ifloor0')||this.textures.exists('fl_n')){
       // un solo pavimento per edificio (prima cambiava a ogni stanza: effetto "messo a caso")
-      if(this._flPick===undefined) this._flPick=0;
-      const fk=this.textures.exists('ifloor0')?('ifloor'+(this._flPick%3)):'fl_n';
+      const FLK={casa:'if_home',ufficio:'if_office',ospedale:'if_hospital',
+                 negozio:'if_shop',magazzino:'if_industrial'};
+      let fk=FLK[this._bldTheme||'casa']||'if_home';
+      if(!this.textures.exists(fk)) fk=this.textures.exists('ifloor0')?'ifloor0':'fl_n';
       this.add.tileSprite(x+wth,y+wth,w-2*wth,h-2*wth,fk).setOrigin(0,0)
         .setDepth(0.44).setTint(dark(c,0.38)).setTileScale(0.55);
     }
@@ -2652,8 +2676,7 @@ class Game extends Phaser.Scene{
   // Sceglie la sprite in base alla proporzione del lotto; se il lotto e' grande usa il grande.
   realBuilding(x,y,w,h,col){
     this._flPick=Phaser.Math.Between(0,2);   // pavimento COERENTE per tutto l'edificio
-    if(!this.textures.exists('bldT1')) return false;
-    if(w<260||h<200) return false;   // troppo piccolo: meglio un corpo pieno che il tile ripetuto
+    return false;   // DISMESSO: gli edifici si costruiscono coi muri di Gem (buildWallRing)
     const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
       return (m(r)<<16)|(m(g)<<8)|m(b); };
     const tint=mix(col||0x33e1ff,0.5);
@@ -2668,6 +2691,11 @@ class Game extends Phaser.Scene{
   tileBuilding(x,y,w,h,col){
     // prima prova i palazzi pronti di Gem, poi il nine-slice come ripiego
     if(this.realBuilding(x,y,w,h,col)) return true;
+    // le megastrutture usano gli stessi MURI del resto della citta'
+    if(this.textures.exists('wl_wall')){
+      this._bldTheme=kind||'ufficio';
+      if(this.buildWallRing(x,y,w,h,null)) return true;
+    }
     if(!this.textures.exists('b_tl')) return false;
     const S=Math.max(24,Math.min(100,Math.floor(Math.min(w,h)/2)));
     const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
@@ -2879,7 +2907,7 @@ class Game extends Phaser.Scene{
   }
 
   furnish(x,y,w,h,wth,gy,gap,col){
-    if(!this.textures.exists('fur1')) return;
+    if(!this.textures.exists('nf_bed')) return;   // solo mobili veri, niente fur1-5
     const c=col||0x9fd8ff;
     const ix=x+wth+10, iy=y+wth+10, iw=w-2*wth-20, ih=h-2*wth-20;
     if(iw<80||ih<80) return;
@@ -3253,6 +3281,7 @@ class Game extends Phaser.Scene{
       if(tipo==='complesso'){
         // struttura grande: corpo principale + ala, con cortile fra i due
         const bodyH=Math.floor(maxH*Phaser.Math.FloatBetween(0.52,0.64));
+        this._bldDistrict=_b.kind;
         this._bldTheme=Phaser.Utils.Array.GetRandom(
           _b.kind==='centro'?['ufficio','ufficio','negozio']:
           _b.kind==='uffici'?['ufficio','ospedale','negozio']:

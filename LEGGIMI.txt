@@ -1,27 +1,25 @@
-NEXUS ROYALE — DELTA V105  ·  INTERNI COMPLETI   (BUILD v105)
-==============================================================
-1) Copia in assets/ le 35 PNG (if_*, nf_*, hs_*, of_*, sh_*)
-2) Sostituisci: game.js  sw.js  index.html  assets_fallback.js
+NEXUS ROYALE — DELTA V106  ·  VIA IL VECCHIO   (BUILD v106)
+============================================================
+Sostituisci SOLO: game.js  sw.js  index.html
+(gli asset li hai gia' tutti dalle V102/V103/V105)
 
-LE TUE TILE VANNO BENISSIMO. Erano 3508x2480 (A4 a 300dpi): le ho ritagliate sul
-contenuto e portate alle misure di gioco partendo dall'originale grande, quindi la
-qualita' e' ottima. Ho tenuto le proporzioni del tuo disegno invece di forzarle nel
-riquadro. (Nf_bed = letto singolo -> nf_bed1; Sh_shelt -> sh_shelf, era un refuso.)
+HAI RAGIONE: con quello che hai consegnato non serve piu' niente di vecchio.
+Restano solo STRADE e MARCIAPIEDI (nt_*), tutto il resto ora e' roba tua.
 
-ORA OGNI EDIFICIO HA UNA SUA IDENTITA':
-Il palazzo sceglie un tipo, e pavimento + arredi seguono quel tipo.
-  CASA       if_home    -> camera (letto, armadi, TV, libreria), salotto,
-                           CUCINA (blocco cucina, frigo, lavandino, tavolo+sedia),
-                           BAGNO (wc, doccia, lavandino)
-  UFFICIO    if_office  -> postazioni, armadietti, tavolo RIUNIONI, stampante,
-                           erogatore acqua
-  OSPEDALE   if_hospital-> lettini in fila, armadio farmaci, monitor, barella,
-                           bancone accettazione
-  NEGOZIO    if_shop    -> bancone, scaffali, frigo bibite, tavolino e sgabello
-  CAPANNONE  if_industrial -> magazzino di armadi
+DISMESSO (non viene piu' disegnato):
+ - bldT0..5, i vecchi "palazzi chiusi" usati come corpo dell'edificio (le "ventole")
+ - il vecchio megaBuilding a pezzi (b_tl, b_top...): ora anche le megastrutture
+   si costruiscono coi TUOI muri
+ - ifloor0..7, i vecchi pavimenti interni -> ora solo if_home/office/hospital/shop/industrial
+ - fur1..fur5, il vecchio arredo disegnato a codice -> solo mobili veri
 
-Il tipo dipende anche dal DISTRETTO: nel centro escono uffici e negozi, in periferia
-case, nell'industria capannoni.
+ADESSO OGNI EDIFICIO E':
+ perimetro con wl_corner agli spigoli, wl_wall sui lati, wl_win qua e la', UNA wl_door
+ + MURI INTERNI (wl_in) che dividono l'edificio in due stanze, con un varco per passare
+ + pavimento del tipo giusto + arredi del tema giusto
 
-Sedie, sgabelli e wc sono impostati come "guardano in alto", il resto in basso:
-se qualcosa risulta girato dimmelo che e' una riga.
+COLORE PER QUARTIERE (come dicevi): i muri partono dalla tua base blu-azzurra e
+prendono una tinta leggera secondo il distretto —
+ centro azzurro chiaro · uffici azzurro · residenza caldo/sabbia · industria ambra ·
+ parco verde tenue.
+Se una tinta e' troppo forte o vuoi tutto uguale, si toglie in una riga.
