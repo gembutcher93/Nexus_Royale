@@ -5,7 +5,7 @@ let WORLD_W=6600, WORLD_H=4800;
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v91';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v92';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -1826,6 +1826,7 @@ class Game extends Phaser.Scene{
     this.gDecor=this.add.graphics().setDepth(-16);   // street clutter (static)
     this.gCity =this.add.graphics().setDepth(0);     // buildings + props (static)
     this.animCount=0;                                 // budget for infinite tweens
+    this.planCity();
     this.planMegas();
     this.drawRoads();
 
@@ -2116,36 +2117,114 @@ class Game extends Phaser.Scene{
   // Corpo solido generico (usato dalle megastrutture): collisione + voce in wallRects
   // Sceglie i lotti da fondere in megastrutture. Una mega prende 2 o 4 lotti
   // e SI MANGIA la strada in mezzo: e' quello che le fa sembrare grandi davvero.
+
+  // ==========================================================================
+  // PIANTA DELLA CITTA' — UNA SOLA fonte di verita' per strade, fiume e palazzi.
+  // Prima il fiume, poi i distretti con le loro strade, poi i blocchi rimasti:
+  // i palazzi riempiono i blocchi, quindi non ci passano mai strade sotto.
+  // ==========================================================================
+  planCity(){
+    const TS=120;
+    const NX=Math.ceil(WORLD_W/TS), NY=Math.ceil(WORLD_H/TS);
+    const R=[],W=[],D=[];
+    for(let y=0;y<NY;y++){ R.push(new Array(NX).fill(false)); W.push(new Array(NX).fill(false)); D.push(new Array(NX).fill(0)); }
+    const rnd=(a,b)=>Phaser.Math.Between(a,b), rf=()=>Phaser.Math.FloatBetween(0,1);
+
+    // ---- 1) FIUME: canale che SERPEGGIA da un bordo all'altro ----
+    const vert=rf()<0.5;
+    const len=vert?NY:NX, span=vert?NX:NY;
+    let c=Math.round(span*Phaser.Math.FloatBetween(0.3,0.7)), dir=rf()<0.5?1:-1;
+    const rw=rnd(1,2);
+    for(let i=0;i<len;i++){
+      if(i%3===0){ c+=dir*rnd(0,1); if(rf()<0.3) dir=-dir; }
+      c=Phaser.Math.Clamp(c,2,span-3-rw);
+      for(let k=0;k<rw;k++){
+        if(vert) W[i][c+k]=true; else W[c+k][i]=true;
+      }
+    }
+
+    // ---- 2) DISTRETTI: centro denso + 4 settori, ognuno con la sua trama ----
+    // passo = quanto sono distanti le strade => quanto sono grandi i caseggiati
+    const KIND=[null,
+      {n:'centro',    step:3, fill:0.95, tall:true},   // grattacieli fitti, blocchi piccoli
+      {n:'uffici',    step:4, fill:0.85, tall:true},
+      {n:'residenza', step:4, fill:0.7,  tall:false},
+      {n:'industria', step:7, fill:0.8,  tall:false},  // capannoni enormi
+      {n:'parco',     step:8, fill:0.25, tall:false}   // verde, poche strade
+    ];
+    const cx0=Math.round(NX*0.34), cx1=Math.round(NX*0.66);
+    const cy0=Math.round(NY*0.32), cy1=Math.round(NY*0.68);
+    const outer=Phaser.Utils.Array.Shuffle([2,3,4,5]);
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
+      if(x>=cx0&&x<cx1&&y>=cy0&&y<cy1){ D[y][x]=1; continue; }       // centro
+      const q=(x<NX/2?0:1)+(y<NY/2?0:2);
+      D[y][x]=outer[q];
+    }
+
+    // ---- 3) STRADE: arterie che attraversano tutto + griglia locale per distretto ----
+    const road=(x,y)=>{ if(x>=0&&y>=0&&x<NX&&y<NY) R[y][x]=true; };
+    // arterie: i confini dei distretti (sono i viali principali della citta')
+    for(let y=0;y<NY;y++){ road(cx0,y); road(cx1,y); }
+    for(let x=0;x<NX;x++){ road(x,cy0); road(x,cy1); }
+    for(let y=0;y<NY;y++){ road(0,y); road(NX-1,y); }
+    for(let x=0;x<NX;x++){ road(x,0); road(x,NY-1); }
+    // griglia interna: passo diverso per distretto => isolati di misure diverse
+    for(let y=1;y<NY-1;y++)for(let x=1;x<NX-1;x++){
+      const k=KIND[D[y][x]]; if(!k) continue;
+      const onV=(x%k.step===0), onH=(y%k.step===0);
+      if(!onV&&!onH) continue;
+      if(k.n==='parco'&&rf()<0.55) continue;             // il parco resta aperto
+      if(k.n==='industria'&&rf()<0.15) continue;
+      R[y][x]=true;
+    }
+    // ---- 4) niente strade nell'acqua, TRANNE i ponti sulle arterie ----
+    const bridge=[];
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
+      if(!W[y][x]||!R[y][x]) continue;
+      const artery=(x===cx0||x===cx1||y===cy0||y===cy1||x===0||y===0||x===NX-1||y===NY-1);
+      if(artery){ W[y][x]=false; bridge.push({x,y}); }    // ponte: la strada passa
+      else R[y][x]=false;                                  // strada minore: si ferma al fiume
+    }
+    // ---- 5) BLOCCHI: rettangoli liberi fra le strade -> ci vanno i palazzi ----
+    const seen=[]; for(let y=0;y<NY;y++) seen.push(new Array(NX).fill(false));
+    const free=(x,y)=>(x<NX&&y<NY&&!R[y][x]&&!W[y][x]&&!seen[y][x]);
+    const blocks=[];
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
+      if(!free(x,y)) continue;
+      let w=0; while(free(x+w,y)) w++;
+      let h=1;
+      for(;;){ let ok=true; for(let k=0;k<w;k++) if(!free(x+k,y+h)) { ok=false; break; }
+        if(!ok) break; h++; }
+      for(let v=0;v<h;v++)for(let u=0;u<w;u++) seen[y+v][x+u]=true;
+      blocks.push({tx:x,ty:y,tw:w,th:h,d:D[y][x],kind:KIND[D[y][x]].n,
+                   fill:KIND[D[y][x]].fill, tall:KIND[D[y][x]].tall});
+    }
+    this.city={TS,NX,NY,R,W,D,blocks,bridge,KIND};
+    return this.city;
+  }
+
+  // I palazzi RIEMPIONO i blocchi liberi della pianta: cosi' non ci passano mai
+  // strade sotto, e nel centro/uffici escono grattacieli attaccati che occupano
+  // tutta la piazza invece di piattaforme minuscole in mezzo al vuoto.
   planMegas(){
-    const cols=this.GC, rows=this.GR, cw=WORLD_W/cols, ch=WORLD_H/rows, ROAD=150;
+    const P=this.city||this.planCity(), TS=P.TS;
     this.megas=[]; this.megaLots={};
-    const KINDS=['ospedale','uffici','scuola','magazzino','magazzino'];
-    const used=(i,j)=>this.megaLots[i+'_'+j];
-    const target=Phaser.Math.Between(6,9);             // piu' strutture grandi = piu' variabilita'
-    let guard=0;
-    // 1 volta su 3, un ENORME distretto-magazzino (fino a 3x3): il "grande casellato unico"
-    if(Math.random()<0.34){
-      const a=Phaser.Math.Between(2,3), b=Phaser.Math.Between(2,3);
-      const i=Phaser.Math.Between(0,cols-a), j=Phaser.Math.Between(0,rows-b);
-      for(let u=0;u<a;u++)for(let v=0;v<b;v++) this.megaLots[(i+u)+'_'+(j+v)]=1;
-      this.megas.push({x:i*cw+ROAD/2,y:j*ch+ROAD/2,w:a*cw-ROAD,h:b*ch-ROAD,kind:'magazzino'});
-    }
-    while(this.megas.length<target && guard++<240){
-      const big=Math.random()<0.3;
-      const a=big?Phaser.Math.Between(2,3):(Math.random()<0.5?2:1);
-      const b=big?Phaser.Math.Between(2,3):(Math.random()<0.5?2:1);
-      if(a===1&&b===1) continue;                       // deve occupare piu' di un lotto
-      const i=Phaser.Math.Between(0,cols-a), j=Phaser.Math.Between(0,rows-b);
-      let free=true;
-      for(let u=0;u<a;u++)for(let v=0;v<b;v++) if(used(i+u,j+v)) free=false;
-      if(!free) continue;
-      for(let u=0;u<a;u++)for(let v=0;v<b;v++) this.megaLots[(i+u)+'_'+(j+v)]=1;
+    const KINDS={centro:['uffici','uffici','scuola'], uffici:['uffici','ospedale','scuola'],
+                 residenza:['scuola','ospedale','magazzino'], industria:['magazzino','magazzino','uffici'],
+                 parco:['scuola']};
+    P.blocks.forEach(bl=>{
+      if(bl.kind==='parco') return;                       // il parco resta verde
+      if(bl.tw<2||bl.th<2) return;                        // blocchi minuscoli: li riempie il resto
+      if(Phaser.Math.FloatBetween(0,1)>bl.fill) return;
+      const M=8;                                           // stacco dal marciapiede
       this.megas.push({
-        x:i*cw+ROAD/2, y:j*ch+ROAD/2,
-        w:a*cw-ROAD,   h:b*ch-ROAD,
-        kind:Phaser.Utils.Array.GetRandom(KINDS)
+        x:bl.tx*TS+M, y:bl.ty*TS+M,
+        w:bl.tw*TS-M*2, h:bl.th*TS-M*2,
+        kind:Phaser.Utils.Array.GetRandom(KINDS[bl.kind]||['uffici']),
+        tall:bl.tall, district:bl.kind
       });
-    }
+      bl.taken=true;
+    });
   }
 
   solid(x,y,w,h,col){
@@ -2323,36 +2402,18 @@ class Game extends Phaser.Scene{
       const put=(k,tx,ty,ang)=>{ const im=this.add.image(tx*TS+TS/2,ty*TS+TS/2,k).setDepth(-18.7)
           .setDisplaySize(TS+2,TS+2);          // +2px: i tile si sovrappongono, niente fessure
         if(ang) im.setAngle(ang); return im; };
-      // ---- 1) RETE STRADALE: principali che attraversano tutto + secondarie che
-      //         collegano due principali (i loro estremi diventano T) => caseggiati di misure diverse
-      const R=[]; for(let y=0;y<NY;y++){ R.push(new Array(NX).fill(false)); }
+      // ---- 1) RETE STRADALE: presa dalla PIANTA della citta' (planCity) ----
+      const P=this.city||this.planCity();
+      const R=P.R;
       const majX=[], majY=[];
-      for(let x=0;x<NX;x+=GX){ majX.push(x); for(let y=0;y<NY;y++) R[y][x]=true; }
-      for(let y=0;y<NY;y+=GY){ majY.push(y); for(let x=0;x<NX;x++) R[y][x]=true; }
+      for(let x=0;x<NX;x++){ let n=0; for(let y=0;y<NY;y++) if(R[y][x]) n++; if(n>NY*0.8) majX.push(x); }
+      for(let y=0;y<NY;y++){ let n=0; for(let x=0;x<NX;x++) if(R[y][x]) n++; if(n>NX*0.8) majY.push(y); }
       const rnd=()=>Phaser.Math.FloatBetween(0,1);
-      // secondarie verticali: dentro una fascia fra due principali, span completo fra due orizzontali
-      for(let i=0;i+1<majX.length;i++){
-        const span=majX[i+1]-majX[i]; if(span<6) continue;
-        for(let j=0;j+1<majY.length;j++){
-          if(rnd()>0.45) continue;
-          const x=majX[i]+Math.floor(span/2);
-          for(let y=majY[j];y<=majY[j+1]&&y<NY;y++) R[y][x]=true;
-        }
-      }
-      // secondarie orizzontali
-      for(let j=0;j+1<majY.length;j++){
-        const span=majY[j+1]-majY[j]; if(span<6) continue;
-        for(let i=0;i+1<majX.length;i++){
-          if(rnd()>0.45) continue;
-          const y=majY[j]+Math.floor(span/2);
-          for(let x=majX[i];x<=majX[i+1]&&x<NX;x++) R[y][x]=true;
-        }
-      }
-      this.roadTile=(tx,ty)=>!!(R[ty]&&R[ty][tx]);
       // ---- 2) AUTOTILE: il pezzo lo decidono i vicini (niente rotazioni indovinate) ----
       // nt_str nativa = strada EST-OVEST ; nt_t nativa = T chiusa a NORD (bracci E,O,S)
       const isR=(x,y)=>(x>=0&&y>=0&&x<NX&&y<NY&&R[y][x]);
       for(let ty=0;ty<NY;ty++)for(let tx=0;tx<NX;tx++){
+        if(P.W[ty][tx]) continue;                     // fiume: lo disegna il generatore acqua
         if(!R[ty][tx]){ put('nt_side',tx,ty,0); continue; }
         const N=isR(tx,ty-1),S=isR(tx,ty+1),E=isR(tx+1,ty),W=isR(tx-1,ty);
         const n=(N?1:0)+(S?1:0)+(E?1:0)+(W?1:0);
@@ -2394,8 +2455,9 @@ class Game extends Phaser.Scene{
       for(let ty=1;ty<NY-1;ty++)for(let tx=1;tx<NX-1;tx++){
         if(!R[ty][tx]) continue;
         // metto il lampione sul bordo strada/marciapiede (dove c'e' un isolato accanto)
-        if(!R[ty][tx+1]) cand.push({x:tx*TS+TS-14, y:ty*TS+TS/2});
-        else if(!R[ty+1]||!R[ty+1][tx]) cand.push({x:tx*TS+TS/2, y:ty*TS+TS-14});
+        if(P.W[ty][tx]) continue;
+        if(!R[ty][tx+1]&&!P.W[ty][tx+1]) cand.push({x:tx*TS+TS-14, y:ty*TS+TS/2});
+        else if(R[ty+1]&&!R[ty+1][tx]&&!P.W[ty+1][tx]) cand.push({x:tx*TS+TS/2, y:ty*TS+TS-14});
       }
       Phaser.Utils.Array.Shuffle(cand);
       const nL=Math.min(LAMP_N,cand.length);
@@ -2848,22 +2910,25 @@ class Game extends Phaser.Scene{
     addWall(0,0,WORLD_W,t,C.cyan,'border'); addWall(0,WORLD_H-t,WORLD_W,t,C.cyan,'border');
     addWall(0,0,t,WORLD_H,C.cyan,'border'); addWall(WORLD_W-t,0,t,WORLD_H,C.cyan,'border');
 
-    // ===== NEON RIVER — a coherent canal flowing ALONG a street (not cutting through) =====
-    const cols=this.GC,rows=this.GR,cw=WORLD_W/cols,ch=WORLD_H/rows;
-    const ROAD=150, PAD=26;
-    // pick a vertical avenue for the river (a road line, so it follows the city, not random)
-    const riverCol=Math.max(1,Math.min(cols-1,Math.round(cols*0.42)));
-    const rvX=riverCol*cw - 34, rvW=68;
-    // draw the river as segments BETWEEN intersections, leaving bridge gaps at each cross street
-    for(let j=0;j<rows;j++){
-      const segTop=j*ch + (j===0?0:34), segBot=(j+1)*ch - 34;   // gap around each horizontal road = bridge
-      if(segBot-segTop>30) addWall(rvX,segTop,rvW,segBot-segTop,C.waterEdge,'water');
-    }
-    // bridge decks at the crossings (visual: paved strip over the river)
-    for(let j=1;j<rows;j++){ const by=j*ch;
-      this.gCity.fillStyle(0x2a2a38,1); this.gCity.fillRect(rvX-6,by-30,rvW+12,60);
-      this.gCity.lineStyle(2,0x2b4a42,0.9); this.gCity.strokeRect(rvX-6,by-30,rvW+12,60);
-      this.gCity.fillStyle(C.gold,0.5); this.gCity.fillRect(rvX-6,by-30,rvW+12,2); this.gCity.fillRect(rvX-6,by+28,rvW+12,2);
+    // ===== FIUME NEON — segue la PIANTA (planCity): serpeggia fra i blocchi e
+    // non taglia mai un palazzo. Dove incrocia un viale principale c'e' un PONTE. =====
+    {
+      const P=this.city||this.planCity(), TS=P.TS;
+      for(let ty=0;ty<P.NY;ty++){
+        let tx=0;
+        while(tx<P.NX){
+          if(!P.W[ty][tx]){ tx++; continue; }
+          let w=0; while(tx+w<P.NX && P.W[ty][tx+w]) w++;
+          addWall(tx*TS,ty*TS,w*TS,TS,C.waterEdge,'water');
+          tx+=w;
+        }
+      }
+      // ponti: passerella lastricata dove la strada attraversa il fiume
+      (P.bridge||[]).forEach(p=>{
+        const x=p.x*TS, y=p.y*TS;
+        this.gCity.fillStyle(0x2a2a38,1); this.gCity.fillRect(x-4,y-4,TS+8,TS+8);
+        this.gCity.lineStyle(2,C.gold,0.5); this.gCity.strokeRect(x-4,y-4,TS+8,TS+8);
+      });
     }
 
     // ===== LOTTI TIPIZZATI: il quadrante non e' piu' "un edificio" =====
@@ -2889,22 +2954,27 @@ class Game extends Phaser.Scene{
         addWall(m.x,m.y,m.w,m.h,edge,'building');      // ripiego: blocco pieno
     });
 
-    for(let cxr=0;cxr<cols;cxr++)for(let cyr=0;cyr<rows;cyr++){
-      if(this.megaLots && this.megaLots[cxr+'_'+cyr]) continue;
-      const px=cxr*cw+ROAD/2+PAD2, py=cyr*ch+ROAD/2+PAD2;
-      const maxW=cw-ROAD-PAD2*2, maxH=ch-ROAD-PAD2*2;
-      if(maxW<120||maxH<120) continue;
+    // I lotti normali riempiono i BLOCCHI liberi della pianta (quelli non presi
+    // dalle megastrutture): cosi' ogni spazio fra le strade ha qualcosa dentro.
+    const _P=this.city||this.planCity(), _TS=_P.TS;
+    const _free=_P.blocks.filter(b=>!b.taken);
+    for(const _b of _free){
+      const cxr=_b.tx, cyr=_b.ty;
+      const px=_b.tx*_TS+10, py=_b.ty*_TS+10;
+      const maxW=_b.tw*_TS-20, maxH=_b.th*_TS-20;
+      if(maxW<90||maxH<90) continue;
       const edge=ndCol(px+maxW/2,py+maxH/2);
       // quanto siamo vicini al centro (0 = periferia, 1 = nucleo)
-      const dc=1-Math.min(1,(Math.abs(cxr-midX)/midX + Math.abs(cyr-midY)/midY)/2);
+      const dc=1-Math.min(1,(Math.abs(px+maxW/2-WORLD_W/2)/(WORLD_W/2)
+                            +Math.abs(py+maxH/2-WORLD_H/2)/(WORLD_H/2))/2);
       const r=Math.random();
       let tipo;
-      // I complessi grandi ora li fanno le MEGASTRUTTURE, qui restano i lotti normali.
-      if(r<0.08) tipo='vuoto';
-      else if(r<0.17) tipo='parco';
-      else if(r<0.24) tipo='piazza';
-      else if(r<0.58) tipo='aperto';                   // piu' case in cui si entra
-      else tipo='blocco';                              // 2-3 palazzine piccole
+      // il tipo di lotto lo decide il DISTRETTO: il centro e' costruito, il parco e' verde
+      if(_b.kind==='parco')          tipo = r<0.8?'parco':'piazza';
+      else if(_b.kind==='centro')    tipo = r<0.72?'blocco':'aperto';
+      else if(_b.kind==='uffici')    tipo = r<0.6?'blocco':(r<0.9?'aperto':'piazza');
+      else if(_b.kind==='industria') tipo = r<0.75?'blocco':'vuoto';
+      else                           tipo = r<0.12?'parco':(r<0.2?'piazza':(r<0.62?'aperto':'blocco'));
 
       if(tipo==='vuoto'){
         // spiazzo lastricato, non un buco nero

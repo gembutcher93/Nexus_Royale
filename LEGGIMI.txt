@@ -1,23 +1,31 @@
-NEXUS ROYALE — DELTA V91  ·  CITTA' NOTTURNA   (a schermo: BUILD v91)
+NEXUS ROYALE — DELTA V92  ·  LA CITTA' VERA   (a schermo: BUILD v92)
 =====================================================================
 Sostituisci: game.js  sw.js  index.html
 
-IL PUNTO: il "miscuglio di stili" non si risolve rifacendo le tile, ma mettendole
-tutte sotto la STESSA LUCE. Ora c'e' un filtro notte su tutto il mondo: strade,
-palazzi, interni e arredi finiscono nella stessa palette e la citta' torna notturna.
+IL BUG DI FONDO CHE HAI INTUITO: c'erano DUE griglie diverse. Le strade usavano i
+tile da 120px, i palazzi e il fiume usavano ancora la vecchia griglia 11x8 con strade
+da 150px. Da li' venivano TUTTI i difetti: strade che passano sotto i palazzi e
+spariscono, il fiume che taglia un edificio in due, i palazzi-piattaforma in mezzo
+al vuoto, e le T/L quasi mai usate.
 
-1) FILTRO NOTTE — uno strato blu-notte in "moltiplica" sopra tutto il mondo.
-   Uniforma i colori di TUTTO senza toccare un solo asset.
+ORA C'E' UNA SOLA PIANTA DELLA CITTA' (metodo planCity), nell'ordine giusto:
+  1. FIUME  serpeggia da un bordo all'altro (non piu' una riga dritta)
+  2. DISTRETTI  centro + 4 settori esterni mescolati ogni partita:
+       CENTRO     isolati piccoli e fitti, grattacieli attaccati
+       UFFICI     blocchi medi, molto costruiti
+       RESIDENZA  case in cui si entra, qualche parco
+       INDUSTRIA  isolati ENORMI, capannoni giganti
+       PARCO      verde, poche strade, spazi aperti veri
+  3. STRADE  i confini dei distretti diventano i VIALI principali; dentro ogni
+     distretto la griglia ha un passo diverso -> isolati di misure molto diverse
+  4. PONTI  dove un viale attraversa il fiume; le strade minori invece si fermano
+     sulla riva (e questo genera le T e le L, che ora vengono usate davvero)
+  5. BLOCCHI  lo spazio fra le strade viene calcolato come rettangoli, e i palazzi
+     RIEMPIONO il blocco: non ci passa mai una strada sotto, e nel centro escono
+     edifici che occupano tutta la piazza invece di piattaforme minuscole
 
-2) LAMPIONI RITROVATI — erano spariti! Il ramo nuovo delle strade usciva prima di
-   arrivare al codice che li disegnava: ecco perche' la mappa era piatta e chiara.
-   Ora sono di nuovo lungo le strade, sul bordo del marciapiede, e ognuno buca la
-   notte con una BOLLA DI LUCE sfumata (ciano / magenta / oro).
+ALTRO: i LAMPIONI ora non finiscono piu' dentro i palazzi ne' sull'acqua, solo sul
+bordo del marciapiede come volevi.
 
-3) LE MANOPOLE (righe 17-20 di game.js) — cambia, salva, ricarica:
-      NIGHT_STR = 0.62   forza della notte. 0 = giorno · 0.45 tenue · 0.75 notte fonda
-      NIGHT_COL = 0x2a4468  colore della notte (blu).
-                            piu' verde -> 0x2c5450 · piu' viola -> 0x3a3070
-      LAMP_N    = 180    quanti lampioni
-      LAMP_R    = 190    quanto e' grande la bolla di luce
-   Consiglio: prova prima NIGHT_STR a 0.5 e 0.7 e scegli, poi tara il colore.
+NOTA: la mappa cambia parecchio. Fai un paio di partite e dimmi se i distretti si
+sentono (il centro deve essere claustrofobico, l'industria enorme, il parco aperto).
