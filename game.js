@@ -452,17 +452,8 @@ class Boot extends Phaser.Scene{
     ['vyre','nova','oracle','aegis','wraith'].forEach(id=>{
       this.load.image('chip_'+id,'assets/chip_'+id+'.png');
     });
-    ['tl','t','tr','l','c','r','bl','b','br'].forEach(k=>{
-      this.load.image('b_'+k,'assets/b_'+k+'.png');
-    });
-    ['w_ctl','w_ctr','w_cbl','w_cbr','w_v','w_h','w_f'].forEach(k=>{
-      this.load.image(k,'assets/'+k+'.png');
-    });
     for(let i=0;i<24;i++) this.load.image('car'+i,'assets/car'+i+'.png');
     for(let i=0;i<5;i++) this.load.image('tree'+i,'assets/tree'+i+'.png');
-    ['sw_tl','sw_t','sw_tr','sw_l','sw_c','sw_r','sw_bl','sw_b','sw_br','sw_f'].forEach(k=>{
-      this.load.image(k,'assets/'+k+'.png');
-    });
     this.load.image('chute2','assets/chute2.png');
     ['if_home', 'if_office', 'if_hospital', 'if_shop', 'if_industrial', 'nf_table', 'nf_chair2', 'nf_chair3', 'nf_tv', 'nf_kitchen', 'nf_fridge', 'nf_sink', 'nf_toilet', 'nf_shower', 'nf_rug', 'nf_shelf', 'nf_bed1', 'hs_bed', 'hs_curtain', 'hs_monitor', 'hs_stretcher', 'hs_cabinet', 'hs_reception', 'of_desk2', 'of_partition', 'of_printer', 'of_water', 'of_meeting', 'of_locker', 'of_desk_stud', 'sh_counter', 'sh_shelf', 'sh_fridge', 'sh_table', 'sh_stool'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
     ['up_bench', 'up_lamp', 'up_tree', 'up_bush', 'up_fountain', 'up_bin', 'up_planter', 'up_sign', 'up_hydrant', 'up_barrier', 'up_bus', 'up_kiosk', 'up_car2', 'up_stairs', 'gr_grass2'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
@@ -474,9 +465,6 @@ class Boot extends Phaser.Scene{
       this.load.image(k,'assets/'+k+'.png');
     });
     ['nf_bed','nf_sofa','nf_chair','nf_desk','nf_arm','nf_cab','nf_cab2','nf_cab3','ntree0','ntree1','ntree2','ntree3','ntree4','ntree5','ntree6','ntree7','nfountain','bldT0','bldT1','bldT2','bldT3','bldT4','bldT5'].forEach(k=>{
-      this.load.image(k,'assets/'+k+'.png');
-    });
-    ['fl_n'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
     // strade sprite coi circuiti neon (Gem) — dritto + svincoli
@@ -2196,7 +2184,7 @@ class Game extends Phaser.Scene{
               magazzino:'if_industrial'};
     let fk=floorKey;
     if(!fk){ const t=this._bldTheme||'casa'; fk=FL[t]||'if_home'; }
-    if(!this.textures.exists(fk)) fk='pz_floor';
+    if(!this.textures.exists(fk)) fk='if_home';
     if(this.textures.exists(fk))
       this.add.tileSprite(x,y,cols*T,rows*T,fk).setOrigin(0,0).setDepth(-18.15);
     const doorSide=Phaser.Math.Between(0,3), doorAt=Phaser.Math.Between(1,Math.max(1,(doorSide%2?rows:cols)-2));
@@ -2422,12 +2410,12 @@ class Game extends Phaser.Scene{
     const dark=(v,f)=>{ const r=((v>>16)&255)*f,g=((v>>8)&255)*f,b=(v&255)*f;
       return (Math.round(r)<<16)|(Math.round(g)<<8)|Math.round(b); };
     // pavimento
-    if(this.textures.exists('if_home')||this.textures.exists('ifloor0')||this.textures.exists('fl_n')){
+    if(this.textures.exists('if_home')){
       // un solo pavimento per edificio (prima cambiava a ogni stanza: effetto "messo a caso")
       const FLK={casa:'if_home',ufficio:'if_office',ospedale:'if_hospital',
                  negozio:'if_shop',magazzino:'if_industrial'};
       let fk=FLK[this._bldTheme||'casa']||'if_home';
-      if(!this.textures.exists(fk)) fk=this.textures.exists('ifloor0')?'ifloor0':'fl_n';
+      if(!this.textures.exists(fk)) fk='if_home';
       this.add.tileSprite(x+wth,y+wth,w-2*wth,h-2*wth,fk).setOrigin(0,0)
         .setDepth(0.44).setTint(dark(c,0.38)).setTileScale(0.55);
     }
@@ -2797,8 +2785,8 @@ class Game extends Phaser.Scene{
 
       if(tipo==='vuoto'){
         // spiazzo lastricato, non un buco nero
-        if(this.textures.exists('sw_f'))
-          this.add.tileSprite(px,py,maxW,maxH,'sw_f').setOrigin(0,0).setDepth(-15).setTileScale(0.5,0.5).setAlpha(0.8);
+        if(this.textures.exists('pz_floor'))
+          this.add.tileSprite(px,py,maxW,maxH,'pz_floor').setOrigin(0,0).setDepth(-18.2);
         continue;
       }
 
