@@ -1,11 +1,11 @@
 /* ==========================================================================
    NEXUS ROYALE — top-down battle royale (visual+weapons pass)
    ========================================================================== */
-let WORLD_W=6600, WORLD_H=4800;
+let WORLD_W=9000, WORLD_H=6600;   // ingrandita per i tile da 120px: stessi palazzi, prospettiva piu' realistica
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v95';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v96';   // NUMERO DI BUILD mostrato a schermo in gioco
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -2175,9 +2175,9 @@ class Game extends Phaser.Scene{
 
     // ---- 3) STRADE: arterie che attraversano tutto + griglia locale per distretto ----
     const road=(x,y)=>{ if(x>=0&&y>=0&&x<NX&&y<NY) R[y][x]=true; };
-    // arterie: i confini dei distretti (sono i viali principali della citta')
-    for(let y=0;y<NY;y++){ road(cx0,y); road(cx1,y); }
-    for(let x=0;x<NX;x++){ road(x,cy0); road(x,cy1); }
+    // ARTERIE = viali a DOPPIA CARREGGIATA (2 tessere): si distinguono dalle strade normali
+    for(let y=0;y<NY;y++){ road(cx0,y); road(cx0+1,y); road(cx1,y); road(cx1+1,y); }
+    for(let x=0;x<NX;x++){ road(x,cy0); road(x,cy0+1); road(x,cy1); road(x,cy1+1); }
     for(let y=0;y<NY;y++){ road(0,y); road(NX-1,y); }
     for(let x=0;x<NX;x++){ road(x,0); road(x,NY-1); }
     // griglia interna: passo diverso per distretto => isolati di misure diverse
@@ -2193,7 +2193,7 @@ class Game extends Phaser.Scene{
     const bridge=[];
     for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
       if(!W[y][x]||!R[y][x]) continue;
-      const artery=(x===cx0||x===cx1||y===cy0||y===cy1||x===0||y===0||x===NX-1||y===NY-1);
+      const artery=(x===cx0||x===cx0+1||x===cx1||x===cx1+1||y===cy0||y===cy0+1||y===cy1||y===cy1+1||x===0||y===0||x===NX-1||y===NY-1);
       if(artery){ W[y][x]=false; bridge.push({x,y}); }    // ponte: la strada passa
       else R[y][x]=false;                                  // strada minore: si ferma al fiume
     }
@@ -2271,7 +2271,9 @@ class Game extends Phaser.Scene{
       return (Math.round(r)<<16)|(Math.round(g)<<8)|Math.round(b); };
     // pavimento
     if(this.textures.exists('ifloor0')||this.textures.exists('fl_n')){
-      const fk=this.textures.exists('ifloor0')?('ifloor'+Phaser.Math.Between(0,3)):'fl_n';
+      // un solo pavimento per edificio (prima cambiava a ogni stanza: effetto "messo a caso")
+      if(this._flPick===undefined) this._flPick=0;
+      const fk=this.textures.exists('ifloor0')?('ifloor'+(this._flPick%3)):'fl_n';
       this.add.tileSprite(x+wth,y+wth,w-2*wth,h-2*wth,fk).setOrigin(0,0)
         .setDepth(0.44).setTint(dark(c,0.38)).setTileScale(0.55);
     }
@@ -2425,6 +2427,7 @@ class Game extends Phaser.Scene{
       const TS=120;                                   // lato tile = carreggiata
       const GX=Math.max(3,Math.round(cw/TS)), GY=Math.max(3,Math.round(ch/TS)); // tile per cella
       const NX=Math.ceil(WORLD_W/TS), NY=Math.ceil(WORLD_H/TS);
+      const gFill=this.add.graphics().setDepth(-18.9);   // base scura sotto i blocchi
       const put=(k,tx,ty,ang)=>{ const im=this.add.image(tx*TS+TS/2,ty*TS+TS/2,k).setDepth(-18.7)
           .setDisplaySize(TS+2,TS+2);          // +2px: i tile si sovrappongono, niente fessure
         if(ang) im.setAngle(ang); return im; };
@@ -2440,7 +2443,11 @@ class Game extends Phaser.Scene{
       const isR=(x,y)=>(x>=0&&y>=0&&x<NX&&y<NY&&R[y][x]);
       for(let ty=0;ty<NY;ty++)for(let tx=0;tx<NX;tx++){
         if(P.W[ty][tx]) continue;                     // fiume: lo disegna il generatore acqua
-        if(!R[ty][tx]){ put('nt_side',tx,ty,0); continue; }
+        if(!R[ty][tx]){
+          const near=(isR(tx-1,ty)||isR(tx+1,ty)||isR(tx,ty-1)||isR(tx,ty+1));
+          if(near) put('nt_side',tx,ty,0);           // solo il bordo: l'interno lo copre l'edificio
+          else { gFill.fillStyle(0x11161c,1); gFill.fillRect(tx*TS,ty*TS,TS+1,TS+1); }
+          continue; }
         const N=isR(tx,ty-1),S=isR(tx,ty+1),E=isR(tx+1,ty),W=isR(tx-1,ty);
         const n=(N?1:0)+(S?1:0)+(E?1:0)+(W?1:0);
         if(n===4) put('nt_x',tx,ty,0);
@@ -2543,7 +2550,7 @@ class Game extends Phaser.Scene{
       g.fillStyle(col,0.9); g.fillCircle(x,y,3);
     }
     const D=this.gDecor;
-    for(let i=0;i<60;i++){
+    for(let i=0;i<26;i++){
       const x=Phaser.Math.Between(60,WORLD_W-60), y=Phaser.Math.Between(60,WORLD_H-60);
       const r=Math.random();
       if(r<0.42){ const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.purple]);
@@ -2558,6 +2565,7 @@ class Game extends Phaser.Scene{
   // Palazzo chiuso col TETTO PRONTO di Gem (vista dall'alto), ricolorato per distretto.
   // Sceglie la sprite in base alla proporzione del lotto; se il lotto e' grande usa il grande.
   realBuilding(x,y,w,h,col){
+    this._flPick=Phaser.Math.Between(0,2);   // pavimento COERENTE per tutto l'edificio
     if(!this.textures.exists('bldT1')) return false;
     const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
       return (m(r)<<16)|(m(g)<<8)|m(b); };
