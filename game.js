@@ -1,11 +1,11 @@
 /* ==========================================================================
    NEXUS ROYALE — top-down battle royale (visual+weapons pass)
    ========================================================================== */
-let WORLD_W=9000, WORLD_H=6600;   // ingrandita per i tile da 120px: stessi palazzi, prospettiva piu' realistica
+let WORLD_W=7200, WORLD_H=5280;   // ingrandita per i tile da 120px: stessi palazzi, prospettiva piu' realistica
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v108';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v2.0.1';   // NUMERO DI BUILD mostrato a schermo in gioco
 const TILE_BOX={"gr_grass": [], "gr_path": [], "gr_path_cor": [], "pz_floor": [], "wl_wall": [[0, 0, 30, 120]], "wl_corner": [[0, 0, 30, 120], [30, 90, 90, 30]], "wl_door": [[0, 0, 30, 30], [0, 90, 30, 30]], "wl_win": [[0, 0, 30, 30], [15, 60, 15, 15], [0, 90, 30, 30]], "wl_in": [[0, 0, 15, 120]], "wl_in_cor": [[0, 0, 15, 120], [15, 105, 105, 15]], "wt_water": [[0, 0, 120, 120]], "wt_edge": [[0, 60, 120, 30], [0, 90, 105, 30]], "wt_corner": [[0, 60, 90, 60]]};
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
@@ -40,7 +40,7 @@ let ART_OK={};
 
 function matchCfg(){ if(GAME.match==='blitz') return {total:30,w:5760,h:4200,loot:130,deploy:5,first:16000,wait:11000,shrink:11000,pr:[0.60,0.40,0.24,0.12,0.05],pd:[2,3,5,8,13]};
   // mappa piu' grande e partita piu' lunga: c'e' piu' citta' da girare
-  return {total:100,w:9000,h:6600,loot:240,deploy:8,first:34000,wait:20000,shrink:18000,pr:[0.80,0.64,0.50,0.36,0.24,0.13,0.05],pd:[1,1,2,3,5,8,12]}; }
+  return {total:100,w:7200,h:5280,loot:200,deploy:8,first:30000,wait:18000,shrink:16000,pr:[0.80,0.64,0.50,0.36,0.24,0.13,0.05],pd:[1,1,2,3,5,8,12]}; }
 // quality affects EFFECTS ONLY (bot count never changes)
 const FXQ={ low:{particles:0.25,glow:false,shake:false,signs:0,lights:6,trails:false},
             med:{particles:0.55,glow:true, shake:true, signs:8, lights:16,trails:false},
@@ -465,7 +465,7 @@ class Boot extends Phaser.Scene{
     });
     this.load.image('chute2','assets/chute2.png');
     ['if_home', 'if_office', 'if_hospital', 'if_shop', 'if_industrial', 'nf_table', 'nf_chair2', 'nf_chair3', 'nf_tv', 'nf_kitchen', 'nf_fridge', 'nf_sink', 'nf_toilet', 'nf_shower', 'nf_rug', 'nf_shelf', 'nf_bed1', 'hs_bed', 'hs_curtain', 'hs_monitor', 'hs_stretcher', 'hs_cabinet', 'hs_reception', 'of_desk2', 'of_partition', 'of_printer', 'of_water', 'of_meeting', 'of_locker', 'of_desk_stud', 'sh_counter', 'sh_shelf', 'sh_fridge', 'sh_table', 'sh_stool'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
-    ['up_bench', 'up_lamp', 'up_tree', 'up_bush', 'up_fountain', 'up_bin', 'up_planter', 'up_sign', 'up_hydrant', 'up_barrier', 'up_bus', 'up_kiosk', 'up_car2', 'up_stairs', 'up_vent', 'gr_grass2'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
+    ['up_bench', 'up_lamp', 'up_tree', 'up_bush', 'up_fountain', 'up_bin', 'up_planter', 'up_sign', 'up_hydrant', 'up_barrier', 'up_bus', 'up_kiosk', 'up_car2', 'up_stairs', 'gr_grass2'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
     ['gr_grass', 'gr_path', 'gr_path_cor', 'pz_floor', 'wl_wall', 'wl_corner', 'wl_door', 'wl_win', 'wl_in', 'wl_in_cor', 'wt_water', 'wt_edge', 'wt_corner'].forEach(k=>this.load.image(k,'assets/'+k+'.png'));
     ['ct_radar','ct_cam','ct_chip','ct_portal','ct_remains'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
@@ -473,10 +473,10 @@ class Boot extends Phaser.Scene{
     ['nt_asf','nt_str','nt_ped','nt_edge','nt_cor','nt_side','nt_t','nt_t2','nt_x','nt_round','nt_pad'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
-    ['nf_bed','nf_sofa','nf_chair','nf_desk','nf_arm','nf_cab','nf_cab2','nf_cab3','ifloor0','ifloor1','ifloor2','ifloor3','ifloor4','ifloor5','ifloor6','ifloor7','ntree0','ntree1','ntree2','ntree3','ntree4','ntree5','ntree6','ntree7','nfountain','bldT0','bldT1','bldT2','bldT3','bldT4','bldT5','bldT_big','bldT_tall'].forEach(k=>{
+    ['nf_bed','nf_sofa','nf_chair','nf_desk','nf_arm','nf_cab','nf_cab2','nf_cab3','ntree0','ntree1','ntree2','ntree3','ntree4','ntree5','ntree6','ntree7','nfountain','bldT0','bldT1','bldT2','bldT3','bldT4','bldT5'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
-    ['fl_n','wl_c','wl_v','wl_h','fan1','fan2','fan3','fan4','sol1','sol2','fur1','fur2','fur3','fur4','fur5'].forEach(k=>{
+    ['fl_n'].forEach(k=>{
       this.load.image(k,'assets/'+k+'.png');
     });
     // strade sprite coi circuiti neon (Gem) — dritto + svincoli
@@ -2176,7 +2176,7 @@ class Game extends Phaser.Scene{
     if(!this.textures.exists(k)) return null;
     const S={up_bench:[70,28],up_lamp:[34,34],up_tree:[90,90],up_bush:[46,46],up_fountain:[130,130],
       up_bin:[26,26],up_planter:[90,34],up_sign:[40,40],up_hydrant:[20,20],up_barrier:[90,24],
-      up_bus:[130,60],up_kiosk:[110,90],up_car2:[96,46],up_stairs:[120,60],up_vent:[60,60]}[k]||[60,60];
+      up_bus:[130,60],up_kiosk:[110,90],up_car2:[96,46],up_stairs:[120,60]}[k]||[60,60];
     const im=this.add.image(x,y,k).setDisplaySize(S[0],S[1]).setDepth(0.62);
     if(solid && this.walls){ const b=this.walls.create(x,y,'px').setVisible(false);
       b.setDisplaySize(S[0]*0.8,S[1]*0.8); b.refreshBody();
@@ -2186,8 +2186,8 @@ class Game extends Phaser.Scene{
   buildWallRing(x,y,w,h,floorKey){
     if(!this.textures.exists('wl_wall')) return false;
     // tinta leggera per quartiere: la base blu-azzurra resta riconoscibile
-    const WT={centro:0xbfe6ff, uffici:0xa8d8ff, residenza:0xffd9c2,
-              industria:0xffce9a, parco:0xc8ffe0};
+    const WT={ospedale:0xdff2ff, uffici:0xa8d8ff, negozio:0xffd0e8,
+              residenza:0xffd9c2, parco:0xc8ffe0};
     const wtint=WT[this._bldDistrict]||0xffffff;
     const T=120, cols=Math.max(2,Math.round(w/T)), rows=Math.max(2,Math.round(h/T));
     // pavimento interno
@@ -2257,112 +2257,128 @@ class Game extends Phaser.Scene{
     this.tweens.add({targets:[L.g,L.t1,L.t2,L.bar],alpha:0,duration:420,
       onComplete:()=>{ L.g.destroy(); L.t1.destroy(); L.t2.destroy(); L.bar.destroy(); }});
   }
+  // ==========================================================================
+  // PIANTA v2 — NIENTE citta' intera: la mappa e' fatta di 3 SETTORI, uno GRANDE
+  // e due PICCOLI, ognuno con la sua ambientazione. Cosi' ogni partita e' diversa
+  // e ogni tipo di tile ha lo spazio per essere sfruttato davvero.
+  // ==========================================================================
   planCity(){
     const TS=120;
     const NX=Math.ceil(WORLD_W/TS), NY=Math.ceil(WORLD_H/TS);
     const R=[],W=[],D=[];
     for(let y=0;y<NY;y++){ R.push(new Array(NX).fill(false)); W.push(new Array(NX).fill(false)); D.push(new Array(NX).fill(0)); }
-    const rnd=(a,b)=>Phaser.Math.Between(a,b), rf=()=>Phaser.Math.FloatBetween(0,1);
+    const rf=()=>Phaser.Math.FloatBetween(0,1), ri=(a,b)=>Phaser.Math.Between(a,b);
 
-    // ---- 1) FIUME: canale che SERPEGGIA da un bordo all'altro ----
-    const vert=rf()<0.5;
-    const len=vert?NY:NX, span=vert?NX:NY;
-    let c=Math.round(span*Phaser.Math.FloatBetween(0.3,0.7)), dir=rf()<0.5?1:-1;
-    const rw=rnd(1,2);
-    for(let i=0;i<len;i++){
-      if(i%3===0){ c+=dir*rnd(0,1); if(rf()<0.3) dir=-dir; }
-      c=Phaser.Math.Clamp(c,2,span-3-rw);
-      for(let k=0;k<rw;k++){
-        if(vert) W[i][c+k]=true; else W[c+k][i]=true;
-      }
-    }
+    // ---- 1) SCELTA DELLE 3 AMBIENTAZIONI ----
+    // ospedale e uffici sono grandi: stanno solo nel settore GRANDE.
+    // negozi (la futura zona industriale) solo nei settori PICCOLI.
+    const BIG=['ospedale','uffici','parco','residenza'];
+    const SML=['negozio','parco','residenza','residenza'];
+    const big=Phaser.Utils.Array.GetRandom(BIG);
+    // i due piccoli devono essere DIVERSI fra loro e dal grande: 3 ambientazioni vere
+    const pool=Phaser.Utils.Array.Shuffle(SML.slice()).filter(a=>a!==big);
+    let s1=pool[0]||'residenza';
+    let s2=pool.find(a=>a!==s1) || (s1==='parco'?'residenza':'parco');
+    this.sectors=[big,s1,s2];
 
-    // ---- 2) DISTRETTI: centro denso + 4 settori, ognuno con la sua trama ----
-    // passo = quanto sono distanti le strade => quanto sono grandi i caseggiati
-    const KIND=[null,
-      {n:'centro',    step:3, fill:0.95, tall:true},   // grattacieli fitti, blocchi piccoli
-      {n:'uffici',    step:4, fill:0.85, tall:true},
-      {n:'residenza', step:4, fill:0.7,  tall:false},
-      {n:'industria', step:7, fill:0.8,  tall:false},  // capannoni enormi
-      {n:'parco',     step:8, fill:0.25, tall:false}   // verde, poche strade
-    ];
-    const cx0=Math.round(NX*0.34), cx1=Math.round(NX*0.66);
-    const cy0=Math.round(NY*0.32), cy1=Math.round(NY*0.68);
-    const outer=Phaser.Utils.Array.Shuffle([2,3,4,5]);
-    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
-      if(x>=cx0&&x<cx1&&y>=cy0&&y<cy1){ D[y][x]=1; continue; }       // centro
-      const q=(x<NX/2?0:1)+(y<NY/2?0:2);
-      D[y][x]=outer[q];
-    }
-    // il FIUME deve scorrere nel VERDE: le fasce che tocca diventano parco (5)
-    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
-      if(!W[y][x]) continue;
-      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
-        const nx=x+dx, ny=y+dy;
-        if(nx<0||ny<0||nx>=NX||ny>=NY) continue;
-        if(nx>=cx0&&nx<cx1&&ny>=cy0&&ny<cy1) continue;               // il centro resta centro
-        D[ny][nx]=5;
-      }
-    }
+    // ---- 2) I 3 SETTORI: uno grande + due piccoli, con un taglio irregolare ----
+    const horiz=rf()<0.5;                       // il grande sta sopra/sotto oppure a sx/dx
+    const cutA=Math.round((horiz?NY:NX)*Phaser.Math.FloatBetween(0.52,0.62));
+    const cutB=Math.round((horiz?NX:NY)*Phaser.Math.FloatBetween(0.42,0.58));
+    const sectorAt=(x,y)=>{
+      if(horiz) return (y<cutA)?0:((x<cutB)?1:2);
+      return (x<cutA)?0:((y<cutB)?1:2);
+    };
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++) D[y][x]=sectorAt(x,y);
 
-    // ---- 3) STRADE: arterie che attraversano tutto + griglia locale per distretto ----
+    // ---- 3) STRADE: bordo mappa + i confini dei settori (sono i viali) + griglia interna ----
     const road=(x,y)=>{ if(x>=0&&y>=0&&x<NX&&y<NY) R[y][x]=true; };
-    // ARTERIE = viali a DOPPIA CARREGGIATA (2 tessere): si distinguono dalle strade normali
-    for(let y=0;y<NY;y++){ road(cx0,y); road(cx0+1,y); road(cx1,y); road(cx1+1,y); }
-    for(let x=0;x<NX;x++){ road(x,cy0); road(x,cy0+1); road(x,cy1); road(x,cy1+1); }
-    for(let y=0;y<NY;y++){ road(0,y); road(NX-1,y); }
     for(let x=0;x<NX;x++){ road(x,0); road(x,NY-1); }
-    // griglia interna: passo diverso per distretto => isolati di misure diverse
+    for(let y=0;y<NY;y++){ road(0,y); road(NX-1,y); }
+    if(horiz){ for(let x=0;x<NX;x++){ road(x,cutA); road(x,cutA+1); }
+               for(let y=cutA;y<NY;y++){ road(cutB,y); road(cutB+1,y); } }
+    else     { for(let y=0;y<NY;y++){ road(cutA,y); road(cutA+1,y); }
+               for(let x=cutA;x<NX;x++){ road(x,cutB); road(x,cutB+1); } }
+    // griglia interna: passo diverso per ambientazione => isolati di forme diverse
+    const STEP={ospedale:[7,5], uffici:[5,4], negozio:[4,4], residenza:[4,6], parco:[9,8]};
     for(let y=1;y<NY-1;y++)for(let x=1;x<NX-1;x++){
-      const k=KIND[D[y][x]]; if(!k) continue;
-      const onV=(x%k.step===0), onH=(y%k.step===0);
+      const amb=this.sectors[D[y][x]];
+      const st=STEP[amb]||[5,5];
+      // passi diversi su x e y: nascono RETTANGOLI, non quadrati
+      const onV=(x%st[0]===0), onH=(y%st[1]===0);
       if(!onV&&!onH) continue;
-      if(k.n==='parco'&&rf()<0.55) continue;             // il parco resta aperto
-      if(k.n==='industria'&&rf()<0.15) continue;
+      if(amb==='parco'&&rf()<0.6) continue;             // il parco resta aperto
+      if(amb==='ospedale'&&rf()<0.25) continue;         // isolati piu' grandi
       R[y][x]=true;
     }
-    // ---- 4) niente strade nell'acqua, TRANNE i ponti sulle arterie ----
+
+    // ---- 4) ACQUA: lago + fiume, solo dentro il settore PARCO ----
+    const parkIdx=this.sectors.indexOf('parco');
+    if(parkIdx>=0){
+      let sx=0,sy=0,n=0;
+      for(let y=0;y<NY;y++)for(let x=0;x<NX;x++) if(D[y][x]===parkIdx){ sx+=x; sy+=y; n++; }
+      if(n>40){
+        const cx=Math.round(sx/n), cy=Math.round(sy/n);
+        const rx=Math.max(3,Math.round(Math.sqrt(n)*0.26)), ry=Math.max(2,Math.round(rx*0.7));
+        for(let y=cy-ry;y<=cy+ry;y++)for(let x=cx-rx;x<=cx+rx;x++){
+          if(x<1||y<1||x>=NX-1||y>=NY-1) continue;
+          if(D[y][x]!==parkIdx) continue;
+          const dx=(x-cx)/rx, dy=(y-cy)/ry;
+          if(dx*dx+dy*dy<=1){ W[y][x]=true; R[y][x]=false; }     // LAGO
+        }
+        // ruscello che esce dal lago
+        let bx=cx, by=cy+ry, dir=rf()<0.5?-1:1;
+        for(let k=0;k<24&&by<NY-2;k++){
+          if(k%3===0) bx=Phaser.Math.Clamp(bx+dir*ri(0,1),1,NX-2);
+          if(D[by][bx]!==parkIdx) break;
+          W[by][bx]=true; R[by][bx]=false; by++;
+        }
+      }
+    }
+    // le strade non attraversano l'acqua, tranne i viali (=ponti)
     const bridge=[];
     for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
       if(!W[y][x]||!R[y][x]) continue;
-      const artery=(x===cx0||x===cx0+1||x===cx1||x===cx1+1||y===cy0||y===cy0+1||y===cy1||y===cy1+1||x===0||y===0||x===NX-1||y===NY-1);
-      if(artery){ W[y][x]=false; bridge.push({x,y}); }    // ponte: la strada passa
-      else R[y][x]=false;                                  // strada minore: si ferma al fiume
+      const artery=(x===0||y===0||x===NX-1||y===NY-1
+        ||(horiz&&(y===cutA||y===cutA+1||x===cutB||x===cutB+1))
+        ||(!horiz&&(x===cutA||x===cutA+1||y===cutB||y===cutB+1)));
+      if(artery){ W[y][x]=false; bridge.push({x,y}); } else R[y][x]=false;
     }
-    // ---- 5) BLOCCHI: rettangoli liberi fra le strade -> ci vanno i palazzi ----
+
+    // ---- 5) BLOCCHI: rettangoli liberi fra le strade. Limite sull'AREA, non sul lato,
+    //         cosi' restano RETTANGOLI lunghi (3x9, 8x4) invece di quadratini.
     const seen=[]; for(let y=0;y<NY;y++) seen.push(new Array(NX).fill(false));
     const free=(x,y)=>(x<NX&&y<NY&&!R[y][x]&&!W[y][x]&&!seen[y][x]);
-    const blocks=[];
+    const raw=[];
     for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
       if(!free(x,y)) continue;
       let w=0; while(free(x+w,y)) w++;
       let h=1;
-      for(;;){ let ok=true; for(let k=0;k<w;k++) if(!free(x+k,y+h)) { ok=false; break; }
+      for(;;){ let ok=true; for(let k=0;k<w;k++) if(!free(x+k,y+h)){ ok=false; break; }
         if(!ok) break; h++; }
       for(let v=0;v<h;v++)for(let u=0;u<w;u++) seen[y+v][x+u]=true;
-      blocks.push({tx:x,ty:y,tw:w,th:h,d:D[y][x],kind:KIND[D[y][x]].n,
-                   fill:KIND[D[y][x]].fill, tall:KIND[D[y][x]].tall});
+      raw.push({tx:x,ty:y,tw:w,th:h,sec:D[y][x]});
     }
-    // Blocchi troppo grandi = edifici enormi con centinaia di stanze: il gioco si impianta.
-    // Li spezzo in pezzi da al massimo MAXB tile per lato.
-    const MAXB=6, split=[];
-    blocks.forEach(b=>{
-      const nx=Math.ceil(b.tw/MAXB), ny=Math.ceil(b.th/MAXB);
-      if(nx<=1&&ny<=1){ split.push(b); return; }
-      const pw=Math.floor(b.tw/nx), ph=Math.floor(b.th/ny);
-      for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
-        const w=(i===nx-1)?(b.tw-pw*(nx-1)):pw, h=(j===ny-1)?(b.th-ph*(ny-1)):ph;
-        if(w<1||h<1) continue;
-        split.push({tx:b.tx+i*pw, ty:b.ty+j*ph, tw:w, th:h, d:b.d, kind:b.kind, fill:b.fill, tall:b.tall});
+    const MAXA=54;                                  // area massima (tessere) di un blocco
+    const blocks=[];
+    raw.forEach(b=>{
+      const amb=this.sectors[b.sec];
+      let bw=b.tw, bh=b.th;
+      const nx=Math.max(1,Math.ceil((bw*bh)/MAXA/Math.max(1,Math.round(bh/4))||1));
+      // taglio solo se davvero enorme, e taglio sul lato LUNGO (restano rettangoli)
+      if(bw*bh<=MAXA){ blocks.push({...b,kind:amb,fill:1}); return; }
+      const cutsX=(bw>=bh)?Math.ceil(bw*bh/MAXA):1;
+      const cutsY=(bw>=bh)?1:Math.ceil(bw*bh/MAXA);
+      const pw=Math.max(1,Math.floor(bw/cutsX)), ph=Math.max(1,Math.floor(bh/cutsY));
+      for(let j=0;j<cutsY;j++)for(let i=0;i<cutsX;i++){
+        const w2=(i===cutsX-1)?(bw-pw*(cutsX-1)):pw, h2=(j===cutsY-1)?(bh-ph*(cutsY-1)):ph;
+        if(w2<1||h2<1) continue;
+        blocks.push({tx:b.tx+i*pw,ty:b.ty+j*ph,tw:w2,th:h2,sec:b.sec,kind:amb,fill:1});
       }
     });
-    this.city={TS,NX,NY,R,W,D,blocks:split,bridge,KIND};
+    this.city={TS,NX,NY,R,W,D,blocks,bridge,sectors:this.sectors,horiz};
     return this.city;
   }
-
-  // I palazzi RIEMPIONO i blocchi liberi della pianta: cosi' non ci passano mai
-  // strade sotto, e nel centro/uffici escono grattacieli attaccati che occupano
-  // tutta la piazza invece di piattaforme minuscole in mezzo al vuoto.
   planMegas(){
     const P=(this.city&&this.city.blocks)?this.city:(this.city=this.planCityFallback()), TS=P.TS;
     this.megas=[]; this.megaLots={};
@@ -2514,436 +2530,7 @@ class Game extends Phaser.Scene{
       });
       return;
     }
-    if(!this.textures.exists('fur1')) return;
-    const put=(k,px,py,pw,ph,rot)=>{
-      const im=this.add.image(px+pw/2,py+ph/2,k).setOrigin(0.5).setDepth(0.55)
-        .setTint(c).setAlpha(0.95);
-      if(rot) im.setDisplaySize(ph,pw).setAngle(90); else im.setDisplaySize(pw,ph);
-      this.solid(px,py,pw,ph,c);
-    };
-    const CLR=34;   // fascia libera lungo TUTTE le pareti: le porte stanno li'
-    rooms.forEach(r0=>{
-      const rx=r0[0]+CLR, ry=r0[1]+CLR, rw=r0[2]-CLR*2, rh=r0[3]-CLR*2;
-      if(rw<70||rh<70) return;
-      if(kind==='ospedale'){
-        // letti allineati alla parete, come in una corsia
-        const bw=46, bh=92, n=Math.max(1,Math.floor(rw/(bw+22)));
-        for(let k=0;k<n;k++){
-          const px=rx+10+k*(bw+22);
-          if(px+bw>rx+rw-6) break;
-          put('fur3',px,ry,bw,Math.min(bh,rh),true);
-        }
-        if(rh>170&&rw>120) put('fur1',rx+rw-54,ry+rh-54,50,50,false);
-      } else if(kind==='magazzino'){
-        // scaffalature lunghe parallele + casse: sembra un deposito
-        const shelfW=Math.min(rw-16,120), sh=18;
-        for(let yy=ry+10; yy+sh<ry+rh-8; yy+=sh+34){
-          put('fur3',rx+8,yy,shelfW,sh,false);
-          // qualche cassa accanto
-          if(Math.random()<0.6) put('fur4',rx+shelfW-40,yy-2,22,22,false);
-        }
-      } else if(kind==='uffici'){
-        const n=Math.max(1,Math.min(4,Math.floor((rw*rh)/14000)));
-        for(let k=0;k<n;k++){
-          const px=rx+Math.random()*Math.max(1,rw-60), py=ry+Math.random()*Math.max(1,rh-60);
-          put(Math.random()<0.5?'fur1':'fur2',px,py,54,54,false);
-        }
-      } else { // scuola / generico: banchi in griglia
-        const bw=50,bh=34;
-        for(let yy=ry; yy+bh<=ry+rh; yy+=bh+30)
-          for(let xx=rx; xx+bw<=rx+rw; xx+=bw+30) put('fur3',xx,yy,bw,bh,false);
-      }
-    });
-  }
-
-  drawRoads(){
-    const cols=this.GC, rows=this.GR, cw=WORLD_W/cols, ch=WORLD_H/rows;
-    // ===== TILESET NUOVO (Street_and_walkside): 1 TILE = 1 LARGHEZZA STRADA =====
-    // Gli incroci di Gem (nt_x) hanno GIA' dentro i 4 angolini smussati: si posano interi,
-    // e le strade dritte (nt_str, marciapiede su entrambi i lati) agganciano il neon da sole.
-    if(this.textures.exists('nt_x')){
-      const TS=120;                                   // lato tile = carreggiata
-      const GX=Math.max(3,Math.round(cw/TS)), GY=Math.max(3,Math.round(ch/TS)); // tile per cella
-      const NX=Math.ceil(WORLD_W/TS), NY=Math.ceil(WORLD_H/TS);
-      const gFill=this.add.graphics().setDepth(-18.9);   // base scura sotto i blocchi
-      const put=(k,tx,ty,ang)=>{ const im=this.add.image(tx*TS+TS/2,ty*TS+TS/2,k).setDepth(-18.7)
-          .setDisplaySize(TS+2,TS+2);          // +2px: i tile si sovrappongono, niente fessure
-        if(ang) im.setAngle(ang); return im; };
-      // ---- 1) RETE STRADALE: presa dalla PIANTA della citta' (planCity) ----
-      const P=(this.city&&this.city.R)?this.city:(this.city=this.planCityFallback());
-      const R=P.R;
-      const majX=[], majY=[];
-      for(let x=0;x<NX;x++){ let n=0; for(let y=0;y<NY;y++) if(R[y][x]) n++; if(n>NY*0.8) majX.push(x); }
-      for(let y=0;y<NY;y++){ let n=0; for(let x=0;x<NX;x++) if(R[y][x]) n++; if(n>NX*0.8) majY.push(y); }
-      const rnd=()=>Phaser.Math.FloatBetween(0,1);
-      // ---- 2) AUTOTILE: il pezzo lo decidono i vicini (niente rotazioni indovinate) ----
-      // nt_str nativa = strada EST-OVEST ; nt_t nativa = T chiusa a NORD (bracci E,O,S)
-      const isR=(x,y)=>(x>=0&&y>=0&&x<NX&&y<NY&&R[y][x]);
-      for(let ty=0;ty<NY;ty++)for(let tx=0;tx<NX;tx++){
-        if(P.W[ty][tx]) continue;                     // fiume: lo disegna il generatore acqua
-        if(!R[ty][tx]){
-          const near=(isR(tx-1,ty)||isR(tx+1,ty)||isR(tx,ty-1)||isR(tx,ty+1));   // solo la fascia a filo strada
-          if(near) put('nt_side',tx,ty,0);           // solo il bordo: l'interno lo copre l'edificio
-          else { gFill.fillStyle(0x11161c,1); gFill.fillRect(tx*TS,ty*TS,TS+1,TS+1); }
-          continue; }
-        const N=isR(tx,ty-1),S=isR(tx,ty+1),E=isR(tx+1,ty),W=isR(tx-1,ty);
-        const n=(N?1:0)+(S?1:0)+(E?1:0)+(W?1:0);
-        if(n===4) put('nt_x',tx,ty,0);
-        else if(n===3){                                   // T: ruoto verso il lato CHIUSO
-          const ang = !N?0 : (!E?90 : (!S?180:270));
-          put('nt_t',tx,ty,ang);
-        }
-        else if(n===2 && ((N&&E)||(E&&S)||(S&&W)||(W&&N))){
-          // CURVA: si usa la L (nt_cor), NON la X. nt_cor nativa collega OVEST+SUD.
-          // rotazioni orarie: W+S=0 · N+W=90 · N+E=180 · E+S=270
-          const ang = (W&&S)?0 : ((N&&W)?90 : ((N&&E)?180:270));
-          put(this.textures.exists('nt_cor')?'nt_cor':'nt_x',tx,ty,ang);
-        }
-        else if(n===1){                                   // vicolo cieco: T chiusa dai due lati liberi
-          const ang = N?180 : (S?0 : (E?270:90));
-          put('nt_t',tx,ty,ang);
-        }
-        else if(N||S) put('nt_str',tx,ty,90);             // verticale (anche vicolo cieco)
-        else put('nt_str',tx,ty,0);                       // orizzontale
-      }
-      // ---- 3) strisce pedonali sugli avvicinamenti agli incroci principali ----
-      for(const x of majX) for(const y of majY){
-        if(y+1<NY&&R[y+1][x]) put('nt_ped',x,y+1,90).setDepth(-18.66);
-        if(x+1<NX&&R[y][x+1]) put('nt_ped',x+1,y,0).setDepth(-18.66);
-      }
-      // ---- 4) LANDMARK: rotatoria su qualche incrocio grande, pad VTOL su qualche isolato ----
-      for(let i=1;i+1<majX.length;i++)for(let j=1;j+1<majY.length;j++){
-        if(rnd()<0.18) put('nt_round',majX[i],majY[j],0).setDepth(-18.6);
-      }
-      for(let i=0;i+1<majX.length;i++)for(let j=0;j+1<majY.length;j++){
-        if(rnd()>0.2) continue;
-        const px=majX[i]+2, py=majY[j]+2;
-        if(px<NX&&py<NY&&!R[py][px]) put('nt_pad',px,py,0).setDepth(-18.6);
-      }
-      // ---- LAMPIONI lungo le strade: sono le bolle di luce che bucano la notte ----
-      this.lamps=[];
-      const cand=[];
-      for(let ty=1;ty<NY-1;ty++)for(let tx=1;tx<NX-1;tx++){
-        if(!R[ty][tx]) continue;
-        // metto il lampione sul bordo strada/marciapiede (dove c'e' un isolato accanto)
-        if(P.W[ty][tx]) continue;
-        if(!R[ty][tx+1]&&!P.W[ty][tx+1]) cand.push({x:tx*TS+TS-14, y:ty*TS+TS/2});
-        else if(R[ty+1]&&!R[ty+1][tx]&&!P.W[ty+1][tx]) cand.push({x:tx*TS+TS/2, y:ty*TS+TS-14});
-      }
-      Phaser.Utils.Array.Shuffle(cand);
-      const nL=Math.min(LAMP_N,cand.length);
-      for(let i=0;i<nL;i++){ const p=cand[i];
-        const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.gold]);
-        this.lamps.push({x:p.x,y:p.y,col:col,r:LAMP_R*Phaser.Math.FloatBetween(0.8,1.25)});
-        if(this.textures.exists('up_lamp')) this.putProp('up_lamp',p.x,p.y,false);
-        else { const b=this.add.circle(p.x,p.y,3.5,col,0.95).setDepth(-18.4); if(this.toWorld) this.toWorld(b); }
-      }
-      // altro arredo di strada sui restanti punti a bordo marciapiede
-      for(let i=nL;i<Math.min(cand.length,nL+150);i++){ const p=cand[i], r=Math.random();
-        if(r<0.16) this.putProp('up_bin',p.x,p.y,false);
-        else if(r<0.28) this.putProp('up_hydrant',p.x,p.y,false);
-        else if(r<0.40) this.putProp('up_bench',p.x,p.y,true);
-        else if(r<0.50) this.putProp('up_sign',p.x,p.y,false);
-        else if(r<0.58) this.putProp('up_barrier',p.x,p.y,true);
-        else if(r<0.64) this.putProp('up_bus',p.x,p.y,true);
-        else if(r<0.70) this.putProp('up_car2',p.x,p.y,true);
-        else if(r<0.74) this.putProp('up_kiosk',p.x,p.y,true);
-      }
-      return;
-    }
-    // carreggiata = larghezza NATIVA del tile strada (i tile di Gem si agganciano gia' a questa misura)
-    const ROAD=this.textures.exists('road_h')? this.textures.get('road_h').getSourceImage().height : 150;
-    // ---- LAYER DI FONDO: terreno grigio (sw_f) su TUTTO il mondo; le strade ci vanno SOPRA
-    //      (niente piu' buchi neri, niente marciapiedi di bordo: il bordo lo da' gia' la strada) ----
-    if(this.textures.exists('sw_f'))
-      this.add.tileSprite(0,0,WORLD_W,WORLD_H,'sw_f').setOrigin(0,0).setDepth(-19).setTileScale(0.5,0.5);
-    else { const gAsf=this.add.graphics().setDepth(-19); gAsf.fillStyle(0x11151b,1); gAsf.fillRect(0,0,WORLD_W,WORLD_H); }
-    const g=this.add.graphics().setDepth(-17);
-    // ===== STRADE SPRITE coi circuiti neon (Gem) al posto di asfalto piatto + LED =====
-    if(this.textures.exists('road_h')){
-      // dritti a MISURA NATIVA: tileSprite scala 1, banda alta = altezza nativa del tile (ROAD)
-      for(let j=0;j<=rows;j++){ const y=j*ch;
-        this.add.tileSprite(WORLD_W/2,y,WORLD_W,ROAD,'road_h').setDepth(-18.72); }
-      for(let i=0;i<=cols;i++){ const x=i*cw;
-        this.add.tileSprite(x,WORLD_H/2,WORLD_H,ROAD,'road_h').setAngle(90).setDepth(-18.70); }
-      // svincoli a MISURA NATIVA (si agganciano sui bordi grigi): X (road_x) ai crocevia interni,
-      // curva (road_cv) ai 4 ANGOLI mappa. road_cv nativa connette SINISTRA+SOTTO.
-      // rotazioni orarie: alto-sx=270  alto-dx=0  basso-sx=180  basso-dx=90
-      const hasX=this.textures.exists('road_x'), hasCV=this.textures.exists('road_cv');
-      for(let i=0;i<=cols;i++)for(let j=0;j<=rows;j++){
-        const L=(i===0),R=(i===cols),T=(j===0),B=(j===rows);
-        let key=hasX?'road_x':'road_h', ang=0;
-        if(hasCV){
-          if(T&&L){key='road_cv';ang=270;} else if(T&&R){key='road_cv';ang=0;}
-          else if(B&&L){key='road_cv';ang=180;} else if(B&&R){key='road_cv';ang=90;}
-        }
-        this.add.image(i*cw,j*ch,key).setAngle(ang).setDepth(-18.5); }
-    } else {
-      // --- fallback vecchio stile (LED) se le strade sprite non ci sono ---
-      const gLed=this.add.graphics().setDepth(-17.5);
-      for(let i=0;i<=cols;i++){ const x=i*cw;
-        gLed.fillStyle(C.cyan,0.55); gLed.fillRect(x-ROAD/2+3,0,2,WORLD_H); gLed.fillRect(x+ROAD/2-5,0,2,WORLD_H); }
-      for(let j=0;j<=rows;j++){ const y=j*ch;
-        gLed.fillStyle(C.magenta,0.45); gLed.fillRect(0,y-ROAD/2+3,WORLD_W,2); gLed.fillRect(0,y+ROAD/2-5,WORLD_W,2); }
-      g.fillStyle(0xd8c14a,0.5);
-      for(let i=1;i<cols;i++){ const x=i*cw-2; for(let y=20;y<WORLD_H;y+=118) g.fillRect(x,y,4,54); }
-      for(let j=1;j<rows;j++){ const y=j*ch-2; for(let x=20;x<WORLD_W;x+=118) g.fillRect(x,y,54,4); }
-    }
-    // lampioni
-    let lights=0;
-    for(let i=1;i<cols;i++)for(let j=0;j<rows;j++){
-      if(Math.random()<0.55) continue;
-      const x=i*cw+(Math.random()<0.5?-ROAD/2+14:ROAD/2-14), y=j*ch+ch/2;
-      const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.gold]);
-      if(lights<this.FX.lights){ lights++;
-        this.add.image(x,y,'glow').setDisplaySize(150,150).setTint(col).setAlpha(0.10).setBlendMode(Phaser.BlendModes.ADD).setDepth(-16); }
-      g.fillStyle(col,0.9); g.fillCircle(x,y,3);
-    }
-    const D=this.gDecor;
-    for(let i=0;i<26;i++){
-      const x=Phaser.Math.Between(60,WORLD_W-60), y=Phaser.Math.Between(60,WORLD_H-60);
-      const r=Math.random();
-      if(r<0.42){ const col=Phaser.Utils.Array.GetRandom([C.cyan,C.magenta,C.purple]);
-        D.fillStyle(col,0.08); D.fillEllipse(x,y,Phaser.Math.Between(50,120),Phaser.Math.Between(24,56));
-      } else if(r<0.68){ D.fillStyle(0x24242f,1); D.fillCircle(x,y,11); D.lineStyle(2,0x14141c,1); D.strokeCircle(x,y,11);
-      } else if(r<0.86){ D.fillStyle(0x1a1a24,1); D.fillRect(x-14,y-9,28,18);
-      } else { const col=Phaser.Utils.Array.GetRandom([C.magenta,C.green,C.gold]);
-        D.fillStyle(col,0.10); D.fillEllipse(x,y,Phaser.Math.Between(26,54),Phaser.Math.Between(14,26)); }
-    }
-  }
-
-  // Palazzo chiuso col TETTO PRONTO di Gem (vista dall'alto), ricolorato per distretto.
-  // Sceglie la sprite in base alla proporzione del lotto; se il lotto e' grande usa il grande.
-  realBuilding(x,y,w,h,col){
-    this._flPick=Phaser.Math.Between(0,2);   // pavimento COERENTE per tutto l'edificio
-    return false;   // DISMESSO: gli edifici si costruiscono coi muri di Gem (buildWallRing)
-    const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
-      return (m(r)<<16)|(m(g)<<8)|m(b); };
-    const tint=mix(col||0x33e1ff,0.5);
-    let key;
-    if(w>300&&h>150) key='bldT_big';
-    else if(h>w*1.7) key='bldT_tall';
-    else key=Phaser.Utils.Array.GetRandom(['bldT0','bldT1','bldT2','bldT3','bldT4','bldT5']);
-    // riempio il lotto: la sprite si adatta (puo' allungarsi un po', sono tetti astratti)
-    this.add.image(x,y,key).setOrigin(0,0).setDisplaySize(w,h).setDepth(0.6).setTint(tint);
-    return true;
-  }
-  tileBuilding(x,y,w,h,col){
-    // prima prova i palazzi pronti di Gem, poi il nine-slice come ripiego
-    if(this.realBuilding(x,y,w,h,col)) return true;
-    // le megastrutture usano gli stessi MURI del resto della citta'
-    if(this.textures.exists('wl_wall')){
-      if(!this._bldTheme) this._bldTheme='ufficio';   // qui il tipo lo decide il chiamante
-      if(this.buildWallRing(x,y,w,h,null)) return true;
-    }
-    if(!this.textures.exists('b_tl')) return false;
-    const S=Math.max(24,Math.min(100,Math.floor(Math.min(w,h)/2)));
-    const mix=(c,f)=>{ const r=(c>>16)&255,g=(c>>8)&255,b=c&255,m=v=>Math.round(v+(255-v)*f);
-      return (m(r)<<16)|(m(g)<<8)|m(b); };
-    const tint=mix(col||0x33e1ff,0.62);
-    const put=(key,px,py,pw,ph,rep)=>{ if(pw<=0||ph<=0) return null;
-      const o=rep ? this.add.tileSprite(px,py,pw,ph,key).setOrigin(0,0)
-                  : this.add.image(px,py,key).setOrigin(0,0).setDisplaySize(pw,ph);
-      o.setDepth(0.6).setTint(tint); return o; };
-    const iw=w-2*S, ih=h-2*S;
-    put('b_c',x+S,y+S,iw,ih,true);
-    put('b_t',x+S,y,iw,S,true); put('b_b',x+S,y+h-S,iw,S,true);
-    put('b_l',x,y+S,S,ih,true); put('b_r',x+w-S,y+S,S,ih,true);
-    put('b_tl',x,y,S,S); put('b_tr',x+w-S,y,S,S);
-    put('b_bl',x,y+h-S,S,S); put('b_br',x+w-S,y+h-S,S,S);
-    return true;
-  }
-  // Dettagli sui tetti dei palazzi CHIUSI: ventole e pannelli solari.
-  // ---- TETTI dei palazzi CHIUSI: impianto tecnico credibile, non props a caso ----
-  // Schema reale: una fila di unita' di trattamento aria sul lato lungo, un campo di
-  // pannelli solari sulla meta' libera, un vano scale d'angolo. Pezzi grandi, pochi.
-  roofProps(x,y,w,h,col){
-    if(!this.textures.exists('fan1')) return;
-    const c=col||0x9fd8ff, horiz=w>=h, m=22;
-    const g=this.add.graphics().setDepth(0.70);
-    // basamento tecnico su una fascia del tetto (dove poggia tutto)
-    const bandT = horiz ? Math.min(96,h*0.42) : Math.min(96,w*0.42);
-    const band = horiz ? {x:x+m, y:y+m, w:w-2*m, h:bandT}
-                       : {x:x+m, y:y+m, w:bandT,  h:h-2*m};
-    g.fillStyle(0x0e1a17,0.55); g.fillRect(band.x,band.y,band.w,band.h);
-    g.lineStyle(1,c,0.20);      g.strokeRect(band.x,band.y,band.w,band.h);
-
-    // 1) fila di VENTOLE grandi lungo la fascia
-    const fs=Math.max(38,Math.min(64,(horiz?h:w)*0.30));       // molto piu' grandi di prima
-    const run = horiz ? band.w : band.h;
-    const nF  = Math.max(1,Math.min(4,Math.floor(run/(fs*1.5))));
-    const step= run/nF;
-    for(let i=0;i<nF;i++){
-      const cxp = horiz ? band.x+step*(i+0.5) : band.x+band.w/2;
-      const cyp = horiz ? band.y+band.h/2     : band.y+step*(i+0.5);
-      // culla della ventola
-      g.fillStyle(0x16241f,1); g.fillRect(cxp-fs/2-4,cyp-fs/2-4,fs+8,fs+8);
-      g.lineStyle(1,c,0.35);   g.strokeRect(cxp-fs/2-4,cyp-fs/2-4,fs+8,fs+8);
-      const o=this.add.image(cxp,cyp,Phaser.Utils.Array.GetRandom(['fan1','fan2','fan3','fan4']))
-        .setDisplaySize(fs,fs).setDepth(0.78).setTint(c).setAlpha(0.95);
-      if(this.FX.glow && this.animCount<this.FX.signs+16){ this.animCount++;
-        this.tweens.add({targets:o,angle:360,duration:Phaser.Math.Between(3200,6000),repeat:-1}); }
-    }
-
-    // 2) CAMPO SOLARE sulla meta' libera: griglia fitta, come sui tetti veri
-    const fx = horiz ? x+m               : band.x+band.w+10;
-    const fy = horiz ? band.y+band.h+10  : y+m;
-    const fw = horiz ? w-2*m             : (x+w-m)-fx;
-    const fh = horiz ? (y+h-m)-fy        : h-2*m;
-    if(fw>70&&fh>50){
-      const pw=Math.min(46,fw/3.2), ph=Math.round(pw*1.22);
-      const cols=Math.max(1,Math.floor(fw/(pw+6))), rows=Math.max(1,Math.min(3,Math.floor(fh/(ph+6))));
-      const ox=fx+(fw-(cols*(pw+6)-6))/2, oy=fy+(fh-(rows*(ph+6)-6))/2;
-      for(let r=0;r<rows;r++)for(let k=0;k<cols;k++){
-        this.add.image(ox+k*(pw+6),oy+r*(ph+6),k%2?'sol1':'sol2').setOrigin(0,0)
-          .setDisplaySize(pw,ph).setDepth(0.74).setTint(c).setAlpha(0.9);
-      }
-    }
-    // 3) vano scale / torretta d'angolo
-    const sz=Math.min(46,Math.min(w,h)*0.20);
-    g.fillStyle(0x16241f,1); g.fillRect(x+w-m-sz,y+h-m-sz,sz,sz);
-    g.lineStyle(2,c,0.5);    g.strokeRect(x+w-m-sz,y+h-m-sz,sz,sz);
-    g.lineStyle(1,c,0.30);
-    for(let i=1;i<4;i++) g.lineBetween(x+w-m-sz+4,y+h-m-sz+i*sz/4,x+w-m-4,y+h-m-sz+i*sz/4);
-  }
-
-  // ---- Palazzo APERTO: pavimento calpestabile, muri a filo sottile, varco su un lato ----
-  // Le collisioni del perimetro restano quelle delle 5 strisce create da addWall.
-  openBuilding(x,y,w,h,wth,gy,gap,col){
-    if(!this.textures.exists('wl_c')) return false;
-    if(w < 2*(2.4*wth)+40 || h < 2*(2.4*wth)+40) return false;
-    const c=col||0x33e1ff;
-    const dark=(v,f)=>{ const r=((v>>16)&255)*f,g2=((v>>8)&255)*f,b=(v&255)*f;
-      return (Math.round(r)<<16)|(Math.round(g2)<<8)|Math.round(b); };
-    // pavimento: tessera neutra tinta col colore del distretto
-    this.add.tileSprite(x+wth,y+wth,w-2*wth,h-2*wth,'fl_n').setOrigin(0,0)
-      .setDepth(0.45).setTint(dark(c,0.42)).setTileScale(0.55);
-    // arredi (con collisione)
-    this.furnish(x,y,w,h,wth,gy,gap,c);
-    // muri sottili. La barra e' 40px nativa, lo spigolo un L 96x96 con bracci
-    // spessi 40: vanno disegnati alla STESSA scala, se no l'angolo non chiude.
-    const ts=wth/40, CS=Math.round(96*ts);
-    const bar=(bx,by,bw,bh,horiz)=>{ if(bw<=0||bh<=0) return;
-      this.add.tileSprite(bx,by,bw,bh,horiz?'wl_h':'wl_v').setOrigin(0,0)
-        .setDepth(0.8).setTint(c).setTileScale(ts,ts); };
-    bar(x+CS,y,w-2*CS,wth,true);
-    bar(x+CS,y+h-wth,w-2*CS,wth,true);
-    bar(x,y+CS,wth,h-2*CS,false);
-    bar(x+w-wth,y+CS,wth,gy-(y+CS),false);
-    bar(x+w-wth,gy+gap,wth,(y+h-CS)-(gy+gap),false);
-    const cor=(cx2,cy2,fx,fy)=>this.add.image(cx2,cy2,'wl_c').setOrigin(0,0)
-      .setDisplaySize(CS,CS).setDepth(0.85).setTint(c).setFlipX(fx).setFlipY(fy);
-    cor(x,y,false,false); cor(x+w-CS,y,true,false);
-    cor(x,y+h-CS,false,true); cor(x+w-CS,y+h-CS,true,true);
-    return true;
-  }
-
-  // ---- ARREDI degli interni: mobili grandi, allungati, addossati ai muri, CON COLLISIONE ----
-  // Le tessere UI sono astratte: allungandole prendono la forma del mobile (letto, tavolo,
-  // bancone, armadio). Ogni mobile registra un corpo statico, quindi fa da riparo.
-  // ---- ARREDAMENTO REALE: mobili alla scala NATIVA, attaccati ai muri col fronte
-  // verso l'INTERNO della stanza (cosi' il centro resta libero), a TEMA per stanza.
-  // VERSO NATIVO delle sprite di Gem: letto/divano/scrivania/mobili guardano in BASSO (S=180),
-  // la sedia da ufficio guarda in ALTO (N=0). rot = (target - nativo + 360) % 360
-  furnishReal(ix,iy,iw,ih,theme,noGo){
-    const FS=1.05;                                  // scala nativa (NON rimpicciolire)
-    // il verso nativo dei nuovi arredi: quasi tutti guardano in BASSO come gli altri;
-    // sedie e wc guardano in ALTO (vanno rivolti verso il tavolo / la stanza)
-    const NATIVE={nf_chair:0,nf_chair2:0,nf_chair3:0,of_desk_stud:180,nf_toilet:0,sh_stool:0};
-    const nat=k=>(NATIVE[k]!==undefined?NATIVE[k]:180);
-    const dim=k=>{ const t=this.textures.get(k).getSourceImage(); return [Math.round(t.width*FS),Math.round(t.height*FS)]; };
-    const placed=[];
-    const fits=(r)=>{
-      if(r.x<ix||r.y<iy||r.x+r.w>ix+iw||r.y+r.h>iy+ih) return false;
-      if(noGo && r.x<noGo.x+noGo.w && r.x+r.w>noGo.x && r.y<noGo.y+noGo.h && r.y+r.h>noGo.y) return false;
-      return !placed.some(o=> r.x<o.x+o.w+8 && r.x+r.w+8>o.x && r.y<o.y+o.h+8 && r.y+r.h+8>o.y);
-    };
-    // mette il mobile contro il muro `side`, col fronte verso l'interno
-    const atWall=(k,side,along)=>{
-      if(!this.textures.exists(k)) return false;
-      let [w,h]=dim(k);
-      const target={T:180,B:0,L:90,R:270}[side];     // dove deve guardare (dentro la stanza)
-      let rot=(target-nat(k)+360)%360;
-      if(rot===90||rot===270){ const t=w; w=h; h=t; } // ruotato: ingombro scambiato
-      let x,y;
-      if(side==='T'){ x=ix+along; y=iy+2; }
-      else if(side==='B'){ x=ix+along; y=iy+ih-h-2; }
-      else if(side==='L'){ x=ix+2; y=iy+along; }
-      else { x=ix+iw-w-2; y=iy+along; }
-      const r={x,y,w,h};
-      if(!fits(r)) return false;
-      placed.push(r);
-      this.add.image(x+w/2,y+h/2,k).setOrigin(0.5).setAngle(rot).setDepth(0.55).setAlpha(0.97);
-      const body=this.walls.create(x+w/2,y+h/2,'px').setVisible(false);
-      body.setDisplaySize(Math.max(4,w-6),Math.max(4,h-6)); body.refreshBody();
-      this.wallRects.push({x:x+3,y:y+3,w:w-6,h:h-6,type:'cover'});
-      return true;
-    };
-    // postazione ufficio: scrivania al muro + sedia davanti (guarda la scrivania)
-    const desk=(side,along)=>{
-      if(!atWall('nf_desk',side,along)) return false;
-      const d=placed[placed.length-1], [cw,chh]=dim('nf_chair');
-      let cx,cy,rot;
-      if(side==='T'){ cx=d.x+d.w/2-cw/2; cy=d.y+d.h+6; rot=0; }
-      else if(side==='B'){ cx=d.x+d.w/2-cw/2; cy=d.y-chh-6; rot=180; }
-      else if(side==='L'){ cx=d.x+d.w+6; cy=d.y+d.h/2-cw/2; rot=90; }
-      else { cx=d.x-chh-6; cy=d.y+d.h/2-cw/2; rot=270; }
-      const sw=(rot===90||rot===270)?chh:cw, sh=(rot===90||rot===270)?cw:chh;
-      const r={x:cx,y:cy,w:sw,h:sh};
-      if(fits(r)){ placed.push(r);
-        this.add.image(cx+sw/2,cy+sh/2,'nf_chair').setOrigin(0.5).setAngle(rot).setDepth(0.56).setAlpha(0.97); }
-      return true;
-    };
-    const R=(a,b)=>Phaser.Math.Between(a,b);
-    if(theme==='ospedale'){
-      const step=Math.round(170*FS);
-      for(let a=8;a+step<iw;a+=step){ atWall('hs_bed','T',a); atWall('hs_bed','B',a); }
-      atWall('hs_cabinet','L',R(10,Math.max(11,ih-90)));
-      atWall('hs_monitor','R',R(10,Math.max(11,ih-70)));
-      if(iw>320) atWall('hs_reception','T',Math.round(iw/2)-80);
-      atWall('hs_stretcher','L',R(10,Math.max(11,ih-120)));
-    } else if(theme==='negozio'){
-      atWall('sh_counter','B',R(8,Math.max(9,iw-Math.round(170*FS))));
-      const st=Math.round(130*FS);
-      for(let a=8;a+st<iw;a+=st) atWall('sh_shelf','T',a);
-      atWall('sh_fridge','R',R(10,Math.max(11,ih-80)));
-      atWall('sh_table','L',R(10,Math.max(11,ih-90)));
-      atWall('sh_stool','L',R(10,Math.max(11,ih-60)));
-    } else if(theme==='cucina'){
-      atWall('nf_kitchen','T',R(8,Math.max(9,iw-Math.round(150*FS))));
-      atWall('nf_fridge','L',R(10,Math.max(11,ih-80)));
-      atWall('nf_sink','T',R(8,Math.max(9,iw-70)));
-      atWall('nf_table','B',R(10,Math.max(11,iw-130)));
-      atWall('nf_chair2','B',R(10,Math.max(11,iw-60)));
-    } else if(theme==='bagno'){
-      atWall('nf_toilet','L',R(8,Math.max(9,ih-70)));
-      atWall('nf_shower','T',R(8,Math.max(9,iw-90)));
-      atWall('nf_sink','R',R(8,Math.max(9,ih-60)));
-    } else if(theme==='camera'){
-      atWall('nf_bed','T',Math.max(4,R(10,Math.max(11,iw-Math.round(200*FS)-10))));
-      atWall(Phaser.Utils.Array.GetRandom(['nf_cab2','nf_cab3']),'L',R(10,Math.max(11,ih-120)));
-      atWall('nf_arm','B',R(10,Math.max(11,iw-120)));
-      atWall('nf_cab','R',R(10,Math.max(11,ih-90)));
-      if(this.textures.exists('nf_tv')) atWall('nf_tv','B',R(10,Math.max(11,iw-100)));
-      if(this.textures.exists('nf_shelf')) atWall('nf_shelf','R',R(10,Math.max(11,ih-60)));
-    } else if(theme==='ufficio'){
-      const step=Math.round(190*FS);
-      for(let a=8;a+step<iw;a+=step){ desk('T',a); desk('B',a); }
-      for(let b=8;b+100<ih;b+=Math.round(110*FS)) atWall(Phaser.Math.FloatBetween(0,1)<0.5?'of_locker':'nf_cab3','R',b);
-      if(iw>420&&ih>300) atWall('of_meeting','T',Math.round(iw/2)-110);
-      atWall('of_printer','L',R(10,Math.max(11,ih-80)));
-      atWall('of_water','L',R(10,Math.max(11,ih-50)));
-    } else if(theme==='magazzino'){
-      const s=Math.round(95*FS);
-      for(let a=6;a+80<iw;a+=s){ atWall('nf_cab2','T',a); atWall('nf_cab3','B',a); }
-      for(let b=6;b+80<ih;b+=s){ atWall('nf_cab','L',b); atWall('nf_cab2','R',b); }
-    } else {  // salotto
-      atWall('nf_sofa','B',R(8,Math.max(9,iw-Math.round(225*FS)-8)));
-      atWall('nf_arm','L',R(8,Math.max(9,ih-110)));
-      desk('T',R(8,Math.max(9,iw-Math.round(150*FS))));
-      atWall('nf_cab','R',R(8,Math.max(9,ih-90)));
-    }
-    return placed.length;
+    return;   // il vecchio arredo (fan/sol/fur) e' DISMESSO: arreda solo furnishReal
   }
 
   furnish(x,y,w,h,wth,gy,gap,col){
@@ -3201,11 +2788,12 @@ class Game extends Phaser.Scene{
       const r=Math.random();
       let tipo;
       // il tipo di lotto lo decide il DISTRETTO: il centro e' costruito, il parco e' verde
-      if(_b.kind==='parco')          tipo = r<0.8?'parco':'piazza';
-      else if(_b.kind==='centro')    tipo = r<0.72?'blocco':'aperto';
-      else if(_b.kind==='uffici')    tipo = r<0.6?'blocco':(r<0.9?'aperto':'piazza');
-      else if(_b.kind==='industria') tipo = r<0.75?'blocco':'vuoto';
-      else                           tipo = r<0.12?'parco':(r<0.2?'piazza':(r<0.62?'aperto':'blocco'));
+      // APERTO = ci si entra (stanze+arredi) · BLOCCO = massa chiusa che da' volume
+      if(_b.kind==='parco')         tipo = r<0.72?'parco':(r<0.92?'piazza':'aperto');
+      else if(_b.kind==='ospedale') tipo = r<0.55?'aperto':(r<0.85?'blocco':'piazza');
+      else if(_b.kind==='uffici')   tipo = r<0.45?'aperto':(r<0.9?'blocco':'piazza');
+      else if(_b.kind==='negozio')  tipo = r<0.5?'aperto':(r<0.9?'blocco':'piazza');
+      else                          tipo = r<0.45?'aperto':(r<0.85?'blocco':'parco');
 
       if(tipo==='vuoto'){
         // spiazzo lastricato, non un buco nero
@@ -3287,6 +2875,95 @@ class Game extends Phaser.Scene{
         }
         G.lineStyle(2,C.green,0.35); G.strokeRect(px,py,maxW,maxH);
         continue;
+      }
+
+      if(tipo==='piazza' && this.textures.exists('pz_floor')){
+        this.add.tileSprite(px,py,maxW,maxH,'pz_floor').setOrigin(0,0).setDepth(-18.2);
+        const cx2=px+maxW/2, cy2=py+maxH/2;
+        if(maxW>260&&maxH>260) this.putProp('up_fountain',cx2,cy2,true);
+        else this.putProp('up_kiosk',cx2,cy2,true);
+        for(let i=0;i<4;i++){ const a2=i*Math.PI/2+0.78, rr=Math.min(maxW,maxH)*0.33;
+          this.putProp(i%2?'up_bench':'up_bin',cx2+Math.cos(a2)*rr,cy2+Math.sin(a2)*rr,i%2===1); }
+        this.putProp('up_lamp',px+40,py+40,false);
+        this.putProp('up_lamp',px+maxW-40,py+maxH-40,false);
+      }
+      else if(tipo==='piazza'){
+        // lastricato liscio col pezzo #52, niente edifici: spazio aperto e pericoloso
+        if(this.textures.exists('sw_f')){
+          this.add.tileSprite(px,py,maxW,maxH,'sw_f').setOrigin(0,0).setDepth(-15)
+            .setTileScale(0.5,0.5).setTint(0xffffff).setAlpha(0.9);
+        }
+        const G=this.gDecor;
+        G.lineStyle(2,edge,0.45); G.strokeRect(px,py,maxW,maxH);
+        // monumento centrale, con collisione
+        const mx=px+maxW/2, my=py+maxH/2, mr=Math.min(46,Math.min(maxW,maxH)*0.16);
+        G.fillStyle(0x0e1a17,1); G.fillCircle(mx,my,mr);
+        G.lineStyle(3,edge,0.9); G.strokeCircle(mx,my,mr);
+        G.fillStyle(edge,0.55); G.fillCircle(mx,my,mr*0.4);
+        const bdy=this.walls.create(mx,my,'px').setVisible(false);
+        bdy.setDisplaySize(mr*1.8,mr*1.8); bdy.refreshBody();
+        this.wallRects.push({x:mx-mr*0.9,y:my-mr*0.9,w:mr*1.8,h:mr*1.8,type:'cover',dc:edge});
+        continue;
+      }
+
+      if(tipo==='complesso'){
+        // struttura grande: corpo principale + ala, con cortile fra i due
+        const bodyH=Math.floor(maxH*Phaser.Math.FloatBetween(0.52,0.64));
+        this._bldDistrict=_b.kind;
+        // un distretto = UN carattere. Cosi' si capisce dove sei invece di avere tutto mescolato.
+        this._bldTheme = _b.kind==='centro'    ? (Math.random()<0.75?'ufficio':'negozio')
+                       : _b.kind==='uffici'    ? (Math.random()<0.7?'ospedale':'ufficio')
+                       : _b.kind==='industria' ? 'magazzino'
+                       : _b.kind==='parco'     ? 'casa'
+                       : (Math.random()<0.85?'casa':'negozio');
+        if(this.buildWallRing(px,py,maxW,bodyH,null)){
+          if(maxW>300&&Math.random()<0.5) this.putProp('up_stairs',px+maxW/2,py+bodyH-30,false);
+        }
+
+        if(!this.textures.exists('wl_wall')){
+          addWall(px,py,maxW,bodyH,edge,'building');
+          const G=this.gCity;                    // ripiego: corpo pieno
+          G.fillStyle(0x0e1418,1); G.fillRect(px,py,maxW,bodyH);
+          G.lineStyle(2,edge,0.5); G.strokeRect(px+1,py+1,maxW-2,bodyH-2); }
+        const alaW=Math.floor(maxW*Phaser.Math.FloatBetween(0.45,0.60));
+        const alaY=py+bodyH+Math.floor(maxH*0.10);
+        const alaH=(py+maxH)-alaY;
+        if(alaH>70) addWall(px,alaY,alaW,alaH,edge,'building');
+        continue;
+      }
+
+      if(tipo==='aperto' && maxW>200 && maxH>170){
+        const bw=maxW-Phaser.Math.Between(0,Math.floor(maxW*0.12));
+        const bh=maxH-Phaser.Math.Between(0,Math.floor(maxH*0.12));
+        openB(px+Phaser.Math.Between(0,maxW-bw), py+Phaser.Math.Between(0,maxH-bh), bw, bh, edge);
+        continue;
+      }
+
+      // BLOCCO CHIUSO: una MASSA compatta di palazzi accostati (non ci si entra),
+      // con qualche vicolo interno. E' quello che da' volume alla citta'.
+      {
+        const T=120;
+        const cw2=Math.max(1,Math.round(maxW/T)), ch2=Math.max(1,Math.round(maxH/T));
+        // vicolo interno: una riga o una colonna lasciata libera nei blocchi grandi
+        let alleyC=-1, alleyR=-1;
+        if(cw2>=4 && Math.random()<0.55) alleyC=Phaser.Math.Between(1,cw2-2);
+        else if(ch2>=4 && Math.random()<0.55) alleyR=Phaser.Math.Between(1,ch2-2);
+        const CK=['bldT0','bldT1','bldT2','bldT3','bldT4','bldT5'].filter(k=>this.textures.exists(k));
+        for(let cc=0;cc<cw2;cc++)for(let rr2=0;rr2<ch2;rr2++){
+          if(cc===alleyC||rr2===alleyR) continue;
+          const bx2=px+cc*T, by2=py+rr2*T;
+          if(CK.length){
+            const im=this.add.image(bx2,by2,Phaser.Utils.Array.GetRandom(CK))
+              .setOrigin(0,0).setDisplaySize(T+2,T+2).setDepth(0.6);
+            if(edge) im.setTint(edge);
+          } else {
+            const G2=this.gCity; G2.fillStyle(0x0e1418,1); G2.fillRect(bx2,by2,T,T);
+            G2.lineStyle(1,edge,0.35); G2.strokeRect(bx2+1,by2+1,T-2,T-2);
+          }
+          const bd=this.walls.create(bx2+T/2,by2+T/2,'px').setVisible(false);
+          bd.setDisplaySize(T,T); bd.refreshBody();
+          this.wallRects.push({x:bx2,y:by2,w:T,h:T,type:'building'});
+        }
       }
 
       if(tipo==='piazza' && this.textures.exists('pz_floor')){

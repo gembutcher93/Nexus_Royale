@@ -1,0 +1,47 @@
+NEXUS ROYALE v2.0.1  —  PACCHETTO COMPLETO
+===========================================
+Carica TUTTA questa cartella su GitHub (sostituisce il progetto).
+A schermo in alto leggerai "BUILD v2.0.1".
+
+Hai ragione a cambiare numero: e' un gioco diverso.
+
+--- 1. LA CITTA' NON E' PIU' UNA CITTA' INTERA ---
+Ogni partita genera 3 SETTORI: uno GRANDE + due PICCOLI, ognuno con la sua
+ambientazione, separati da viali a doppia carreggiata.
+  SETTORE GRANDE  ospedale · uffici · parco · residenziale
+  SETTORI PICCOLI negozi · parco · residenziale
+Ospedale e uffici stanno SOLO nel grande (sono ambientazioni che chiedono spazio).
+I negozi (la futura zona industriale) SOLO nei piccoli, come volevi.
+Le tre ambientazioni sono sempre DIVERSE fra loro: ogni partita cambia davvero.
+
+--- 2. ISOLATI RETTANGOLARI, NON PIU' QUADRATINI ---
+Prima spezzavo ogni blocco a 6 tessere per lato: tutto diventava un quadratino e
+non ci stava niente dentro. Ora il limite e' sull'AREA e il taglio avviene sul lato
+lungo: nascono isolati 3x9, 8x4, rettangoli veri.
+In piu' ogni ambientazione ha un passo di griglia diverso su X e su Y, quindi gli
+isolati hanno forme diverse da quartiere a quartiere.
+
+--- 3. DUE TIPI DI ISOLATO ---
+APERTI  edificio con la cornice di muri (i tuoi wl_*), ci si entra: stanze, pavimento
+        del tipo giusto, arredi del tema giusto. Sono ~45-55% negli isolati costruiti.
+CHIUSI  MASSA COMPATTA: i tuoi palazzi chiusi accostati uno all'altro a formare un
+        unico isolato non calpestabile, con qualche VICOLO interno. Sono loro a dare
+        volume alla citta', al posto delle scatole isolate di prima.
+
+--- 4. PARCO CON LAGO ---
+Nel settore parco nasce un LAGO ellittico al centro, con un ruscello che ne esce.
+Attorno: verde, alberi, panchine, vialetti. L'acqua sta solo nel parco: niente piu'
+fiume che taglia i palazzi.
+
+--- 5. STERMINIO DEL VECCHIO (definitivo) ---
+Tolti dal PRELOAD e dal codice: fan1-4 e sol1-2 (LE VENTOLE — erano usate da
+furnishRooms, il metodo che arreda i palazzi grandi: ecco perche' non sparivano mai),
+fur1-5 (vecchio arredo), ifloor0-7 (vecchi pavimenti), up_vent.
+I bldT restano ma SOLO come tile dei palazzi chiusi nelle masse, che e' il loro scopo.
+
+--- 6. ALTRO ---
+Mappa 7200x5280 (via di mezzo: piu' spazio della vecchia, ma il 35% di tessere in meno
+di quella che laggava). Partita piu' lunga. Schermata di caricamento all'avvio.
+
+DA FARE ancora: le navicelle della schermata iniziale, e agganciare il tuo generatore
+di planimetrie (PlanimetriK) per le stanze interne.
