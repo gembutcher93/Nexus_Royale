@@ -5,7 +5,7 @@ let WORLD_W=7200, WORLD_H=5280;   // ingrandita per i tile da 120px: stessi pala
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v2.1.1';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v2.1.2';   // NUMERO DI BUILD mostrato a schermo in gioco
 const TILE_BOX={"gr_grass": [], "gr_path": [], "gr_path_cor": [], "pz_floor": [], "wl_wall": [[0, 0, 30, 120]], "wl_corner": [[0, 0, 30, 120], [30, 90, 90, 30]], "wl_door": [[0, 0, 30, 30], [0, 90, 30, 30]], "wl_win": [[0, 0, 30, 30], [15, 60, 15, 15], [0, 90, 30, 30]], "wl_in": [[0, 0, 15, 120]], "wl_in_cor": [[0, 0, 15, 120], [15, 105, 105, 15]], "wt_water": [[0, 0, 120, 120]], "wt_edge": [[0, 60, 120, 30], [0, 90, 105, 30]], "wt_corner": [[0, 60, 90, 60]]};
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
@@ -2231,10 +2231,10 @@ class Game extends Phaser.Scene{
       const edgeL=(c===0), edgeR=(c===cols-1), edgeT=(r===0), edgeB=(r===rows-1);
       if(!(edgeL||edgeR||edgeT||edgeB)) continue;               // solo il perimetro
       let im=null;
-      if(edgeL&&edgeT) im=this.putTile('wl_corner',bx,by,0,0.55);
-      else if(edgeR&&edgeT) im=this.putTile('wl_corner',bx,by,90,0.55);
-      else if(edgeR&&edgeB) im=this.putTile('wl_corner',bx,by,180,0.55);
-      else if(edgeL&&edgeB) im=this.putTile('wl_corner',bx,by,270,0.55);
+      if(edgeL&&edgeT) im=this.putTile('wl_corner',bx,by,90,0.55);
+      else if(edgeR&&edgeT) im=this.putTile('wl_corner',bx,by,180,0.55);
+      else if(edgeR&&edgeB) im=this.putTile('wl_corner',bx,by,270,0.55);
+      else if(edgeL&&edgeB) im=this.putTile('wl_corner',bx,by,0,0.55);
       else {
         const ang = edgeL?0 : (edgeT?90 : (edgeR?180:270));
         const isDoor=(doorSide===0&&edgeT&&c===doorAt)||(doorSide===1&&edgeR&&r===doorAt)
@@ -2400,29 +2400,39 @@ class Game extends Phaser.Scene{
     // masse chiuse negli angoli liberi
     const gap=2;
     const spots=[[A.tx,A.ty],[A.tx+A.tw-4,A.ty],[A.tx,A.ty+A.th-4],[A.tx+A.tw-4,A.ty+A.th-4]];
-    spots.forEach(([sx,sy])=>{ if(Math.random()<0.6)
-      this.closedMass(sx*T,sy*T,3*T,3*T,0xa8d8ff); });
+    spots.forEach(([sx,sy])=>{
+      if(sx+4>bx&&sx<bx+bw&&sy+4>by&&sy<by+bh) return;   // non sopra l'edificio
+      if(Math.random()<0.75) this.closedMass(sx*T,sy*T,3*T,3*T,0xa8d8ff); });
   }
   // RESIDENZA / NEGOZI: 2-3 case GRANDI (ci si entra) + masse chiuse a fare quinta
   fillTown(A){
     const T=this.city.TS;
     const theme=(A.kind==='negozio')?'negozio':'casa';
     this._bldDistrict=A.kind;
-    const n=Phaser.Math.Between(2,3);
-    const cellW=Math.floor(A.tw/n);
-    for(let i=0;i<n;i++){
-      const hw=Math.max(7,Math.min(cellW-3,Phaser.Math.Between(8,12)));
-      const hh=Math.max(6,Math.min(A.th-4,Phaser.Math.Between(7,10)));
-      const hx=A.tx+i*cellW+Phaser.Math.Between(1,Math.max(1,cellW-hw-1));
-      const hy2=A.ty+Phaser.Math.Between(1,Math.max(1,A.th-hh-1));
-      this._bldTheme=theme;
-      this.buildWallRing(hx*T,hy2*T,hw*T,hh*T,null);
+    // riempio a RIGHE: piu' edifici, senza lasciare buchi enormi
+    const taken=[];
+    const overlaps=(x,y,w,h)=>taken.some(r=>x<r.x+r.w+1&&x+w+1>r.x&&y<r.y+r.h+1&&y+h+1>r.y);
+    const rows=(A.th>=16)?2:1, rowH=Math.floor(A.th/rows);
+    for(let r=0;r<rows;r++){
+      let cx=A.tx;
+      while(cx<A.tx+A.tw-6){
+        const hw=Phaser.Math.Between(7,11), hh=Phaser.Math.Between(6,Math.max(6,rowH-2));
+        if(cx+hw>A.tx+A.tw) break;
+        const hy2=A.ty+r*rowH+Phaser.Math.Between(0,Math.max(0,rowH-hh));
+        if(!overlaps(cx,hy2,hw,hh)){
+          this._bldTheme=theme;
+          if(this.buildWallRing(cx*T,hy2*T,hw*T,hh*T,null)) taken.push({x:cx,y:hy2,w:hw,h:hh});
+        }
+        cx+=hw+Phaser.Math.Between(2,3);
+      }
     }
-    // masse chiuse: palazzi accostati che fanno da quinta urbana
-    for(let k=0;k<Phaser.Math.Between(2,4);k++){
+    // masse chiuse SOLO nello spazio rimasto libero (mai dentro un edificio)
+    for(let k=0;k<10;k++){
       const mw=Phaser.Math.Between(3,5), mh=Phaser.Math.Between(3,5);
       const mx=A.tx+Phaser.Math.Between(0,Math.max(0,A.tw-mw));
       const my=A.ty+Phaser.Math.Between(0,Math.max(0,A.th-mh));
+      if(overlaps(mx,my,mw,mh)) continue;
+      taken.push({x:mx,y:my,w:mw,h:mh});
       this.closedMass(mx*T,my*T,mw*T,mh*T,0xffd9c2);
     }
   }
@@ -2929,7 +2939,18 @@ class Game extends Phaser.Scene{
     // sedie e wc guardano in ALTO (vanno rivolti verso il tavolo / la stanza)
     const NATIVE={nf_chair:0,nf_chair2:0,nf_chair3:0,of_desk_stud:180,nf_toilet:0,sh_stool:0};
     const nat=k=>(NATIVE[k]!==undefined?NATIVE[k]:180);
-    const dim=k=>{ const t=this.textures.get(k).getSourceImage(); return [Math.round(t.width*FS),Math.round(t.height*FS)]; };
+    // MISURE ESPLICITE: i mobili nuovi sono salvati al doppio, i vecchi no ->
+    // leggere i pixel della texture dava proporzioni sballate (poltrona < lavandino).
+    const SZ={nf_bed:[200,175],nf_bed1:[100,160],nf_sofa:[225,66],nf_desk:[139,50],nf_chair:[60,42],
+      nf_arm:[80,67],nf_cab:[79,32],nf_cab2:[79,62],nf_cab3:[80,61],
+      nf_table:[110,70],nf_chair2:[40,40],nf_chair3:[40,40],nf_tv:[90,20],nf_kitchen:[130,55],
+      nf_fridge:[55,50],nf_sink:[45,40],nf_toilet:[35,45],nf_shower:[70,55],nf_rug:[130,90],nf_shelf:[90,26],
+      hs_bed:[100,160],hs_curtain:[120,20],hs_monitor:[45,45],hs_stretcher:[110,55],hs_cabinet:[70,30],hs_reception:[160,60],
+      of_desk2:[180,90],of_partition:[110,18],of_printer:[55,50],of_water:[30,30],of_meeting:[200,110],
+      of_locker:[90,35],of_desk_stud:[90,45],
+      sh_counter:[160,50],sh_shelf:[110,35],sh_fridge:[70,45],sh_table:[60,60],sh_stool:[26,26]};
+    const dim=k=>{ const s0=SZ[k]; if(s0) return [Math.round(s0[0]*FS),Math.round(s0[1]*FS)];
+      const t=this.textures.get(k).getSourceImage(); return [Math.round(t.width*FS),Math.round(t.height*FS)]; };
     const placed=[];
     const fits=(r)=>{
       if(r.x<ix||r.y<iy||r.x+r.w>ix+iw||r.y+r.h>iy+ih) return false;
@@ -2951,7 +2972,9 @@ class Game extends Phaser.Scene{
       const r={x,y,w,h};
       if(!fits(r)) return false;
       placed.push(r);
-      this.add.image(x+w/2,y+h/2,k).setOrigin(0.5).setAngle(rot).setDepth(0.55).setAlpha(0.97);
+      { const [dw,dh]=dim(k);
+        this.add.image(x+w/2,y+h/2,k).setOrigin(0.5).setDisplaySize(dw,dh)
+          .setAngle(rot).setDepth(0.55).setAlpha(0.97); }
       const body=this.walls.create(x+w/2,y+h/2,'px').setVisible(false);
       body.setDisplaySize(Math.max(4,w-6),Math.max(4,h-6)); body.refreshBody();
       this.wallRects.push({x:x+3,y:y+3,w:w-6,h:h-6,type:'cover'});
@@ -2969,21 +2992,24 @@ class Game extends Phaser.Scene{
       const sw=(rot===90||rot===270)?chh:cw, sh=(rot===90||rot===270)?cw:chh;
       const r={x:cx,y:cy,w:sw,h:sh};
       if(fits(r)){ placed.push(r);
-        this.add.image(cx+sw/2,cy+sh/2,'nf_chair').setOrigin(0.5).setAngle(rot).setDepth(0.56).setAlpha(0.97); }
+        this.add.image(cx+sw/2,cy+sh/2,'nf_chair').setOrigin(0.5).setDisplaySize(cw,chh).setAngle(rot).setDepth(0.56).setAlpha(0.97); }
       return true;
     };
     const R=(a,b)=>Phaser.Math.Between(a,b);
     if(theme==='ospedale'){
-      const step=Math.round(170*FS);
-      for(let a=8;a+step<iw;a+=step){ atWall('hs_bed','T',a); atWall('hs_bed','B',a); }
+      const step=Math.round(130*FS);
+      for(let a=8;a+step<iw;a+=step){ atWall('hs_bed','T',a); atWall('hs_bed','B',a);
+        if(Phaser.Math.FloatBetween(0,1)<0.5) atWall('hs_monitor','T',a+70); }
+      for(let b2=8;b2+120<ih;b2+=Math.round(150*FS)) atWall('hs_curtain','L',b2);
       atWall('hs_cabinet','L',R(10,Math.max(11,ih-90)));
       atWall('hs_monitor','R',R(10,Math.max(11,ih-70)));
       if(iw>320) atWall('hs_reception','T',Math.round(iw/2)-80);
       atWall('hs_stretcher','L',R(10,Math.max(11,ih-120)));
     } else if(theme==='negozio'){
       atWall('sh_counter','B',R(8,Math.max(9,iw-Math.round(170*FS))));
-      const st=Math.round(130*FS);
-      for(let a=8;a+st<iw;a+=st) atWall('sh_shelf','T',a);
+      const st=Math.round(120*FS);
+      for(let a=8;a+st<iw;a+=st){ atWall('sh_shelf','T',a); if(ih>260) atWall('sh_shelf','B',a+30); }
+      for(let b2=8;b2+80<ih;b2+=Math.round(110*FS)) atWall('sh_stool','R',b2);
       atWall('sh_fridge','R',R(10,Math.max(11,ih-80)));
       atWall('sh_table','L',R(10,Math.max(11,ih-90)));
       atWall('sh_stool','L',R(10,Math.max(11,ih-60)));
@@ -3005,16 +3031,19 @@ class Game extends Phaser.Scene{
       if(this.textures.exists('nf_tv')) atWall('nf_tv','B',R(10,Math.max(11,iw-100)));
       if(this.textures.exists('nf_shelf')) atWall('nf_shelf','R',R(10,Math.max(11,ih-60)));
     } else if(theme==='ufficio'){
-      const step=Math.round(190*FS);
-      for(let a=8;a+step<iw;a+=step){ desk('T',a); desk('B',a); }
-      for(let b=8;b+100<ih;b+=Math.round(110*FS)) atWall(Phaser.Math.FloatBetween(0,1)<0.5?'of_locker':'nf_cab3','R',b);
-      if(iw>420&&ih>300) atWall('of_meeting','T',Math.round(iw/2)-110);
-      atWall('of_printer','L',R(10,Math.max(11,ih-80)));
-      atWall('of_water','L',R(10,Math.max(11,ih-50)));
-    } else if(theme==='magazzino'){
-      const s=Math.round(95*FS);
-      for(let a=6;a+80<iw;a+=s){ atWall('nf_cab2','T',a); atWall('nf_cab3','B',a); }
-      for(let b=6;b+80<ih;b+=s){ atWall('nf_cab','L',b); atWall('nf_cab2','R',b); }
+      // sala riunioni se c'e' spazio, poi file di postazioni, armadietti e servizi
+      if(iw>420&&ih>320){
+        atWall('of_meeting','T',Math.max(8,Math.round(iw/2)-110));
+        atWall('of_board','T',R(8,Math.max(9,iw-140)));
+      }
+      const step=Math.round(200*FS);
+      for(let a2=8;a2+step<iw;a2+=step){ desk('B',a2); if(ih>300) desk('T',a2+20); }
+      for(let a2=8;a2+180<iw;a2+=Math.round(230*FS)) atWall('of_desk2','B',a2);
+      for(let b2=8;b2+110<ih;b2+=Math.round(130*FS)) atWall('of_locker','R',b2);
+      for(let b2=40;b2+110<ih;b2+=Math.round(160*FS)) atWall('of_partition','L',b2);
+      atWall('of_printer','L',R(10,Math.max(11,ih-90)));
+      atWall('of_water','L',R(10,Math.max(11,ih-60)));
+      for(let a2=20;a2+100<iw;a2+=Math.round(170*FS)) atWall('of_desk_stud','T',a2);
     } else {  // salotto
       atWall('nf_sofa','B',R(8,Math.max(9,iw-Math.round(225*FS)-8)));
       atWall('nf_arm','L',R(8,Math.max(9,ih-110)));

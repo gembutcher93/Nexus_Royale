@@ -1,23 +1,14 @@
-NEXUS ROYALE v2.1.1   (BUILD v2.1.1)
-=====================================
-Sostituisci SOLO: game.js  sw.js  index.html
+NEXUS ROYALE v2.1.2 — game.js  sw.js  index.html
 
-1) PALAZZI VUOTI — RISOLTO. buildWallRing costruiva i muri ma NON chiamava mai
-   l'arredatore: ecco perche' ospedale, case e uffici erano gusci vuoti.
-   Ora ogni edificio viene arredato, e gli edifici grandi vengono divisi in DUE
-   ambienti diversi (es. camera + cucina, o due reparti) cosi' i mobili non finiscono
-   tutti da un lato. Il tema segue il tipo di edificio:
-     ospedale -> lettini, monitor, barelle, accettazione
-     ufficio  -> postazioni, armadietti, riunioni, stampante
-     negozio  -> bancone, scaffali, frigo, tavolini
-     casa     -> camera / salotto / cucina / bagno
-2) MINIMAPPA E MAPPA DI LANCIO RIFATTE
-   - via i vecchi distretti a cerchi colorati (non avevano piu' senso con 3 settori)
-   - ora si vedono i TRE SETTORI, ognuno col suo colore:
-       settore GRANDE  rosa/rosso   #ff5f8f
-       settore piccolo 1  azzurro   #5fd0ff
-       settore piccolo 2  verde     #6bff9f
-   - i MURI non sono piu' neri: prendono il colore del loro settore, con un bordo
-     bianco sottile -> si leggono bene su fondo scuro
-   - le etichette ora dicono cosa c'e' davvero: OSPEDALE / PARCO / RESIDENZIALE /
-     MERCATO / DISTRETTO UFFICI, al posto dei vecchi nomi fissi
+1) ANGOLI DEI MURI: la tessera wl_corner e' BASSO-SINISTRA, non alto-sinistra.
+   Tutte le rotazioni erano sfasate di 90 gradi, come avevi visto. Corrette.
+2) MAPPA TROPPO VUOTA: i settori ora si riempiono a RIGHE (1-2 file di edifici,
+   larghi 7-11 tessere, con 2-3 di stacco) invece di 2-3 case sparse.
+3) PALAZZI CHIUSI DENTRO QUELLI APERTI: ora si registra lo spazio occupato e le masse
+   si piazzano SOLO dove e' libero. Anche negli angoli dell'ospedale/uffici.
+4) PROPORZIONI ARREDI SBAGLIATE: i mobili nuovi li avevo salvati al DOPPIO, i vecchi
+   no, e il codice leggeva i pixel della texture -> poltrona piu' piccola del lavandino.
+   Ora c'e' una tabella di misure esplicite per tutti e 35 i mobili.
+5) PEZZI NUOVI NON USATI: ufficio ora usa sala riunioni, lavagna, scrivanie doppie,
+   divisori, armadietti, stampante, erogatore e banchi studente. Ospedale: lettini piu'
+   fitti + monitor + tende. Negozio: scaffali su due lati + sgabelli.
