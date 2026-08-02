@@ -5,7 +5,7 @@ let WORLD_W=7200, WORLD_H=5280;   // ingrandita per i tile da 120px: stessi pala
 let TOTAL_PLAYERS=100;
 const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
-const BUILD='v2.1.0';   // NUMERO DI BUILD mostrato a schermo in gioco
+const BUILD='v2.1.1';   // NUMERO DI BUILD mostrato a schermo in gioco
 const TILE_BOX={"gr_grass": [], "gr_path": [], "gr_path_cor": [], "pz_floor": [], "wl_wall": [[0, 0, 30, 120]], "wl_corner": [[0, 0, 30, 120], [30, 90, 90, 30]], "wl_door": [[0, 0, 30, 30], [0, 90, 30, 30]], "wl_win": [[0, 0, 30, 30], [15, 60, 15, 15], [0, 90, 30, 30]], "wl_in": [[0, 0, 15, 120]], "wl_in_cor": [[0, 0, 15, 120], [15, 105, 105, 15]], "wt_water": [[0, 0, 120, 120]], "wt_edge": [[0, 60, 120, 30], [0, 90, 105, 30]], "wt_corner": [[0, 60, 90, 60]]};
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
@@ -1923,19 +1923,33 @@ class Game extends Phaser.Scene{
     const {x,y,w,h}=this.dmap, sx=w/WORLD_W, sy=h/WORLD_H;
     const g=this.add.graphics().setScrollFactor(0).setDepth(58); this.dUI.push(g);
     g.fillStyle(0x0a0818,1); g.fillRect(x,y,w,h);
-    DISTRICTS.forEach(d=>{ g.fillStyle(d.c,0.13); g.fillCircle(x+d.x*w,y+d.y*h,Math.min(w,h)*0.10); });
+    // i TRE SETTORI (niente piu' cerchi dei vecchi distretti)
+    if(this.city&&this.city.areas){
+      const CC=[0xff5f8f,0x5fd0ff,0x6bff9f];
+      this.city.areas.forEach((A,i)=>{ const T=this.city.TS;
+        g.fillStyle(CC[i],0.14); g.fillRect(x+A.tx*T*sx,y+A.ty*T*sy,A.tw*T*sx,A.th*T*sy);
+        g.lineStyle(1.5,CC[i],0.55); g.strokeRect(x+A.tx*T*sx,y+A.ty*T*sy,A.tw*T*sx,A.th*T*sy); });
+    } else DISTRICTS.forEach(d=>{ g.fillStyle(d.c,0.13); g.fillCircle(x+d.x*w,y+d.y*h,Math.min(w,h)*0.10); });
     this.wallRects.forEach(r=>{ if(r.type==='border') return;
       if(r.type==='water'){ g.fillStyle(C.water,0.95); g.fillRect(x+r.x*sx,y+r.y*sy,Math.max(1,r.w*sx),Math.max(1,r.h*sy)); }
       else if(r.type==='cover'){ g.fillStyle(r.dc,0.28); g.fillRect(x+r.x*sx,y+r.y*sy,Math.max(1,r.w*sx),Math.max(1,r.h*sy)); }
-      else { g.fillStyle(r.dc,0.30); g.fillRect(x+r.x*sx,y+r.y*sy,Math.max(2,r.w*sx),Math.max(2,r.h*sy));
-        g.lineStyle(1.5,r.dc,0.95); g.strokeRect(x+r.x*sx,y+r.y*sy,Math.max(2,r.w*sx),Math.max(2,r.h*sy)); } });
+      else { const cc=this.sectorColor(r.x,r.y);
+        g.fillStyle(cc,0.55); g.fillRect(x+r.x*sx,y+r.y*sy,Math.max(2,r.w*sx),Math.max(2,r.h*sy));
+        g.lineStyle(1,0xffffff,0.5); g.strokeRect(x+r.x*sx,y+r.y*sy,Math.max(2,r.w*sx),Math.max(2,r.h*sy)); } });
     g.lineStyle(2,C.cyan,0.85); g.strokeRect(x,y,w,h);
     // corner ticks
     g.lineStyle(3,C.cyan,1); const t=14;
     [[x,y,1,1],[x+w,y,-1,1],[x,y+h,1,-1],[x+w,y+h,-1,-1]].forEach(c=>{ g.beginPath(); g.moveTo(c[0],c[1]+c[3]*t); g.lineTo(c[0],c[1]); g.lineTo(c[0]+c[2]*t,c[1]); g.strokePath(); });
-    DISTRICTS.forEach(d=>{ const col='#'+(d.c>>>0).toString(16).padStart(6,'0').slice(-6);
-      const tx=this.add.text(x+d.x*w,y+d.y*h,d.n,{fontSize:Math.max(8,Math.min(13,w*0.028))+'px',fontStyle:'900',color:col}).setOrigin(0.5).setScrollFactor(0).setDepth(59).setShadow(0,0,'#000',4);
-      this.dUI.push(tx); });
+    if(this.city&&this.city.areas){
+      const NM={ospedale:'OSPEDALE',uffici:'DISTRETTO UFFICI',parco:'PARCO',
+                residenza:'RESIDENZIALE',negozio:'MERCATO'};
+      const CS=['#ff5f8f','#5fd0ff','#6bff9f'], T=this.city.TS;
+      this.city.areas.forEach((A,i)=>{
+        const tx=this.add.text(x+(A.tx+A.tw/2)*T*sx,y+(A.ty+A.th/2)*T*sy,NM[A.kind]||A.kind,
+          {fontSize:Math.max(9,Math.min(14,w*0.030))+'px',fontStyle:'900',color:CS[i]})
+          .setOrigin(0.5).setScrollFactor(0).setDepth(59).setShadow(0,0,'#000',4);
+        this.dUI.push(tx); });
+    }
   }
 
   pickLanding(sx,sy){
@@ -2264,7 +2278,41 @@ class Game extends Phaser.Scene{
         }
       }
     }
+    // ARREDAMENTO: mancava del tutto — i palazzi venivano costruiti ma restavano VUOTI.
+    // Arredo le due meta' separatamente, cosi' i mobili non finiscono tutti da un lato.
+    {
+      const th=this._bldTheme||'casa';
+      const ix=x+T+10, iy=y+T+10, iw=(cols-2)*T-20, ih=(rows-2)*T-20;
+      if(iw>160&&ih>140){
+        const vert=(iw>=ih);
+        if(iw>560||ih>560){
+          const A=this.roomTheme(th), B=this.roomTheme(th);
+          if(vert){
+            this.furnishReal(ix,iy,Math.floor(iw/2)-20,ih,A,null);
+            this.furnishReal(ix+Math.floor(iw/2)+20,iy,Math.floor(iw/2)-20,ih,B,null);
+          } else {
+            this.furnishReal(ix,iy,iw,Math.floor(ih/2)-20,A,null);
+            this.furnishReal(ix,iy+Math.floor(ih/2)+20,iw,Math.floor(ih/2)-20,B,null);
+          }
+        } else this.furnishReal(ix,iy,iw,ih,this.roomTheme(th),null);
+      }
+    }
     return true;
+  }
+  // dal tipo di edificio al tema della stanza
+  roomTheme(t){
+    if(t==='ospedale') return 'ospedale';
+    if(t==='ufficio')  return 'ufficio';
+    if(t==='negozio')  return 'negozio';
+    if(t==='magazzino')return 'magazzino';
+    return Phaser.Utils.Array.GetRandom(['camera','salotto','cucina','bagno']);
+  }
+  // un colore per settore, usato dalla minimappa
+  sectorColor(wx,wy){
+    const P=this.city; if(!P||!P.areas) return 0x9fd8ff;
+    const T=P.TS, tx=Math.floor(wx/T), ty=Math.floor(wy/T);
+    const i=(ty<P.hy)?0:((tx<P.vx)?1:2);
+    return [0xff5f8f,0x5fd0ff,0x6bff9f][i];
   }
   showLoading(){
     const W=this.scale.width,H=this.scale.height;
@@ -3929,9 +3977,13 @@ class Game extends Phaser.Scene{
   buildMinimapTexture(){
     const S=240, g=this.make.graphics({add:false}); const sx=S/WORLD_W, sy=S/WORLD_H;
     g.fillStyle(0x070512,1); g.fillRect(0,0,S,S);
-    DISTRICTS.forEach(d=>{ g.fillStyle(d.c,0.12); g.fillCircle(d.x*S,d.y*S,24); });
+    if(this.city&&this.city.areas){                       // i tre settori, uno per colore
+      const CC=[0xff5f8f,0x5fd0ff,0x6bff9f], T=this.city.TS, k=S/WORLD_W, k2=S/WORLD_H;
+      this.city.areas.forEach((A,i)=>{ g.fillStyle(CC[i],0.16);
+        g.fillRect(A.tx*T*k,A.ty*T*k2,A.tw*T*k,A.th*T*k2); });
+    } else DISTRICTS.forEach(d=>{ g.fillStyle(d.c,0.12); g.fillCircle(d.x*S,d.y*S,24); });
     this.wallRects.forEach(r=>{ if(r.type==='border') return;
-      g.fillStyle(r.type==='water'?C.water:r.dc, r.type==='cover'?0.4:0.6);
+      g.fillStyle(r.type==='water'?C.water:this.sectorColor(r.x,r.y), r.type==='cover'?0.45:0.8);
       g.fillRect(r.x*sx,r.y*sy,Math.max(1.5,r.w*sx),Math.max(1.5,r.h*sy)); });
     g.generateTexture('mmTex',S,S); g.destroy();
   }

@@ -1,34 +1,23 @@
-NEXUS ROYALE v2.1.0  —  LA MAPPA COME DICEVI TU   (BUILD v2.1.0)
-=================================================================
-1) Copia in assets/ :  wl_lcor.png   (la tua L INVERSA, per gli angoli concavi)
-2) Sostituisci: game.js  sw.js  index.html  assets_fallback.js
+NEXUS ROYALE v2.1.1   (BUILD v2.1.1)
+=====================================
+Sostituisci SOLO: game.js  sw.js  index.html
 
-BASTA GRIGLIE. Ho buttato via il sistema a isolati e rifatto la pianta coi TUOI numeri.
-
-LE STRADE SONO DUE, IN TUTTO
-  - una ORIZZONTALE che attraversa tutta la mappa, a 3/7 dall'alto
-  - una VERTICALE che scende dal centro fino al bordo inferiore
-  Un solo incrocio a T. Nient'altro. (166 tessere di strada su 2640: il resto e' terra.)
-
-TRE GRANDI SUPERFICI, non quadretti
-  GRANDE   58x17 tessere = 6960x2040 px  -> ospedale intero, o parco, o uffici
-  PICCOLO  28x21 tessere = 3360x2520 px  -> case / negozi / parco
-  PICCOLO  26x21 tessere = 3120x2520 px
-  DENTRO I SETTORI NON C'E' NESSUNA STRADA: si cammina nello spazio fra gli edifici.
-
-COME SI RIEMPIONO
-  OSPEDALE/UFFICI  UN edificio enorme al centro (62% x 66% del settore) + qualche
-                   massa chiusa negli angoli
-  RESIDENZA/NEGOZI 2-3 CASE GRANDI in cui si entra (8-12 x 7-10 tessere = fino a
-                   1440x1200 px) + masse di palazzi chiusi a fare quinta
-  PARCO            lago al centro, alberi, panchine, lampioni
-
-MURI INTERNI: ORA SONO LINEE SOTTILI
-  Il problema vero era questo: usavo tessere da 120px anche per i muri interni, e
-  ogni muro si mangiava un quadrato intero. Ora sono disegnati come LINEE da 14px
-  col tuo colore #75E3A9, con porte larghe 96px.
-  Risultato: le stanze restano grandi e ci si passa davvero.
-  La tua Wall_interni non serve piu' come PNG: il colore lo mette il gioco.
-
-wl_lcor (L inversa) e' caricata e pronta per le case con rientranze, come nel tuo
-esempio: la usero' appena passo alle piante a L invece dei rettangoli.
+1) PALAZZI VUOTI — RISOLTO. buildWallRing costruiva i muri ma NON chiamava mai
+   l'arredatore: ecco perche' ospedale, case e uffici erano gusci vuoti.
+   Ora ogni edificio viene arredato, e gli edifici grandi vengono divisi in DUE
+   ambienti diversi (es. camera + cucina, o due reparti) cosi' i mobili non finiscono
+   tutti da un lato. Il tema segue il tipo di edificio:
+     ospedale -> lettini, monitor, barelle, accettazione
+     ufficio  -> postazioni, armadietti, riunioni, stampante
+     negozio  -> bancone, scaffali, frigo, tavolini
+     casa     -> camera / salotto / cucina / bagno
+2) MINIMAPPA E MAPPA DI LANCIO RIFATTE
+   - via i vecchi distretti a cerchi colorati (non avevano piu' senso con 3 settori)
+   - ora si vedono i TRE SETTORI, ognuno col suo colore:
+       settore GRANDE  rosa/rosso   #ff5f8f
+       settore piccolo 1  azzurro   #5fd0ff
+       settore piccolo 2  verde     #6bff9f
+   - i MURI non sono piu' neri: prendono il colore del loro settore, con un bordo
+     bianco sottile -> si leggono bene su fondo scuro
+   - le etichette ora dicono cosa c'e' davvero: OSPEDALE / PARCO / RESIDENZIALE /
+     MERCATO / DISTRETTO UFFICI, al posto dei vecchi nomi fissi
