@@ -1,14 +1,11 @@
-NEXUS ROYALE v2.1.2 — game.js  sw.js  index.html
+NEXUS ROYALE v2.1.4 — game.js sw.js index.html
 
-1) ANGOLI DEI MURI: la tessera wl_corner e' BASSO-SINISTRA, non alto-sinistra.
-   Tutte le rotazioni erano sfasate di 90 gradi, come avevi visto. Corrette.
-2) MAPPA TROPPO VUOTA: i settori ora si riempiono a RIGHE (1-2 file di edifici,
-   larghi 7-11 tessere, con 2-3 di stacco) invece di 2-3 case sparse.
-3) PALAZZI CHIUSI DENTRO QUELLI APERTI: ora si registra lo spazio occupato e le masse
-   si piazzano SOLO dove e' libero. Anche negli angoli dell'ospedale/uffici.
-4) PROPORZIONI ARREDI SBAGLIATE: i mobili nuovi li avevo salvati al DOPPIO, i vecchi
-   no, e il codice leggeva i pixel della texture -> poltrona piu' piccola del lavandino.
-   Ora c'e' una tabella di misure esplicite per tutti e 35 i mobili.
-5) PEZZI NUOVI NON USATI: ufficio ora usa sala riunioni, lavagna, scrivanie doppie,
-   divisori, armadietti, stampante, erogatore e banchi studente. Ospedale: lettini piu'
-   fitti + monitor + tende. Negozio: scaffali su due lati + sgabelli.
+Applicate le misure del JSON completo:
+- MURI e PAVIMENTI ora a 60px (mezza tessera) come hai indicato: il costruttore
+  degli edifici lavora su celle da 60, quindi le stanze hanno il doppio di risoluzione
+  e i muri non mangiano piu\ un quadrato da 120.
+  Soglia minima edificio visitabile: 10x8 celle da 60 (= 600x480 px).
+- PALAZZI CHIUSI alle loro misure vere invece che tutti quadrati:
+  bldT0 4x2 tessere, bldT4 3x2, bldT_big 8x4, bldT_tall 1x3, gli altri 2x2.
+  Vengono disegnati con le proporzioni giuste.
+- Gli arredi mantengono le 42 misure gia\ applicate in v2.1.3.
