@@ -7,6 +7,11 @@ const LIVE_ZOOM=0.85;
 const UNIT_SCALE=0.66;      // sprite 64px -> ~42px: un uomo non puo' essere largo come una corsia
 const BUILD='v2.1.4';   // NUMERO DI BUILD mostrato a schermo in gioco
 const TILE_BOX={"gr_grass": [], "gr_path": [], "gr_path_cor": [], "pz_floor": [], "wl_wall": [[0, 0, 30, 120]], "wl_corner": [[0, 0, 30, 120], [30, 90, 90, 30]], "wl_door": [[0, 0, 30, 30], [0, 90, 30, 30]], "wl_win": [[0, 0, 30, 30], [15, 60, 15, 15], [0, 90, 30, 30]], "wl_in": [[0, 0, 15, 120]], "wl_in_cor": [[0, 0, 15, 120], [15, 105, 105, 15]], "wt_water": [[0, 0, 120, 120]], "wt_edge": [[0, 60, 120, 30], [0, 90, 105, 30]], "wt_corner": [[0, 60, 90, 60]]};
+// ====== OFFICINA TESSERE: misure impostate dall'officina (localStorage, stessa origine) ======
+let TILE_SIZE={};
+try{ const _ts=JSON.parse(localStorage.getItem('nexusTileSizes')||'{}'); const _o=_ts.oggetti||_ts;
+  Object.keys(_o).forEach(k=>{ const a=_o[k].a||_o[k]; if(Array.isArray(a)&&a.length===2) TILE_SIZE[k]=[+a[0],+a[1]]; }); }catch(e){}
+function TSZ(k,dw,dh){ const s=TILE_SIZE[k]; return s?[s[0],s[1]]:[dw,dh]; }
 const VISION_R=200;        // raggio di visione condiviso (giocatore e bot); espanso da rifle/Oracle
 // ====== MANOPOLE VISIBILITA' / BUIO (Gem: cambia questi tre numeri e ricarica) ======
 const FOG_ALPHA=0.72;      // quanto e' scuro il buio FUORI dal cerchio (era 0.97). Piu' basso = piu' chiaro
@@ -2154,16 +2159,18 @@ class Game extends Phaser.Scene{
   // posa una tessera del set nuovo, ruotata, e ne registra la collisione
   putTile(k,x,y,ang,depth){
     if(!this.textures.exists(k)) return null;
-    const T=120, im=this.add.image(x+T/2,y+T/2,k).setDisplaySize(T+2,T+2)
+    const S=TSZ(k,60,60)[0];                 // OFFICINA: lato tessera (default cella 60, non piu' 120 fisso)
+    const im=this.add.image(x+S/2,y+S/2,k).setDisplaySize(S+2,S+2)
       .setAngle(ang||0).setDepth(depth===undefined?0.5:depth);
     const rot=((ang||0)%360+360)%360;
     if(!this.walls) return im;
+    const f=S/120;                           // TILE_BOX e' in coordinate 120 -> riscalo alla dimensione reale
     this.tileBox(k).forEach(r=>{
-      let [rx,ry,rw,rh]=r, nx,ny,nw,nh;
+      let rx=r[0]*f, ry=r[1]*f, rw=r[2]*f, rh=r[3]*f, nx,ny,nw,nh;
       if(rot===0){ nx=rx; ny=ry; nw=rw; nh=rh; }
-      else if(rot===90){ nx=T-ry-rh; ny=rx; nw=rh; nh=rw; }
-      else if(rot===180){ nx=T-rx-rw; ny=T-ry-rh; nw=rw; nh=rh; }
-      else { nx=ry; ny=T-rx-rw; nw=rh; nh=rw; }
+      else if(rot===90){ nx=S-ry-rh; ny=rx; nw=rh; nh=rw; }
+      else if(rot===180){ nx=S-rx-rw; ny=S-ry-rh; nw=rw; nh=rh; }
+      else { nx=ry; ny=S-rx-rw; nw=rh; nh=rw; }
       const b=this.walls.create(x+nx+nw/2,y+ny+nh/2,'px').setVisible(false);
       b.setDisplaySize(nw,nh); b.refreshBody();
       this.wallRects.push({x:x+nx,y:y+ny,w:nw,h:nh,type:(k[0]==='w'&&k[1]==='t')?'water':'building'});
@@ -2176,9 +2183,10 @@ class Game extends Phaser.Scene{
   // arredo urbano: misure della lista, collisione solo per gli oggetti solidi
   putProp(k,x,y,solid){
     if(!this.textures.exists(k)) return null;
-    const S={up_bench:[68,28],up_lamp:[31,31],up_tree:[114,114],up_bush:[25,25],up_fountain:[92,92],
+    const D={up_bench:[68,28],up_lamp:[31,31],up_tree:[114,114],up_bush:[25,25],up_fountain:[92,92],
       up_bin:[22,22],up_planter:[61,23],up_sign:[61,61],up_hydrant:[20,20],up_barrier:[113,30],
       up_bus:[209,96],up_kiosk:[154,126],up_car2:[140,67],up_stairs:[163,82]}[k]||[60,60];
+    const S=TSZ(k,D[0],D[1]);                 // OFFICINA override
     const im=this.add.image(x,y,k).setDisplaySize(S[0],S[1]).setDepth(0.62);
     if(solid && this.walls){ const b=this.walls.create(x,y,'px').setVisible(false);
       b.setDisplaySize(S[0]*0.8,S[1]*0.8); b.refreshBody();
@@ -2200,8 +2208,9 @@ class Game extends Phaser.Scene{
       const bx=x+c*T, by=y+r*T;
       if(CK.length){
         const key=Phaser.Utils.Array.GetRandom(CK), sz=BSZ[key];
+        const [rdw,rdh]=TSZ(key,T+2,Math.round(T*sz[1]/sz[0])+2);   // OFFICINA override
         const im=this.add.image(bx,by,key).setOrigin(0,0)
-          .setDisplaySize(T+2,Math.round(T*sz[1]/sz[0])+2).setDepth(0.6);
+          .setDisplaySize(rdw,rdh).setDepth(0.6);
         if(tint) im.setTint(tint);
       } else { const G=this.gCity; G.fillStyle(0x0e1418,1); G.fillRect(bx,by,T,T); }
       if(this.walls){ const b=this.walls.create(bx+T/2,by+T/2,'px').setVisible(false);
@@ -2225,7 +2234,8 @@ class Game extends Phaser.Scene{
     if(!fk){ const t=this._bldTheme||'casa'; fk=FL[t]||'if_home'; }
     if(!this.textures.exists(fk)) fk='if_home';
     if(this.textures.exists(fk))
-      this.add.tileSprite(x,y,cols*T,rows*T,fk).setOrigin(0,0).setDepth(-18.15).setTileScale(60/120,60/120);
+      { const fs=TSZ(fk,60,60)[0]/120;        // OFFICINA: tessera pavimento / 120 nativi
+        this.add.tileSprite(x,y,cols*T,rows*T,fk).setOrigin(0,0).setDepth(-18.15).setTileScale(fs,fs); }
     const doorSide=Phaser.Math.Between(0,3), doorAt=Phaser.Math.Between(1,Math.max(1,(doorSide%2?rows:cols)-2));
     const pick=()=>Phaser.Math.FloatBetween(0,1)<0.32?'wl_win':'wl_wall';
     for(let c=0;c<cols;c++)for(let r=0;r<rows;r++){
@@ -2951,8 +2961,10 @@ class Game extends Phaser.Scene{
       of_desk2:[190,95],of_partition:[205,34],of_printer:[40,22],of_water:[18,18],of_meeting:[244,134],
       of_locker:[332,49],of_desk_stud:[60,30],
       sh_counter:[121,38],sh_shelf:[180,45],sh_fridge:[82,45],sh_table:[60,60],sh_stool:[26,26]};
-    const dim=k=>{ const s0=SZ[k]; if(s0) return [Math.round(s0[0]*FS),Math.round(s0[1]*FS)];
-      const t=this.textures.get(k).getSourceImage(); return [Math.round(t.width*FS),Math.round(t.height*FS)]; };
+    const dim=k=>{ let s0=SZ[k];
+      if(!s0){ const t=this.textures.get(k).getSourceImage(); s0=[t.width,t.height]; }
+      const o=TSZ(k,s0[0],s0[1]);              // OFFICINA override
+      return [Math.round(o[0]*FS),Math.round(o[1]*FS)]; };
     const placed=[];
     const fits=(r)=>{
       if(r.x<ix||r.y<iy||r.x+r.w>ix+iw||r.y+r.h>iy+ih) return false;
@@ -3642,7 +3654,7 @@ class Game extends Phaser.Scene{
     const p = isPlayer ? this.freeSpot(Phaser.Utils.Array.GetRandom(DISTRICTS)) : this.freeSpot();
     const op=isPlayer?OP(GAME.char):null;
     const charKey=isPlayer?('ch_'+GAME.char):'ch_bot';
-    const s=this.physics.add.image(p.x,p.y,charKey+'_0').setDepth(6).setScale(UNIT_SCALE); s.body.setCircle(15,17,17); s.setCollideWorldBounds(true);
+    const s=this.physics.add.image(p.x,p.y,charKey+'_0').setDepth(6).setScale(TSZ('spr_vyre',64*UNIT_SCALE,64*UNIT_SCALE)[0]/64); s.body.setCircle(15,17,17); s.setCollideWorldBounds(true);
     const gun=this.add.image(p.x,p.y,'gun_small').setOrigin(16/64,0.5).setDepth(7).setVisible(false);
     const u={ s,gun,isPlayer,charKey,frame:0, alive:true, hp:100,maxhp:100, shield:isPlayer?0:Phaser.Math.Between(0,50),maxshield:100,
       weapon:isPlayer?'pistol':Phaser.Utils.Array.GetRandom(['pistol','pistol','smg']),
