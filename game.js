@@ -1591,6 +1591,16 @@ class Menu extends Phaser.Scene{
     E(this.add.text(cx+half/2+3,yy,'❓ COME SI GIOCA',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#b9d8ce',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
     gBox.on('pointerdown',()=>{ SFX.ui(); els.forEach(o=>o.destroy()); this.scene.start('Tutorial'); });
 
+    yy+=54;
+    // --- OFFICINA (solo programmatore, dietro password PODERE173; apre officina.html) ---
+    const oBox=E(this.add.rectangle(cx,yy,pw-40,T.tap+4,0x140f05).setStrokeStyle(2,0xffc247).setDepth(402).setInteractive({useHandCursor:true}));
+    E(this.add.text(cx,yy,'\u{1F6E0}  OFFICINA',{fontFamily:TITLE_FONT,fontSize:'13px',color:'#ffc247',fontStyle:'900'}).setOrigin(0.5).setDepth(403));
+    oBox.on('pointerdown',()=>{ SFX.ui();
+      if((localStorage.getItem('officinaAuth')||'')==='ok'){ window.open('officina.html','_blank'); return; }
+      const p=prompt('Password officina:');
+      if(p==='PODERE173'){ try{localStorage.setItem('officinaAuth','ok');}catch(e){} window.open('officina.html','_blank'); }
+      else if(p!==null){ alert('Password errata.'); } });
+
     const _cw=Math.min(200,W*0.55);
     uiCta(this,cx-_cw/2,py+ph-58,_cw,44,'CHIUDI',C.player,402,()=>{ els.forEach(o=>o.destroy&&o.destroy()); }).els.forEach(E);
   }
